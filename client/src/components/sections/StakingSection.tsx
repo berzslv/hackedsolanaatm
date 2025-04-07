@@ -23,7 +23,15 @@ const StakingSection = () => {
   
   return (
     <section id="staking" className="section section-even">
-      <div className="container mx-auto px-4">
+      <div className="pattern-grid"></div>
+      <div className="pattern-circles">
+        <div className="absolute w-48 h-48 rounded-full border border-secondary/10 -bottom-24 -left-24"></div>
+        <div className="absolute w-32 h-32 rounded-full border border-primary/10 top-20 right-10"></div>
+        <div className="absolute w-4 h-4 bg-secondary/5 rounded-full top-1/3 left-1/3"></div>
+        <div className="absolute w-6 h-6 bg-primary/5 rounded-full bottom-1/3 right-1/4"></div>
+      </div>
+      
+      <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-display mb-4 text-foreground">
             Staking <GradientText>Vault</GradientText>

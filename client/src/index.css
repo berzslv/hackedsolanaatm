@@ -205,6 +205,31 @@
     @apply border-y border-purple-100 dark:border-purple-900/20;
   }
   
+  /* Pattern Elements */
+  .pattern-dots {
+    @apply absolute inset-0 pointer-events-none opacity-10 dark:opacity-15;
+    background-image: radial-gradient(rgba(153, 69, 255, 0.3) 1px, transparent 1px);
+    background-size: 25px 25px;
+  }
+  
+  .pattern-grid {
+    @apply absolute inset-0 pointer-events-none opacity-5 dark:opacity-10;
+    background-image: linear-gradient(rgba(153, 69, 255, 0.2) 1px, transparent 1px),
+                      linear-gradient(to right, rgba(153, 69, 255, 0.2) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+  
+  .pattern-wave {
+    @apply absolute inset-0 pointer-events-none opacity-10 dark:opacity-15;
+    background-image: repeating-radial-gradient(circle at 0 0, transparent 0, rgba(153, 69, 255, 0.05) 40px),
+                      repeating-linear-gradient(rgba(153, 69, 255, 0.1), rgba(20, 241, 149, 0.1));
+    background-size: 100% 100%;
+  }
+  
+  .pattern-circles {
+    @apply absolute inset-0 pointer-events-none opacity-5 dark:opacity-10 overflow-hidden;
+  }
+  
   /* Decorative elements */
   .glow-blob {
     @apply absolute rounded-full blur-3xl opacity-20 dark:opacity-10 pointer-events-none;
