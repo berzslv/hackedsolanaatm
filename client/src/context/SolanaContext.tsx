@@ -38,6 +38,19 @@ const SolanaContext = createContext<SolanaContextType>({
 
 export const useSolana = () => useContext(SolanaContext);
 
+// Deep linking URLs for mobile wallets
+const WALLET_DEEP_LINKS = {
+  phantom: 'phantom://browse/',
+  solflare: 'solflare://browse/',
+  slope: 'slope://browse/',
+  coin98: 'coin98://browse/'
+};
+
+// Helper to check if device is mobile
+const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
 // Generic wallet provider interface
 interface WalletProvider {
   connect: () => Promise<{ publicKey: PublicKey }>;
@@ -112,6 +125,12 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   
   // Check if a wallet provider is available in the browser
   const getWalletProvider = (walletType: WalletType): WalletProvider | null => {
+    // Handle mobile deep linking
+    if (isMobileDevice() && WALLET_DEEP_LINKS[walletType]) {
+      window.location.href = WALLET_DEEP_LINKS[walletType] + window.location.href;
+      return null;
+    }
+
     switch (walletType) {
       case 'phantom':
         if ('phantom' in window) {
