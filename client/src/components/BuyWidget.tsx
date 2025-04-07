@@ -116,7 +116,16 @@ const BuyWidget = () => {
   
   return (
     <div className="relative max-w-md mx-auto">
-      <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-3xl blur-3xl opacity-30"></div>
+      {/* Background effect - animated waves when connected */}
+      {connected ? (
+        <div className="absolute inset-0 overflow-hidden rounded-3xl">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/30 via-secondary/30 to-accent/30 rounded-3xl blur-3xl animate-pulse-slow"></div>
+          <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 via-accent/20 to-secondary/20 rounded-3xl blur-xl animate-pulse-slower opacity-70"></div>
+          <div className="absolute inset-0 bg-gradient-to-bl from-secondary/20 via-primary/20 to-accent/20 rounded-3xl blur-lg animate-pulse-fast opacity-50"></div>
+        </div>
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-3xl blur-3xl opacity-30"></div>
+      )}
       <div className="bg-card/80 backdrop-blur-sm border border-border rounded-3xl p-6 relative z-10 shadow-xl">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-display text-foreground">ATM Terminal</h3>
@@ -230,10 +239,17 @@ const BuyWidget = () => {
           )}
         
           <Button 
-            className="w-full py-3 gradient-button"
+            className={`w-full py-3 ${connected ? 'relative overflow-hidden group' : 'gradient-button'}`}
             onClick={handleBuy}
           >
-            {connected ? 'Buy HATM' : 'Connect Wallet to Buy'}
+            {connected ? (
+              <>
+                {/* Animated background */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary via-secondary to-accent opacity-90 animate-color-shift"></div>
+                {/* Button text */}
+                <span className="relative z-10 font-medium">Buy $HATM</span>
+              </>
+            ) : 'Connect Wallet to Buy'}
           </Button>
         </div>
         
