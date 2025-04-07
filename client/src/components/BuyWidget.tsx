@@ -1,15 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useSolana } from '@/context/SolanaContext';
 import { useTokenData } from '@/context/TokenDataContext';
 import { formatNumber } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const BuyWidget = () => {
   const { connected, connectWallet } = useSolana();
   const { tokenPrice } = useTokenData();
+  const { toast } = useToast();
   const [solAmount, setSolAmount] = useState<string>('');
   const [hatchAmount, setHatchAmount] = useState<string>('');
+  const [referralCode, setReferralCode] = useState<string>('');
+  const [showReferralInput, setShowReferralInput] = useState<boolean>(false);
+  
+  // Show referral code input if user is connected
+  useEffect(() => {
+    if (connected) {
+      setShowReferralInput(true);
+    }
+  }, [connected]);
   
   const handleSolInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -37,6 +49,27 @@ const BuyWidget = () => {
     }
   };
   
+  const handleReferralCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Convert input to uppercase and limit to 6 characters
+    const value = e.target.value.toUpperCase().slice(0, 6);
+    setReferralCode(value);
+  };
+  
+  const applyReferralCode = () => {
+    if (referralCode.length === 6) {
+      toast({
+        title: "Referral code applied",
+        description: `Using referral code ${referralCode} for this purchase.`,
+      });
+    } else {
+      toast({
+        title: "Invalid referral code",
+        description: "Please enter a valid 6-character referral code.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   const handleBuy = () => {
     if (!connected) {
       connectWallet();
@@ -44,6 +77,18 @@ const BuyWidget = () => {
     }
     
     // Process buy transaction
+    if (referralCode) {
+      toast({
+        title: "Purchasing with referral",
+        description: `Buying HATM with referral code: ${referralCode}`,
+      });
+    } else {
+      toast({
+        description: "No referral code applied. You'll pay 8% fee instead of 6%.",
+      });
+    }
+    
+    // Alert for now, will be implemented with Solana integration
     alert('Buy functionality will be implemented when connected to Solana blockchain');
   };
   
@@ -113,6 +158,30 @@ const BuyWidget = () => {
             </div>
           </div>
           
+          {showReferralInput && (
+            <div className="bg-muted rounded-lg p-3 mb-4">
+              <Label htmlFor="referral-code" className="text-xs text-foreground/70 mb-1 block">
+                Have a referral code? Enter it below to get 2% discount:
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input 
+                  id="referral-code"
+                  placeholder="ENTER REFERRAL CODE" 
+                  className="bg-background/30 border-border/30"
+                  value={referralCode}
+                  onChange={handleReferralCodeChange}
+                />
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={applyReferralCode}
+                >
+                  Apply
+                </Button>
+              </div>
+            </div>
+          )}
+        
           <Button 
             className="w-full py-3 gradient-button"
             onClick={handleBuy}
@@ -124,7 +193,11 @@ const BuyWidget = () => {
         <div className="text-xs text-foreground/70 bg-muted p-2 rounded-lg">
           <p className="flex items-center gap-1">
             <i className="ri-information-line"></i>
-            6% referral fee | 8% without referral
+            {referralCode ? (
+              <>6% fee with referral code: <span className="font-mono text-primary">{referralCode}</span></>
+            ) : (
+              <>6% referral fee | 8% without referral</>
+            )}
           </p>
         </div>
       </div>
