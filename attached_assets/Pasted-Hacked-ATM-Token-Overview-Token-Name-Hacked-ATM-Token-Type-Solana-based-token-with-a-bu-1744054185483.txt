@@ -1,0 +1,169 @@
+Hacked ATM Token Overview:
+
+• Token Name: Hacked ATM
+
+• Token Type: Solana-based token with a built-in referral system and staking vault.
+
+
+
+Key Features:
+
+
+
+Referral System:
+
+1. Referral Fee:
+
+• When users buy or sell Hacked ATM using refferal code or link, a total of 6% fee is applied.
+
+• 3% of the 6% fee goes directly to the referrer (the person who shared the referral link).
+
+• 1% of the 6% fee goes to a marketing wallet to support the project.
+
+• 2% of the 6% fee is collected and used to reward stakers in the staking vault. The 2% is distributed every 30 minutes to users who have staked their tokens, and the rewards are auto-compounded into their staked balance.
+
+2. Without Referral
+
+• When users buy or sell Hacked ATM without refferal code or link, a total of 8% fee is applied.
+
+• 2% of the 8% fee goes to a marketing wallet to support the project.
+
+• 6% of the 8% fee is collected and used to reward stakers in the staking vault. The 2% is distributed every 30 minutes to users who have staked their tokens, and the rewards are auto-compounded into their staked balance.
+
+
+
+3. Referral Tracking:
+
+• Track referrals on-chain to ensure proper reward distribution.
+• Each new wallet connected will get a new referral link and code only for his wallet. It should be tracked in database probably.
+
+
+
+Staking Vault:
+
+1. Dynamic APY:
+
+• The APY for stakers will be dynamic, meaning it will adjust based on the transaction volume (2% of every buy and sell) and the total amount of Hacked ATM tokens staked in the vault.
+
+• More transactions = Higher APY.
+
+• More tokens staked = Lower APY.
+
+• The APY will auto-adjust based on the fees collected and vault balance, ensuring a flexible, sustainable reward system.
+
+• Auto-compounding: Staking rewards will automatically be compounded every 30 minutes into the user’s staked balance.
+
+2. Early Withdrawal Fee:
+
+• If users unstake their Hacked ATM tokens within 7 days, a 4% fee of the amount they have staked will be burned automatically, 1% goes to marketing.
+
+• This fee is designed to discourage early unstaking and help with token scarcity.
+
+
+
+Leaderboard & Rewards:
+
+1. Leaderboard:
+
+• Weekly and Monthly Leaderboards will track and display the top 3 referrers and top 3 stakers.
+
+• Top 3 Referrers: Based on the number of referrals or the transaction volume generated from their referrals.
+
+• Top 3 Stakers: Based on the amount of Hacked ATM tokens staked.
+
+2. Rewards for Top Users:
+
+• Airdrop Coins: The top 3 users (both referrers and stakers) will receive airdropped havked ATM tokens at the end of each week and month.
+
+• Extra Staking Rewards: The top 3 stakers will receive additional staking rewards in the form of extra APY (e.g., +1% APY bonus for the top staker).
+
+• Recognition: The top 3 will also be featured prominently on the website and potentially in social media posts, with special badges or titles.
+
+
+
+Website Features:
+
+1. Buy Widget:
+
+• A widget where users can directly purchase Hacked ATM tokens from the website.
+
+2. Leaderboard Widget:
+
+• A widget displaying the weekly and monthly leaderboard for top referrers and top stakers.
+
+3. FAQ Page:
+
+• A page dedicated to answering frequently asked questions about how the token, staking, and referral system works.
+
+4. Whitepaper:
+
+• A detailed whitepaper outlining the vision, tokenomics, and technical details of the Hacked ATM token, the staking system, and how the referral system works.
+
+
+
+Tokenomics:
+
+• Total Supply: Define the initial supply of Hacked ATM tokens, along with any deflationary mechanisms (e.g., burning a portion of fees).
+
+• Transaction Fees:
+
+• 6% total transaction fee (2% for staking rewards, 1% for marketing, and 3% for the referrer).
+
+• 4% of staked tokens burned, 1% sent to marketing wallet if unstaked within 7 days.
+
+
+
+⸻
+
+
+
+Smart Contract Specifics(will create smart contract on my own):
+
+1. Referral System:
+
+• On every transaction, the smart contract will check if the transaction was made using a referral code.
+
+• Referral fee (3%) will go to the referrer’s wallet.
+
+• Marketing fee (1%) will go to the marketing wallet.
+
+• 2% will be distributed to stakers in the staking vault.
+
+2. Staking Vault:
+
+• The staking smart contract will manage user deposits and withdrawals.
+
+• Dynamic APY will be calculated based on the total staking pool and fees collected from the 2% buy/sell transaction fee.
+
+• Rewards will be auto-compounded every 30 minutes into users’ staked amounts.
+
+• Early withdrawal fee of 4% will be burned automatically, 1% sent to marketing wallet if users unstake within 7 days.
+
+3. Leaderboard Smart Contract:
+
+• Track and store the top 3 referrers and stakers for weekly and monthly periods.
+
+• Allow the website to display these leaderboards, updating in real-time.
+
+
+
+⸻
+
+
+
+Website Design:
+
+• Landing Page: The main page will feature an introduction to Hacked ATM, the benefits of staking, how the referral system works, and the leaderboard.
+
+• Buy Widget: A simple and accessible section to buy Hacked ATM tokens using  Solana wallet adapter packages:
+
+@solana/wallet-adapter-react - The React hooks and context providers
+@solana/wallet-adapter-react-ui - Pre-built UI components like the connect button
+@solana/wallet-adapter-wallets - Wallet implementations for different providers (Phantom, Solflare, etc.)
+@solana/web3.js - Core Solana web library for blockchain interactions
+
+• Leaderboard Widget: Display the current top referrers and stakers.
+
+• FAQ Page: Address common user questions regarding the referral system, staking, early withdrawal fees, etc.
+
+• Whitepaper: Available for users to download or view in detail.
