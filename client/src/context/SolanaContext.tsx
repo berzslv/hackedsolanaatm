@@ -152,7 +152,9 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       document.body.appendChild(iframe);
 
       try {
-        iframe.contentWindow?.location.href = deepLink;
+        if (iframe.contentWindow) {
+          iframe.contentWindow.location.href = deepLink;
+        }
       } catch (e) {
         // If error, app is not installed
         window.location.href = WALLET_DEEP_LINKS[walletType].fallback;
