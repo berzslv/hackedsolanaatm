@@ -4,9 +4,24 @@ import { StatsCard } from "@/components/ui/stats-card";
 import BuyWidget from "@/components/BuyWidget";
 import { Link } from "wouter";
 import { useSolana } from "@/context/SolanaContext";
+import React, { useRef } from "react";
 
 const HeroSection = () => {
-  const { connectWallet } = useSolana();
+  const { connectWallet, connected } = useSolana();
+  const buyWidgetFlashRef = useRef<() => void>(null);
+  
+  // Handler for the Buy $HATM button
+  const handleBuyClick = () => {
+    if (connected) {
+      // If connected, flash the buy widget to draw attention to it
+      if (buyWidgetFlashRef.current) {
+        buyWidgetFlashRef.current();
+      }
+    } else {
+      // If not connected, open wallet selector
+      connectWallet();
+    }
+  };
   
   return (
     <section className="section section-hero">
@@ -24,7 +39,7 @@ const HeroSection = () => {
             <div className="flex flex-wrap gap-4">
               <Button
                 className="px-6 py-3 gradient-button flex items-center gap-2"
-                onClick={() => connectWallet()}
+                onClick={handleBuyClick}
               >
                 <i className="ri-coins-line"></i>
                 Buy $HATM
@@ -48,7 +63,7 @@ const HeroSection = () => {
           </div>
           
           <div className="order-1 lg:order-2 relative">
-            <BuyWidget />
+            <BuyWidget flashRef={buyWidgetFlashRef} />
           </div>
         </div>
       </div>

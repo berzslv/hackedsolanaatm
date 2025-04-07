@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,7 +7,11 @@ import { useTokenData } from '@/context/TokenDataContext';
 import { formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const BuyWidget = () => {
+interface BuyWidgetProps {
+  flashRef?: React.RefObject<() => void>;
+}
+
+const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
   const { connected, connectWallet, balance } = useSolana();
   const { tokenPrice } = useTokenData();
   const { toast } = useToast();
@@ -17,6 +21,26 @@ const BuyWidget = () => {
   const [showReferralInput, setShowReferralInput] = useState<boolean>(false);
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const widgetRef = useRef<HTMLDivElement>(null);
+  
+  // Function to trigger flash effect programmatically
+  const triggerFlash = useCallback(() => {
+    if (connected) {
+      setIsFlashing(true);
+      setTimeout(() => {
+        setIsFlashing(false);
+      }, 1500);
+    } else {
+      connectWallet();
+    }
+  }, [connected, connectWallet]);
+  
+  // Expose the flash function via ref
+  useEffect(() => {
+    if (flashRef) {
+      // @ts-ignore - this is a valid pattern but TypeScript doesn't like it
+      flashRef.current = triggerFlash;
+    }
+  }, [triggerFlash, flashRef]);
   
   // Show referral code input if user is connected
   useEffect(() => {
