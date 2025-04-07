@@ -9,6 +9,16 @@ export default {
         sans: ['Inter', 'sans-serif'],
         display: ['Audiowide', 'cursive'],
       },
+      backgroundImage: {
+        'grid-pattern-dark': "linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)",
+        'grid-pattern-light': "linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px)",
+      },
+      boxShadow: {
+        'glow-dark': "0 0 10px rgba(20, 241, 149, 0.4)",
+        'glow-light': "0 0 10px rgba(20, 241, 149, 0.3)",
+        'glow-purple-dark': "0 0 10px rgba(153, 69, 255, 0.4)",
+        'glow-purple-light': "0 0 10px rgba(153, 69, 255, 0.3)",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",

@@ -1,49 +1,95 @@
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useWalletContext } from "@/context/WalletContext";
-import { shortenAddress } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { shortenAddress } from "@/lib/utils";
+
+const WALLET_ICONS: Record<string, string> = {
+  "phantom": "ri-ghost-line",
+  "solflare": "ri-sun-line",
+  "slope": "ri-arrow-up-line",
+  "sollet": "ri-wallet-line",
+  "ledger": "ri-hard-drive-line",
+  "coinbase": "ri-coin-line",
+  "brave": "ri-lion-line",
+  "metamask": "ri-copper-coin-line", // Used for testing since we're using a mock wallet
+  "trust": "ri-shield-check-line",
+};
 
 interface WalletButtonProps {
-  variant?: "default" | "gradient";
   className?: string;
+  variant?: "default" | "gradient" | "outline";
 }
 
-export function WalletButton({ variant = "default", className }: WalletButtonProps) {
-  const { connected, publicKey, setShowWalletModal } = useWalletContext();
+export function WalletButton({ 
+  className, 
+  variant = "default" 
+}: WalletButtonProps) {
+  const { connected, publicKey, setShowWalletModal, disconnectWallet } = useWalletContext();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const handleClick = () => {
+  const handleConnect = () => {
     setShowWalletModal(true);
+  };
+
+  const handleCopyAddress = () => {
+    if (publicKey) {
+      navigator.clipboard.writeText(publicKey.toString());
+      setIsDropdownOpen(false);
+    }
+  };
+
+  const handleDisconnect = () => {
+    disconnectWallet();
+    setIsDropdownOpen(false);
   };
 
   if (connected && publicKey) {
     return (
-      <Button
-        onClick={handleClick}
-        className={cn(
-          "flex items-center gap-2",
-          variant === "gradient" 
-            ? "bg-gradient-to-r from-primary to-secondary text-dark-900" 
-            : "bg-dark-700 border border-primary/30 text-primary",
-          className
-        )}
-      >
-        <i className="ri-wallet-3-line mr-1"></i>
-        {shortenAddress(publicKey.toString())}
-      </Button>
+      <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button 
+            variant="outline"
+            className={cn(
+              "font-medium gap-2",
+              className
+            )}
+          >
+            <i className="ri-wallet-3-line"></i>
+            {shortenAddress(publicKey.toString())}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleCopyAddress}>
+            <i className="ri-file-copy-line mr-2"></i>
+            Copy Address
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDisconnect}>
+            <i className="ri-logout-box-line mr-2"></i>
+            Disconnect
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
 
   return (
     <Button
-      onClick={handleClick}
+      onClick={handleConnect}
+      variant={variant === "gradient" ? "default" : variant}
       className={cn(
-        "hidden sm:flex items-center gap-2",
-        variant === "gradient" 
-          ? "bg-gradient-to-r from-primary to-secondary text-dark-900" 
-          : "bg-gradient-to-r from-primary to-secondary text-dark-900",
+        variant === "gradient" && "gradient-button",
+        "font-medium",
         className
       )}
     >
+      <i className="ri-wallet-3-line mr-2"></i>
       Connect Wallet
     </Button>
   );
