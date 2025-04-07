@@ -27,7 +27,7 @@ const HeroSection = () => {
     <section className="section section-hero">
       <div className="container mx-auto px-4 relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div className="order-2 lg:order-1">
+          <div className="order-1">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-display leading-tight mb-6">
               <span className="text-foreground">The Next Gen</span>
               <br />
@@ -62,7 +62,7 @@ const HeroSection = () => {
             </div>
           </div>
           
-          <div className="order-1 lg:order-2 relative">
+          <div className="order-2 relative">
             <BuyWidget flashRef={buyWidgetFlashRef} />
           </div>
         </div>
