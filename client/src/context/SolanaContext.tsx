@@ -146,23 +146,13 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const currentUrl = window.location.href;
       const deepLink = WALLET_DEEP_LINKS[walletType].mobile + encodeURIComponent(currentUrl);
 
-      // Create an invisible iframe to attempt opening the app
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
+      // Direct attempt to open the wallet app
+      window.location.href = deepLink;
 
-      // Try to open the wallet app
-      try {
-        iframe.contentWindow?.location.href = deepLink;
-      } catch (e) {
-        // If error, fallback to direct location change
-        window.location.href = deepLink;
-      }
-
-      // Cleanup iframe
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 100);
+      // If wallet app doesn't open in 2 seconds, redirect to download page
+      const fallbackTimer = setTimeout(() => {
+        window.location.href = WALLET_DEEP_LINKS[walletType].fallback;
+      }, 2000);
 
       return null;
     }
