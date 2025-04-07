@@ -183,6 +183,136 @@ const Whitepaper = () => {
             </div>
           </div>
         </div>
+        
+        <div className="bg-card/80 backdrop-blur-sm rounded-xl p-8 border border-border shadow-md mb-10">
+          <h2 className="text-2xl font-display mb-6 text-foreground">Tokenomics</h2>
+          
+          <div className="space-y-4">
+            <div className="bg-muted rounded-lg p-4">
+              <h4 className="text-foreground mb-2">Transaction Fees:</h4>
+              <ul className="space-y-2 text-foreground/70">
+                <li className="flex items-start gap-2">
+                  <i className="ri-currency-line text-primary mt-0.5"></i>
+                  <span>6% total transaction fee with referral (3% for referrer, 1% for marketing, and 2% for staking rewards).</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <i className="ri-currency-line text-primary mt-0.5"></i>
+                  <span>8% total transaction fee without referral (2% for marketing, and 6% for staking rewards).</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <i className="ri-fire-line text-error mt-0.5"></i>
+                  <span>4% of staked tokens burned, 1% sent to marketing wallet if unstaked within 7 days.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-card/80 backdrop-blur-sm rounded-xl p-8 border border-border shadow-md mb-10">
+          <h2 className="text-2xl font-display mb-6 text-foreground">Smart Contract Specifics</h2>
+          
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-xl font-medium mb-3 text-foreground">Referral System Contract</h3>
+              <ul className="space-y-2 text-foreground/70">
+                <li className="flex items-start gap-2">
+                  <i className="ri-code-s-slash-line text-accent mt-0.5"></i>
+                  <span>On every transaction, the smart contract will check if the transaction was made using a referral code.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <i className="ri-code-s-slash-line text-accent mt-0.5"></i>
+                  <span>Referral fee (3%) will go to the referrer's wallet.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <i className="ri-code-s-slash-line text-accent mt-0.5"></i>
+                  <span>Marketing fee (1%) will go to the marketing wallet.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <i className="ri-code-s-slash-line text-accent mt-0.5"></i>
+                  <span>2% will be distributed to stakers in the staking vault.</span>
+                </li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="text-xl font-medium mb-3 text-foreground">Staking Vault Contract</h3>
+              <ul className="space-y-2 text-foreground/70">
+                <li className="flex items-start gap-2">
+                  <i className="ri-code-s-slash-line text-accent mt-0.5"></i>
+                  <span>The staking smart contract will manage user deposits and withdrawals.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <i className="ri-code-s-slash-line text-accent mt-0.5"></i>
+                  <span>Dynamic APY will be calculated based on the total staking pool and fees collected from the 2% buy/sell transaction fee.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <i className="ri-code-s-slash-line text-accent mt-0.5"></i>
+                  <span>Rewards will be auto-compounded every 30 minutes into users' staked amounts.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <i className="ri-code-s-slash-line text-accent mt-0.5"></i>
+                  <span>Early withdrawal fee of 4% will be burned automatically, 1% sent to marketing wallet if users unstake within 7 days.</span>
+                </li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="text-xl font-medium mb-3 text-foreground">Leaderboard Contract</h3>
+              <ul className="space-y-2 text-foreground/70">
+                <li className="flex items-start gap-2">
+                  <i className="ri-code-s-slash-line text-accent mt-0.5"></i>
+                  <span>Track and store the top 3 referrers and stakers for weekly and monthly periods.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <i className="ri-code-s-slash-line text-accent mt-0.5"></i>
+                  <span>Allow the website to display these leaderboards, updating in real-time.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-card/80 backdrop-blur-sm rounded-xl p-8 border border-border shadow-md mb-10">
+          <h2 className="text-2xl font-display mb-6 text-foreground">Website Features</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-muted rounded-lg p-4">
+              <h3 className="text-lg font-medium mb-2 text-foreground">Buy Widget</h3>
+              <p className="text-foreground/70">
+                A widget where users can directly purchase Hacked ATM tokens from the website using their Solana wallet.
+              </p>
+            </div>
+            
+            <div className="bg-muted rounded-lg p-4">
+              <h3 className="text-lg font-medium mb-2 text-foreground">Staking Widget</h3>
+              <p className="text-foreground/70">
+                A widget allowing users to stake their Hacked ATM tokens to earn dynamic APY rewards.
+              </p>
+            </div>
+            
+            <div className="bg-muted rounded-lg p-4">
+              <h3 className="text-lg font-medium mb-2 text-foreground">Referral Dashboard</h3>
+              <p className="text-foreground/70">
+                A dashboard for users to track their referrals, generate referral links, and monitor their earnings.
+              </p>
+            </div>
+            
+            <div className="bg-muted rounded-lg p-4">
+              <h3 className="text-lg font-medium mb-2 text-foreground">Leaderboard Widget</h3>
+              <p className="text-foreground/70">
+                A widget displaying the weekly and monthly leaderboard for top referrers and top stakers.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex justify-center mt-14 mb-8">
+          <Link href="/">
+            <Button size="lg" className="gap-2">
+              <i className="ri-home-line"></i> Back to Home
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );

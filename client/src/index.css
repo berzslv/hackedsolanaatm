@@ -189,15 +189,15 @@
   
   .section-hero {
     @apply py-20 md:py-24 lg:py-32 bg-gradient-to-b;
-    @apply dark:from-[#1a1432] dark:to-[#121212] from-[#f8f5ff] to-white;
+    @apply dark:from-[#1a1432] dark:to-[#121212] from-[#f5f0ff] to-[#fcfcff];
   }
   
   .section-odd {
-    @apply bg-white dark:bg-[#1a1432] border-y border-gray-100 dark:border-purple-900/20;
+    @apply bg-white dark:bg-[#1a1432] border-y border-purple-100/30 dark:border-purple-900/20;
   }
   
   .section-even {
-    @apply bg-gray-50 dark:bg-[#0c0c11] border-y border-gray-100 dark:border-gray-900;
+    @apply bg-gray-50/80 dark:bg-[#0c0c11] border-y border-gray-100 dark:border-gray-900;
   }
   
   .section-accent {
@@ -207,27 +207,27 @@
   
   /* Pattern Elements */
   .pattern-dots {
-    @apply absolute inset-0 pointer-events-none opacity-10 dark:opacity-15;
-    background-image: radial-gradient(rgba(153, 69, 255, 0.3) 1px, transparent 1px);
+    @apply absolute inset-0 pointer-events-none opacity-20 dark:opacity-15;
+    background-image: radial-gradient(rgba(153, 69, 255, 0.15) 1px, transparent 1px);
     background-size: 25px 25px;
   }
   
   .pattern-grid {
-    @apply absolute inset-0 pointer-events-none opacity-5 dark:opacity-10;
-    background-image: linear-gradient(rgba(153, 69, 255, 0.2) 1px, transparent 1px),
-                      linear-gradient(to right, rgba(153, 69, 255, 0.2) 1px, transparent 1px);
+    @apply absolute inset-0 pointer-events-none opacity-10 dark:opacity-10;
+    background-image: linear-gradient(rgba(153, 69, 255, 0.1) 1px, transparent 1px),
+                      linear-gradient(to right, rgba(153, 69, 255, 0.1) 1px, transparent 1px);
     background-size: 50px 50px;
   }
   
   .pattern-wave {
-    @apply absolute inset-0 pointer-events-none opacity-10 dark:opacity-15;
-    background-image: repeating-radial-gradient(circle at 0 0, transparent 0, rgba(153, 69, 255, 0.05) 40px),
-                      repeating-linear-gradient(rgba(153, 69, 255, 0.1), rgba(20, 241, 149, 0.1));
+    @apply absolute inset-0 pointer-events-none opacity-10 dark:opacity-20;
+    background-image: repeating-radial-gradient(circle at 0 0, transparent 0, rgba(153, 69, 255, 0.03) 40px),
+                      repeating-linear-gradient(rgba(153, 69, 255, 0.05), rgba(20, 241, 149, 0.05));
     background-size: 100% 100%;
   }
   
   .pattern-circles {
-    @apply absolute inset-0 pointer-events-none opacity-5 dark:opacity-10 overflow-hidden;
+    @apply absolute inset-0 pointer-events-none opacity-10 dark:opacity-10 overflow-hidden;
   }
   
   /* Decorative elements */
