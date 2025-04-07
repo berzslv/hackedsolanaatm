@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'wouter';
 import { WalletButton } from '@/components/ui/wallet-button';
 import { useSolana } from '@/context/SolanaContext';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -40,7 +39,6 @@ const Header = () => {
         </div>
         
         <div className="flex items-center gap-3 z-10">
-          <ThemeToggle className="hidden sm:flex" />
           <WalletButton />
           <button 
             className="lg:hidden text-foreground/80 hover:text-primary" 
@@ -67,10 +65,6 @@ const Header = () => {
             <a href="#leaderboard" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Leaderboard</a>
             <a href="#faq" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">FAQ</a>
             <Link href="/whitepaper" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Whitepaper</Link>
-            <div className="flex items-center gap-2 py-2 z-10">
-              <span className="text-foreground/80">Theme:</span>
-              <ThemeToggle />
-            </div>
             {!connected && (
               <WalletButton 
                 onClick={() => {}}

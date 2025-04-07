@@ -1,28 +1,25 @@
-import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+// This component is kept for compatibility but doesn't actually toggle themes anymore
+// as we've removed light mode support
 interface ThemeToggleProps {
   className?: string;
 }
 
 export function ThemeToggle({ className }: ThemeToggleProps) {
-  const { theme, toggleTheme } = useTheme();
-
+  // Always in dark mode
   return (
     <Button
       variant="outline"
       size="icon"
-      onClick={toggleTheme}
+      // No-op function
+      onClick={() => console.log("Dark mode only - theme toggle disabled")}
       className={cn("w-9 h-9 rounded-full", className)}
-      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      title="Dark mode only"
     >
-      {theme === "light" ? (
-        <i className="ri-moon-line text-lg"></i>
-      ) : (
-        <i className="ri-sun-line text-lg"></i>
-      )}
-      <span className="sr-only">Toggle theme</span>
+      <i className="ri-sun-line text-lg"></i>
+      <span className="sr-only">Dark mode enabled</span>
     </Button>
   );
 }

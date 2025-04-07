@@ -1,45 +1,35 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 
-type Theme = 'light' | 'dark';
+type Theme = 'dark';
 
 interface ThemeContextType {
   theme: Theme;
-  toggleTheme: () => void;
+  toggleTheme: () => void; // Keeping the interface same, but this won't do anything
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Initialize with default then update after mount to prevent SSR mismatch
-  const [theme, setTheme] = useState<Theme>('dark');
+  // Always use dark theme
+  const theme: Theme = 'dark';
 
-  // Set theme based on localStorage or system preference after component is mounted
+  // Set dark mode immediately on mount
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      return;
-    }
-    
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-      setTheme('light');
-    }
+    // Clear any saved theme preference
+    localStorage.removeItem('theme');
   }, []);
 
-  // Toggle between light and dark theme
+  // Toggle function is a no-op but kept for interface compatibility
   const toggleTheme = () => {
-    setTheme(prevTheme => {
-      const newTheme = prevTheme === 'light' ? 'dark' : 'light';
-      localStorage.setItem('theme', newTheme);
-      return newTheme;
-    });
+    // This function does nothing now - we always stay in dark mode
+    console.log('Theme toggling is disabled - always using dark mode');
   };
 
-  // Apply theme to document when it changes
+  // Always apply dark theme to document
   useEffect(() => {
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(theme);
-  }, [theme]);
+    document.documentElement.classList.remove('light');
+    document.documentElement.classList.add('dark');
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
