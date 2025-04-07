@@ -97,6 +97,13 @@ export default {
           "0%": { filter: "hue-rotate(0deg)" },
           "50%": { filter: "hue-rotate(30deg)" },
           "100%": { filter: "hue-rotate(0deg)" },
+        },
+        "flash": {
+          "0%": { opacity: "0.2" },
+          "25%": { opacity: "0.8" },
+          "50%": { opacity: "0.2" },
+          "75%": { opacity: "0.6" },
+          "100%": { opacity: "0" },
         }
       },
       animation: {
@@ -105,7 +112,8 @@ export default {
         "pulse-slow": "pulse-wave 4s infinite ease-in-out",
         "pulse-slower": "pulse-wave-slow 6s infinite ease-in-out",
         "pulse-fast": "pulse-wave 3s infinite ease-in-out",
-        "color-shift": "color-shift 10s infinite linear"
+        "color-shift": "color-shift 10s infinite linear",
+        "flash-pulse": "flash 0.9s ease-in-out forwards"
       },
     },
   },

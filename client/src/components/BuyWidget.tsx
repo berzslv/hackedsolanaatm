@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,8 @@ const BuyWidget = () => {
   const [hatchAmount, setHatchAmount] = useState<string>('');
   const [referralCode, setReferralCode] = useState<string>('');
   const [showReferralInput, setShowReferralInput] = useState<boolean>(false);
+  const [isFlashing, setIsFlashing] = useState<boolean>(false);
+  const widgetRef = useRef<HTMLDivElement>(null);
   
   // Show referral code input if user is connected
   useEffect(() => {
@@ -76,6 +78,10 @@ const BuyWidget = () => {
       return;
     }
     
+    // Flash the widget to highlight where to buy
+    setIsFlashing(true);
+    setTimeout(() => setIsFlashing(false), 1000); // Stop flashing after 1 second
+    
     // Validate the input amount
     const inputAmount = parseFloat(solAmount);
     if (isNaN(inputAmount) || inputAmount <= 0) {
@@ -115,17 +121,17 @@ const BuyWidget = () => {
   };
   
   return (
-    <div className="relative max-w-md mx-auto">
-      {/* Background effect - animated waves when connected */}
-      {connected ? (
-        <div className="absolute inset-0 overflow-hidden rounded-3xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/30 via-secondary/30 to-accent/30 rounded-3xl blur-3xl animate-pulse-slow"></div>
-          <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 via-accent/20 to-secondary/20 rounded-3xl blur-xl animate-pulse-slower opacity-70"></div>
-          <div className="absolute inset-0 bg-gradient-to-bl from-secondary/20 via-primary/20 to-accent/20 rounded-3xl blur-lg animate-pulse-fast opacity-50"></div>
+    <div className="relative max-w-md mx-auto" ref={widgetRef}>
+      {/* Flash effect when button is clicked while connected */}
+      {isFlashing && connected && (
+        <div className="absolute inset-0 z-20 overflow-hidden rounded-3xl animate-flash-pulse">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/60 via-secondary/60 to-accent/60 rounded-3xl"></div>
         </div>
-      ) : (
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-3xl blur-3xl opacity-30"></div>
       )}
+      
+      {/* Normal background glow */}
+      <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-3xl blur-3xl opacity-30"></div>
+      
       <div className="bg-card/80 backdrop-blur-sm border border-border rounded-3xl p-6 relative z-10 shadow-xl">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-display text-foreground">ATM Terminal</h3>
@@ -239,17 +245,10 @@ const BuyWidget = () => {
           )}
         
           <Button 
-            className={`w-full py-3 ${connected ? 'relative overflow-hidden group' : 'gradient-button'}`}
+            className="w-full py-3 gradient-button"
             onClick={handleBuy}
           >
-            {connected ? (
-              <>
-                {/* Animated background */}
-                <div className="absolute inset-0 bg-gradient-to-r from-primary via-secondary to-accent opacity-90 animate-color-shift"></div>
-                {/* Button text */}
-                <span className="relative z-10 font-medium">Buy $HATM</span>
-              </>
-            ) : 'Connect Wallet to Buy'}
+            {connected ? 'Buy $HATM' : 'Connect Wallet to Buy'}
           </Button>
         </div>
         
