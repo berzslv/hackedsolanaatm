@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Connection, PublicKey, clusterApiUrl, VersionedTransaction } from '@solana/web3.js';
-import WalletConnectionAnimation from '@/components/ui/wallet-connection-animation';
 
 // Define available wallet types
 export type WalletType = 'phantom' | 'solflare' | 'slope' | 'sollet' | 'math' | 'coin98';
@@ -58,7 +57,6 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [provider, setProvider] = useState<WalletProvider | null>(null);
   const [walletType, setWalletType] = useState<WalletType | null>(null);
   const [showWalletSelector, setShowWalletSelector] = useState(false);
-  const [showConnectionAnimation, setShowConnectionAnimation] = useState(false);
   
   // Store the last connected wallet in local storage
   const saveWalletPreference = (walletType: WalletType) => {
@@ -217,14 +215,11 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return;
       }
       
-      // Set wallet type first so animation can use it
+      // Set wallet type
       setWalletType(type);
       
       // Connect to the wallet
       const { publicKey } = await walletProvider.connect();
-      
-      // Show connection animation
-      setShowConnectionAnimation(true);
       
       // Save the connected wallet info
       setProvider(walletProvider);
@@ -241,7 +236,6 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     } catch (error) {
       console.error('Error connecting wallet:', error);
-      setShowConnectionAnimation(false);
     }
   };
   
@@ -297,11 +291,6 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
   
-  // Handle animation completion
-  const handleAnimationComplete = () => {
-    setShowConnectionAnimation(false);
-  };
-
   return (
     <SolanaContext.Provider
       value={{
@@ -321,11 +310,6 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }}
     >
       {children}
-      
-      {/* Wallet connection animation */}
-      {showConnectionAnimation && (
-        <WalletConnectionAnimation onAnimationComplete={handleAnimationComplete} />
-      )}
     </SolanaContext.Provider>
   );
 };
