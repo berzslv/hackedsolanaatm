@@ -86,12 +86,12 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [provider, setProvider] = useState<WalletProvider | null>(null);
   const [walletType, setWalletType] = useState<WalletType | null>(null);
   const [showWalletSelector, setShowWalletSelector] = useState(false);
-  
+
   // Store the last connected wallet in local storage
   const saveWalletPreference = (walletType: WalletType) => {
     localStorage.setItem('preferredWallet', walletType);
   };
-  
+
   // Get the preferred wallet from local storage
   const getWalletPreference = (): WalletType | null => {
     return localStorage.getItem('preferredWallet') as WalletType | null;
@@ -101,7 +101,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
     setConnection(connection);
-    
+
     // Try to reconnect to the previously used wallet
     const preferredWallet = getWalletPreference();
     if (preferredWallet) {
@@ -115,21 +115,21 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     }
   }, []);
-  
+
   // Fetch balance when connected
   useEffect(() => {
     if (connection && publicKey) {
       fetchBalance(connection, publicKey);
-      
+
       // Setup balance refresh interval
       const intervalId = setInterval(() => {
         fetchBalance(connection, publicKey);
       }, 30000); // every 30 seconds
-      
+
       return () => clearInterval(intervalId);
     }
   }, [connection, publicKey]);
-  
+
   const fetchBalance = async (connection: Connection, publicKey: PublicKey) => {
     try {
       const balance = await connection.getBalance(publicKey);
@@ -138,31 +138,31 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.error('Error fetching balance:', error);
     }
   };
-  
+
   // Check if a wallet provider is available in the browser
   const getWalletProvider = (walletType: WalletType): WalletProvider | null => {
     // Handle mobile deep linking
     if (isMobileDevice() && WALLET_DEEP_LINKS[walletType]) {
       const currentUrl = window.location.href;
-      const deepLink = WALLET_DEEP_LINKS[walletType].mobile;
-      const universalLink = WALLET_DEEP_LINKS[walletType].universalLink + encodeURIComponent(currentUrl);
-      
-      // Try deep link first
-      const tryDeepLink = () => {
-        window.location.href = deepLink;
-        
-        // Fallback to universal link after a short delay if deep link fails
+      const deepLink = WALLET_DEEP_LINKS[walletType].mobile + encodeURIComponent(currentUrl);
+
+      // Create and trigger an invisible iframe to check if app is installed
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+
+      try {
+        iframe.contentWindow?.location.href = deepLink;
+      } catch (e) {
+        // If error, app is not installed
+        window.location.href = WALLET_DEEP_LINKS[walletType].fallback;
+      } finally {
+        // Clean up iframe after attempt
         setTimeout(() => {
-          window.location.href = universalLink;
-        }, 500);
-        
-        // Finally, redirect to download page if neither worked
-        setTimeout(() => {
-          window.location.href = WALLET_DEEP_LINKS[walletType].fallback;
-        }, 2000);
-      };
-      
-      tryDeepLink();
+          document.body.removeChild(iframe);
+        }, 100);
+      }
+
       return null;
     }
 
@@ -224,12 +224,12 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     return null;
   };
-  
+
   // Function to open the wallet selector modal
   const openWalletSelector = () => {
     setShowWalletSelector(true);
   };
-  
+
   // Function to connect to a wallet
   const connectWallet = async (type?: WalletType) => {
     try {
@@ -238,7 +238,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (!type && showWalletSelector) {
         return;
       }
-      
+
       // If no type is specified and no wallet selector is open, 
       // either use the last used wallet or open the selector
       if (!type) {
@@ -250,10 +250,10 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return;
         }
       }
-      
+
       // Get the wallet provider based on the wallet type
       const walletProvider = getWalletProvider(type);
-      
+
       if (!walletProvider) {
         // If wallet is not installed, open the website for installation
         const walletWebsites = {
@@ -264,26 +264,26 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           math: 'https://mathwallet.org/',
           coin98: 'https://coin98.com/'
         };
-        
+
         window.open(walletWebsites[type], '_blank');
         return;
       }
-      
+
       // Set wallet type
       setWalletType(type);
-      
+
       // Connect to the wallet
       const { publicKey } = await walletProvider.connect();
-      
+
       // Save the connected wallet info
       setProvider(walletProvider);
       setConnected(true);
       setPublicKey(publicKey);
       setShowWalletSelector(false); // Close wallet selector if open
-      
+
       // Save preference for next time
       saveWalletPreference(type);
-      
+
       // Fetch balance
       if (connection) {
         fetchBalance(connection, publicKey);
@@ -292,7 +292,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.error('Error connecting wallet:', error);
     }
   };
-  
+
   const disconnectWallet = () => {
     if (provider) {
       provider.disconnect().catch(console.error);
@@ -303,12 +303,12 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setProvider(null);
     setWalletType(null);
   };
-  
+
   const signMessage = async (message: Uint8Array): Promise<Uint8Array> => {
     if (!provider || !publicKey) {
       throw new Error('Wallet not connected');
     }
-    
+
     try {
       const { signature } = await provider.signMessage(message);
       return signature;
@@ -317,12 +317,12 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       throw error;
     }
   };
-  
+
   const signTransaction = async (transaction: VersionedTransaction): Promise<VersionedTransaction> => {
     if (!provider || !publicKey) {
       throw new Error('Wallet not connected');
     }
-    
+
     try {
       return await provider.signTransaction(transaction);
     } catch (error) {
@@ -330,12 +330,12 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       throw error;
     }
   };
-  
+
   const sendTransaction = async (transaction: VersionedTransaction): Promise<string> => {
     if (!provider || !publicKey) {
       throw new Error('Wallet not connected');
     }
-    
+
     try {
       const { signature } = await provider.sendTransaction(transaction);
       return signature;
@@ -344,7 +344,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       throw error;
     }
   };
-  
+
   return (
     <SolanaContext.Provider
       value={{
