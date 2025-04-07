@@ -116,8 +116,8 @@ const BuyWidget = () => {
       });
     }
     
-    // Alert for now, will be implemented with Solana integration
-    alert('Buy functionality will be implemented when connected to Solana blockchain');
+    // Will be implemented with Solana integration
+    // No popup alert, just the flashing effect
   };
   
   return (
@@ -125,7 +125,7 @@ const BuyWidget = () => {
       {/* Flash effect when button is clicked while connected */}
       {isFlashing && connected && (
         <div className="absolute inset-0 z-20 overflow-hidden rounded-3xl animate-flash-pulse">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/60 via-secondary/60 to-accent/60 rounded-3xl"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/80 via-secondary/80 to-accent/80 rounded-3xl shadow-[0_0_30px_rgba(255,255,255,0.6)]"></div>
         </div>
       )}
       
