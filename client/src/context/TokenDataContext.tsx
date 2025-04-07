@@ -100,18 +100,32 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     stakersLeaderboard: mockStakersLeaderboard
   });
   
-  // Generate referral code when wallet is connected
+  // Generate a persistent referral code when wallet is connected
   useEffect(() => {
     if (connected && publicKey) {
-      // In a real implementation, this would be handled by the backend
-      // and would be unique to the wallet address
-      const generatedCode = generateUniqueId().slice(0, 6).toUpperCase();
-      setReferralCode(generatedCode);
+      // First check if we already have a referral code stored for this wallet address
+      const walletAddress = publicKey.toString();
+      const storedCodes = localStorage.getItem('walletReferralCodes');
+      const codeMap = storedCodes ? JSON.parse(storedCodes) : {};
+      
+      let walletReferralCode: string;
+      
+      // If we have a stored code for this wallet, use it
+      if (codeMap[walletAddress]) {
+        walletReferralCode = codeMap[walletAddress];
+      } else {
+        // Generate a new code for this wallet and store it
+        walletReferralCode = generateUniqueId().slice(0, 6).toUpperCase();
+        codeMap[walletAddress] = walletReferralCode;
+        localStorage.setItem('walletReferralCodes', JSON.stringify(codeMap));
+      }
+      
+      setReferralCode(walletReferralCode);
       
       // Simulate user data being loaded when connected
       setTokenData(prev => ({
         ...prev,
-        referralCode: generatedCode,
+        referralCode: walletReferralCode,
         userTokenBalance: 1000,
         userStakedBalance: 500,
         userPendingRewards: 25,
