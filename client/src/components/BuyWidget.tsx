@@ -8,7 +8,7 @@ import { formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 const BuyWidget = () => {
-  const { connected, connectWallet } = useSolana();
+  const { connected, connectWallet, balance } = useSolana();
   const { tokenPrice } = useTokenData();
   const { toast } = useToast();
   const [solAmount, setSolAmount] = useState<string>('');
@@ -76,6 +76,27 @@ const BuyWidget = () => {
       return;
     }
     
+    // Validate the input amount
+    const inputAmount = parseFloat(solAmount);
+    if (isNaN(inputAmount) || inputAmount <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid SOL amount greater than 0.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check if user has enough balance
+    if (inputAmount > balance) {
+      toast({
+        title: "Insufficient balance",
+        description: `You don't have enough SOL. Your balance: ${formatNumber(balance, {decimals: 4})} SOL`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Process buy transaction
     if (referralCode) {
       toast({
@@ -84,6 +105,7 @@ const BuyWidget = () => {
       });
     } else {
       toast({
+        title: "Purchase initiated",
         description: "No referral code applied. You'll pay 8% fee instead of 6%.",
       });
     }
@@ -125,15 +147,40 @@ const BuyWidget = () => {
         </div>
         
         <div className="bg-card rounded-lg p-4 mb-6 border border-border/50">
-          <h4 className="text-foreground mb-3 font-medium">Buy $HATM</h4>
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="text-foreground font-medium">Buy $HATM</h4>
+            {connected && (
+              <div className="flex items-center gap-1 text-xs bg-background/50 px-2 py-1 rounded-md">
+                <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" alt="SOL" className="w-3 h-3" />
+                <span className="font-mono">Balance: {formatNumber(balance, { decimals: 4 })} SOL</span>
+              </div>
+            )}
+          </div>
           <div className="bg-muted rounded-lg p-3 mb-4 flex justify-between items-center">
-            <Input 
-              type="number" 
-              placeholder="0.0" 
-              className="bg-transparent w-2/3 outline-none border-none"
-              value={solAmount}
-              onChange={handleSolInputChange}
-            />
+            <div className="relative w-2/3">
+              <Input 
+                type="number" 
+                placeholder="0.0" 
+                className="bg-transparent outline-none border-none pr-16"
+                value={solAmount}
+                onChange={handleSolInputChange}
+              />
+              {connected && (
+                <button 
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary hover:text-primary/80 cursor-pointer"
+                  onClick={() => {
+                    // Leave a small amount for gas fees (0.01 SOL)
+                    const maxAmount = Math.max(0, balance - 0.01).toFixed(4);
+                    setSolAmount(maxAmount);
+                    // Also update HATM amount
+                    const hatmAmount = parseFloat(maxAmount) / tokenPrice;
+                    setHatchAmount(hatmAmount.toFixed(2));
+                  }}
+                >
+                  MAX
+                </button>
+              )}
+            </div>
             <div className="flex items-center gap-2 bg-background/50 px-3 py-1 rounded-lg">
               <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" alt="SOL" className="w-5 h-5" />
               <span>SOL</span>
