@@ -38,12 +38,24 @@ const SolanaContext = createContext<SolanaContextType>({
 
 export const useSolana = () => useContext(SolanaContext);
 
-// Deep linking URLs for mobile wallets
+// Deep linking URLs for mobile wallets with fallback URLs
 const WALLET_DEEP_LINKS = {
-  phantom: 'phantom://browse/',
-  solflare: 'solflare://browse/',
-  slope: 'slope://browse/',
-  coin98: 'coin98://browse/'
+  phantom: {
+    mobile: 'https://phantom.app/ul/browse/',
+    fallback: 'https://phantom.app/download',
+  },
+  solflare: {
+    mobile: 'https://solflare.com/ul/v1/',
+    fallback: 'https://solflare.com/download',
+  },
+  slope: {
+    mobile: 'https://slope.finance/app/',
+    fallback: 'https://slope.finance/download',
+  },
+  coin98: {
+    mobile: 'https://coin98.com/wallet/',
+    fallback: 'https://coin98.com/wallet',
+  }
 };
 
 // Helper to check if device is mobile
@@ -127,7 +139,17 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const getWalletProvider = (walletType: WalletType): WalletProvider | null => {
     // Handle mobile deep linking
     if (isMobileDevice() && WALLET_DEEP_LINKS[walletType]) {
-      window.location.href = WALLET_DEEP_LINKS[walletType] + window.location.href;
+      const currentUrl = window.location.href;
+      const deepLink = WALLET_DEEP_LINKS[walletType].mobile + encodeURIComponent(currentUrl);
+      
+      // Try to open the wallet app first
+      window.location.href = deepLink;
+      
+      // Set a timeout to redirect to download page if app doesn't open
+      setTimeout(() => {
+        window.location.href = WALLET_DEEP_LINKS[walletType].fallback;
+      }, 2500);
+      
       return null;
     }
 
