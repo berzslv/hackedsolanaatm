@@ -1,6 +1,7 @@
 import { pgTable, text, serial, integer, boolean, real, timestamp, foreignKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 // User table for wallet addresses and referral codes
 export const users = pgTable("users", {
@@ -90,3 +91,46 @@ export type Referral = typeof referrals.$inferSelect;
 export type Leaderboard = typeof leaderboard.$inferSelect;
 export type Reward = typeof rewards.$inferSelect;
 export type TokenStats = typeof tokenStats.$inferSelect;
+
+// Relations
+export const usersRelations = relations(users, ({ many }) => ({
+  stakings: many(staking),
+  referralsAsReferrer: many(referrals, { relationName: "referrer" }),
+  referralsAsBuyer: many(referrals, { relationName: "buyer" }),
+  leaderboards: many(leaderboard),
+  rewards: many(rewards),
+}));
+
+export const stakingRelations = relations(staking, ({ one }) => ({
+  user: one(users, {
+    fields: [staking.walletAddress],
+    references: [users.walletAddress],
+  }),
+}));
+
+export const referralsRelations = relations(referrals, ({ one }) => ({
+  referrer: one(users, {
+    fields: [referrals.referrerAddress],
+    references: [users.walletAddress],
+    relationName: "referrer",
+  }),
+  buyer: one(users, {
+    fields: [referrals.buyerAddress],
+    references: [users.walletAddress],
+    relationName: "buyer",
+  }),
+}));
+
+export const leaderboardRelations = relations(leaderboard, ({ one }) => ({
+  user: one(users, {
+    fields: [leaderboard.walletAddress],
+    references: [users.walletAddress],
+  }),
+}));
+
+export const rewardsRelations = relations(rewards, ({ one }) => ({
+  user: one(users, {
+    fields: [rewards.walletAddress],
+    references: [users.walletAddress],
+  }),
+}));

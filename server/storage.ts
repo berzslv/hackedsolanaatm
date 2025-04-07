@@ -18,6 +18,8 @@ import {
   type InsertReward, 
   type InsertTokenStats
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, and, sql, count } from "drizzle-orm";
 
 // Interfaces for referral statistics
 interface ReferralStats {
@@ -376,4 +378,351 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    // Note: This method is included for interface compatibility but not actively used
+    // Our user model doesn't have a username field
+    return undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    // Ensure referredBy is null if undefined
+    const userToCreate = {
+      ...insertUser,
+      referredBy: insertUser.referredBy ?? null
+    };
+    
+    const [user] = await db.insert(users).values(userToCreate).returning();
+    return user;
+  }
+
+  async getUserByWalletAddress(walletAddress: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.walletAddress, walletAddress));
+    return user || undefined;
+  }
+
+  async getTokenStats(): Promise<TokenStats> {
+    // Get the latest token stats or create default if none exists
+    const [stats] = await db.select().from(tokenStats).orderBy(desc(tokenStats.id)).limit(1);
+    
+    if (!stats) {
+      // Create default token stats
+      return this.initializeTokenStats();
+    }
+    
+    return stats;
+  }
+  
+  private async initializeTokenStats(): Promise<TokenStats> {
+    const defaultStats = {
+      totalSupply: 100000000, // 100 million tokens
+      circulatingSupply: 25000000, // 25% in circulation
+      totalStaked: 5243129, // Amount currently staked
+      stakersCount: 1254, // Number of stakers
+      currentPrice: 0.0025, // Current token price in USD
+      currentAPY: 125.4, // Current APY percentage
+      rewardPool: 128914, // Current reward pool size
+    };
+    
+    const [stats] = await db.insert(tokenStats).values(defaultStats).returning();
+    return stats;
+  }
+
+  async updateTokenStats(stats: Partial<InsertTokenStats>): Promise<TokenStats> {
+    const currentStats = await this.getTokenStats();
+    
+    // Merge current stats with updates
+    const updatedStats = {
+      ...stats,
+      totalSupply: stats.totalSupply ?? currentStats.totalSupply,
+      circulatingSupply: stats.circulatingSupply ?? currentStats.circulatingSupply,
+      totalStaked: stats.totalStaked ?? currentStats.totalStaked,
+      stakersCount: stats.stakersCount ?? currentStats.stakersCount,
+      currentPrice: stats.currentPrice ?? currentStats.currentPrice,
+      currentAPY: stats.currentAPY ?? currentStats.currentAPY,
+      rewardPool: stats.rewardPool ?? currentStats.rewardPool,
+    };
+    
+    const [newStats] = await db.insert(tokenStats).values(updatedStats).returning();
+    return newStats;
+  }
+
+  async getReferralStats(walletAddress: string): Promise<ReferralStats> {
+    // Find all referrals where this user is the referrer
+    const userReferrals = await db
+      .select()
+      .from(referrals)
+      .where(eq(referrals.referrerAddress, walletAddress))
+      .orderBy(desc(referrals.createdAt));
+    
+    // Calculate total earnings
+    const totalEarnings = userReferrals.reduce((sum, ref) => sum + ref.reward, 0);
+    
+    // Get recent activity - top 5 most recent
+    const recentActivity = userReferrals
+      .slice(0, 5)
+      .map(ref => ({
+        date: ref.createdAt.toISOString().split('T')[0], // YYYY-MM-DD format
+        transaction: ref.transactionHash,
+        amount: ref.amount,
+        reward: ref.reward
+      }));
+    
+    // Find weekly rank if exists
+    const [leaderboardEntry] = await db
+      .select()
+      .from(leaderboard)
+      .where(and(
+        eq(leaderboard.walletAddress, walletAddress),
+        eq(leaderboard.type, 'referrer'),
+        eq(leaderboard.period, 'weekly')
+      ));
+    
+    const weeklyRank = leaderboardEntry ? leaderboardEntry.rank : null;
+    
+    return {
+      totalReferrals: userReferrals.length,
+      totalEarnings,
+      weeklyRank,
+      recentActivity
+    };
+  }
+
+  async createReferral(referralData: InsertReferral): Promise<Referral> {
+    // Insert the referral
+    const [referral] = await db.insert(referrals).values(referralData).returning();
+    
+    // Update token stats - increase reward pool
+    const currentStats = await this.getTokenStats();
+    await this.updateTokenStats({
+      rewardPool: currentStats.rewardPool + (referralData.amount * 0.02) // 2% to reward pool
+    });
+    
+    return referral;
+  }
+
+  async getStakingInfo(walletAddress: string): Promise<StakingInfo> {
+    // Find staking entry for this wallet
+    const [userStaking] = await db
+      .select()
+      .from(staking)
+      .where(eq(staking.walletAddress, walletAddress));
+    
+    // Get current APY from token stats
+    const tokenStatsData = await this.getTokenStats();
+    
+    if (!userStaking) {
+      // Return default/empty staking info
+      return {
+        amountStaked: 0,
+        pendingRewards: 0,
+        stakedAt: new Date(),
+        lastCompoundAt: new Date(),
+        estimatedAPY: tokenStatsData.currentAPY,
+        timeUntilUnlock: null
+      };
+    }
+    
+    // Calculate time until unlock (7 days from stake date)
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const stakedTime = new Date().getTime() - userStaking.stakedAt.getTime();
+    const timeUntilUnlock = stakedTime >= sevenDaysMs ? null : sevenDaysMs - stakedTime;
+    
+    return {
+      amountStaked: userStaking.amountStaked,
+      pendingRewards: userStaking.pendingRewards,
+      stakedAt: userStaking.stakedAt,
+      lastCompoundAt: userStaking.lastCompoundAt,
+      estimatedAPY: tokenStatsData.currentAPY,
+      timeUntilUnlock
+    };
+  }
+
+  async stakeTokens(stakingData: InsertStaking): Promise<Staking> {
+    // Check if user already has staked tokens
+    const [existingStake] = await db
+      .select()
+      .from(staking)
+      .where(eq(staking.walletAddress, stakingData.walletAddress));
+    
+    let result: Staking;
+    
+    if (existingStake) {
+      // Update existing stake
+      const [updated] = await db
+        .update(staking)
+        .set({
+          amountStaked: existingStake.amountStaked + stakingData.amountStaked,
+          lastCompoundAt: new Date()
+        })
+        .where(eq(staking.id, existingStake.id))
+        .returning();
+      
+      result = updated;
+    } else {
+      // Create new stake
+      const [newStake] = await db
+        .insert(staking)
+        .values({
+          ...stakingData,
+          pendingRewards: 0,
+          lastCompoundAt: new Date(),
+          stakedAt: new Date()
+        })
+        .returning();
+      
+      result = newStake;
+    }
+    
+    // Update token stats
+    const tokenStatsData = await this.getTokenStats();
+    
+    // Count stakers
+    const [stakersCountResult] = await db
+      .select({ count: count() })
+      .from(staking);
+    
+    const stakersCount = Number(stakersCountResult?.count || 0);
+    
+    await this.updateTokenStats({
+      totalStaked: tokenStatsData.totalStaked + stakingData.amountStaked,
+      stakersCount
+    });
+    
+    return result;
+  }
+
+  async unstakeTokens(walletAddress: string, amount: number): Promise<UnstakeResult> {
+    // Find staking entry
+    const [stakingEntry] = await db
+      .select()
+      .from(staking)
+      .where(eq(staking.walletAddress, walletAddress));
+    
+    if (!stakingEntry || stakingEntry.amountStaked < amount) {
+      throw new Error("Insufficient staked balance");
+    }
+    
+    // Calculate if early withdrawal fee applies (within 7 days)
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const stakedTime = new Date().getTime() - stakingEntry.stakedAt.getTime();
+    const earlyWithdrawal = stakedTime < sevenDaysMs;
+    
+    let fee = 0;
+    let burnAmount = 0;
+    let marketingAmount = 0;
+    
+    if (earlyWithdrawal) {
+      // 5% fee total - 4% burned, 1% to marketing
+      fee = amount * 0.05;
+      burnAmount = amount * 0.04;
+      marketingAmount = amount * 0.01;
+    }
+    
+    const netAmount = amount - fee;
+    
+    // Update staking entry
+    const newAmountStaked = stakingEntry.amountStaked - amount;
+    
+    if (newAmountStaked <= 0) {
+      // Delete the staking entry
+      await db
+        .delete(staking)
+        .where(eq(staking.id, stakingEntry.id));
+    } else {
+      // Update the staking entry
+      await db
+        .update(staking)
+        .set({ amountStaked: newAmountStaked })
+        .where(eq(staking.id, stakingEntry.id));
+    }
+    
+    // Update token stats
+    const tokenStatsData = await this.getTokenStats();
+    
+    // Count stakers
+    const [stakersCountResult] = await db
+      .select({ count: count() })
+      .from(staking);
+    
+    const stakersCount = Number(stakersCountResult?.count || 0);
+    
+    await this.updateTokenStats({
+      totalStaked: tokenStatsData.totalStaked - amount,
+      stakersCount,
+      circulatingSupply: tokenStatsData.circulatingSupply - burnAmount
+    });
+    
+    return {
+      amountUnstaked: amount,
+      fee,
+      netAmount,
+      burnAmount,
+      marketingAmount
+    };
+  }
+
+  async getLeaderboard(type: string, period: string): Promise<Leaderboard[]> {
+    return db
+      .select()
+      .from(leaderboard)
+      .where(and(
+        eq(leaderboard.type, type),
+        eq(leaderboard.period, period)
+      ))
+      .orderBy(leaderboard.rank);
+  }
+
+  async updateLeaderboard(leaderboardEntry: InsertLeaderboard): Promise<Leaderboard> {
+    // Ensure additionalInfo is null if undefined
+    const entryToUpsert = {
+      ...leaderboardEntry,
+      additionalInfo: leaderboardEntry.additionalInfo ?? null
+    };
+    
+    // Check if entry already exists for this wallet/type/period
+    const [existingEntry] = await db
+      .select()
+      .from(leaderboard)
+      .where(and(
+        eq(leaderboard.walletAddress, entryToUpsert.walletAddress),
+        eq(leaderboard.type, entryToUpsert.type),
+        eq(leaderboard.period, entryToUpsert.period)
+      ));
+    
+    if (existingEntry) {
+      // Update existing entry
+      const [updated] = await db
+        .update(leaderboard)
+        .set({
+          rank: entryToUpsert.rank,
+          amount: entryToUpsert.amount,
+          additionalInfo: entryToUpsert.additionalInfo,
+          updatedAt: new Date()
+        })
+        .where(eq(leaderboard.id, existingEntry.id))
+        .returning();
+      
+      return updated;
+    } else {
+      // Create new entry
+      const [newEntry] = await db
+        .insert(leaderboard)
+        .values({
+          ...entryToUpsert,
+          updatedAt: new Date()
+        })
+        .returning();
+      
+      return newEntry;
+    }
+  }
+}
+
+// Use DatabaseStorage instead of MemStorage
+export const storage = new DatabaseStorage();
