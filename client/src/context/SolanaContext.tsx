@@ -38,22 +38,26 @@ const SolanaContext = createContext<SolanaContextType>({
 
 export const useSolana = () => useContext(SolanaContext);
 
-// Deep linking URLs for mobile wallets with fallback URLs
+// Deep linking URLs for mobile wallets
 const WALLET_DEEP_LINKS = {
   phantom: {
-    mobile: 'https://phantom.app/ul/browse/',
+    mobile: 'phantom://browse/',
+    universalLink: 'https://phantom.app/ul/browse/',
     fallback: 'https://phantom.app/download',
   },
   solflare: {
-    mobile: 'https://solflare.com/ul/v1/',
+    mobile: 'solflare://',
+    universalLink: 'https://solflare.com/ul/v1/',
     fallback: 'https://solflare.com/download',
   },
   slope: {
-    mobile: 'https://slope.finance/app/',
+    mobile: 'slope://',
+    universalLink: 'https://slope.finance/app/',
     fallback: 'https://slope.finance/download',
   },
   coin98: {
-    mobile: 'https://coin98.com/wallet/',
+    mobile: 'coin98://',
+    universalLink: 'https://coin98.com/wallet/',
     fallback: 'https://coin98.com/wallet',
   }
 };
@@ -140,16 +144,25 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Handle mobile deep linking
     if (isMobileDevice() && WALLET_DEEP_LINKS[walletType]) {
       const currentUrl = window.location.href;
-      const deepLink = WALLET_DEEP_LINKS[walletType].mobile + encodeURIComponent(currentUrl);
+      const deepLink = WALLET_DEEP_LINKS[walletType].mobile;
+      const universalLink = WALLET_DEEP_LINKS[walletType].universalLink + encodeURIComponent(currentUrl);
       
-      // Try to open the wallet app first
-      window.location.href = deepLink;
+      // Try deep link first
+      const tryDeepLink = () => {
+        window.location.href = deepLink;
+        
+        // Fallback to universal link after a short delay if deep link fails
+        setTimeout(() => {
+          window.location.href = universalLink;
+        }, 500);
+        
+        // Finally, redirect to download page if neither worked
+        setTimeout(() => {
+          window.location.href = WALLET_DEEP_LINKS[walletType].fallback;
+        }, 2000);
+      };
       
-      // Set a timeout to redirect to download page if app doesn't open
-      setTimeout(() => {
-        window.location.href = WALLET_DEEP_LINKS[walletType].fallback;
-      }, 2500);
-      
+      tryDeepLink();
       return null;
     }
 
