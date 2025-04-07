@@ -81,22 +81,44 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
     setReferralCode(value);
   };
   
-  const applyReferralCode = () => {
-    if (referralCode.length === 6) {
-      toast({
-        title: "Referral code applied",
-        description: `Using referral code ${referralCode} for this purchase.`,
-      });
-    } else {
+  const applyReferralCode = async () => {
+    if (referralCode.length !== 6) {
       toast({
         title: "Invalid referral code",
         description: "Please enter a valid 6-character referral code.",
         variant: "destructive",
       });
+      return;
+    }
+    
+    try {
+      // Validate the referral code with the API
+      const response = await fetch(`/api/validate-referral/${referralCode}`);
+      const data = await response.json();
+      
+      if (response.ok && data.valid) {
+        toast({
+          title: "Referral code applied",
+          description: `Valid referral code ${referralCode} applied for this purchase.`,
+        });
+      } else {
+        toast({
+          title: "Invalid referral code",
+          description: "This referral code does not exist. Please check and try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error validating referral code:", error);
+      toast({
+        title: "Validation failed",
+        description: "Could not validate the referral code. Please try again.",
+        variant: "destructive",
+      });
     }
   };
   
-  const handleBuy = () => {
+  const handleBuy = async () => {
     if (!connected) {
       connectWallet();
       return;
@@ -127,12 +149,35 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       return;
     }
     
-    // Process buy transaction
+    // If a referral code is provided, validate it first
     if (referralCode) {
-      toast({
-        title: "Purchasing with referral",
-        description: `Buying HATM with referral code: ${referralCode}`,
-      });
+      try {
+        const response = await fetch(`/api/validate-referral/${referralCode}`);
+        const data = await response.json();
+        
+        if (!response.ok || !data.valid) {
+          toast({
+            title: "Invalid referral code",
+            description: "The referral code you entered does not exist. Please remove it or use a valid code.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Valid referral code
+        toast({
+          title: "Purchasing with referral",
+          description: `Buying HATM with valid referral code: ${referralCode}`,
+        });
+      } catch (error) {
+        console.error("Error validating referral code:", error);
+        toast({
+          title: "Validation failed",
+          description: "Could not validate the referral code. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
     } else {
       toast({
         title: "Purchase initiated",

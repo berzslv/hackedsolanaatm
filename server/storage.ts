@@ -69,6 +69,7 @@ export interface IStorage {
   // Referral methods
   getReferralStats(walletAddress: string): Promise<ReferralStats>;
   createReferral(referral: InsertReferral): Promise<Referral>;
+  validateReferralCode(code: string): Promise<boolean>;
   
   // Staking methods
   getStakingInfo(walletAddress: string): Promise<StakingInfo>;
@@ -223,6 +224,15 @@ export class MemStorage implements IStorage {
     });
     
     return referral;
+  }
+  
+  async validateReferralCode(code: string): Promise<boolean> {
+    // Find a user with this referral code
+    const userWithCode = Array.from(this.users.values()).find(
+      (user) => user.referralCode === code
+    );
+    
+    return !!userWithCode; // Return true if found, false if not
   }
 
   // Staking methods
@@ -504,6 +514,16 @@ export class DatabaseStorage implements IStorage {
     });
     
     return referral;
+  }
+  
+  async validateReferralCode(code: string): Promise<boolean> {
+    // Find a user with this referral code
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.referralCode, code));
+    
+    return !!user; // Return true if user exists with this code, false otherwise
   }
 
   async getStakingInfo(walletAddress: string): Promise<StakingInfo> {
