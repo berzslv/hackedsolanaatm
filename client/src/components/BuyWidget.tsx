@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useWalletContext } from '@/context/WalletContext';
+import { useSolana } from '@/context/SolanaContext';
 import { useTokenData } from '@/context/TokenDataContext';
 import { formatNumber } from '@/lib/utils';
 
 const BuyWidget = () => {
-  const { connected, setShowWalletModal } = useWalletContext();
+  const { connected, connectWallet } = useSolana();
   const { tokenPrice } = useTokenData();
   const [solAmount, setSolAmount] = useState<string>('');
   const [hatchAmount, setHatchAmount] = useState<string>('');
@@ -39,7 +39,7 @@ const BuyWidget = () => {
   
   const handleBuy = () => {
     if (!connected) {
-      setShowWalletModal(true);
+      connectWallet();
       return;
     }
     

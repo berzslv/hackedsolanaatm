@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useWalletContext } from '@/context/WalletContext';
+import { useSolana } from '@/context/SolanaContext';
 import { useTokenData } from '@/context/TokenDataContext';
 import { shortenAddress } from '@/lib/utils';
 
 const StakingWidget = () => {
-  const { connected, publicKey, setShowWalletModal } = useWalletContext();
+  const { connected, publicKey, connectWallet } = useSolana();
   const { userStakedBalance, userPendingRewards, userTokenBalance } = useTokenData();
   
   const [stakeAmount, setStakeAmount] = useState<string>('');
@@ -17,7 +17,7 @@ const StakingWidget = () => {
   
   const handleStake = () => {
     if (!connected) {
-      setShowWalletModal(true);
+      connectWallet();
       return;
     }
     
@@ -27,7 +27,7 @@ const StakingWidget = () => {
   
   const handleUnstake = () => {
     if (!connected) {
-      setShowWalletModal(true);
+      connectWallet();
       return;
     }
     
@@ -37,7 +37,7 @@ const StakingWidget = () => {
   
   const handleClaimRewards = () => {
     if (!connected) {
-      setShowWalletModal(true);
+      connectWallet();
       return;
     }
     

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { useWalletContext } from '@/context/WalletContext';
+import { useSolana } from '@/context/SolanaContext';
 import { useTokenData } from '@/context/TokenDataContext';
 import { useToast } from '@/hooks/use-toast';
 import { shortenAddress } from '@/lib/utils';
 
 const ReferralDashboard = () => {
-  const { connected, publicKey } = useWalletContext();
+  const { connected, publicKey } = useSolana();
   const { referralCode, referralStats } = useTokenData();
   const { toast } = useToast();
   const [referralLink, setReferralLink] = useState("");

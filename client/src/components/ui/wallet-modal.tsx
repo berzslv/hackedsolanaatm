@@ -1,77 +1,121 @@
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { useWalletContext } from "@/context/WalletContext";
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { useSolana } from '@/context/SolanaContext';
+import { Copy } from 'lucide-react';
+import { shortenAddress } from '@/lib/utils';
 
-const WALLET_PROVIDERS = [
-  {
-    name: "Phantom",
-    id: "phantom",
-    icon: "ri-ghost-line",
-    className: "bg-purple-600 hover:bg-purple-700",
-  },
-  {
-    name: "Solflare",
-    id: "solflare",
-    icon: "ri-sun-line",
-    className: "bg-orange-500 hover:bg-orange-600",
-  },
-  {
-    name: "Slope",
-    id: "slope",
-    icon: "ri-arrow-up-line",
-    className: "bg-blue-600 hover:bg-blue-700",
-  },
-  {
-    name: "Coinbase",
-    id: "coinbase",
-    icon: "ri-coin-line",
-    className: "bg-blue-500 hover:bg-blue-600", 
-  },
-  // For testing purposes
-  {
-    name: "MetaMask",
-    id: "metamask",
-    icon: "ri-copper-coin-line",
-    className: "bg-amber-500 hover:bg-amber-600",
-  },
-];
+interface WalletModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
-export function WalletModal() {
-  const { showWalletModal, setShowWalletModal, connectWallet } = useWalletContext();
-
-  const handleConnect = (providerId: string) => {
-    connectWallet(providerId);
+export function WalletModal({ isOpen, onClose }: WalletModalProps) {
+  const { connected, publicKey, balance, connectWallet, disconnectWallet } = useSolana();
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopyAddress = () => {
+    if (publicKey) {
+      navigator.clipboard.writeText(publicKey.toString());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+  
+  const handleDisconnect = () => {
+    disconnectWallet();
+    onClose();
+  };
+  
+  const handleConnect = async () => {
+    await connectWallet();
+    // Don't close modal yet, user will need to confirm in Phantom
   };
 
   return (
-    <Dialog open={showWalletModal} onOpenChange={setShowWalletModal}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Connect Wallet</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">
+            {connected ? 'Wallet Connected' : 'Connect Wallet'}
+          </DialogTitle>
           <DialogDescription>
-            Connect your Solana wallet to access all features of Hacked ATM Token.
+            {connected
+              ? 'Your Solana wallet is connected to Hacked ATM Token'
+              : 'Connect your Solana wallet to interact with Hacked ATM Token'}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          {WALLET_PROVIDERS.map((provider) => (
-            <Button
-              key={provider.id}
-              variant="outline"
-              className="flex items-center justify-start gap-3 h-14"
-              onClick={() => handleConnect(provider.id)}
-            >
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${provider.className}`}>
-                <i className={`${provider.icon} text-lg`}></i>
+        
+        <div className="py-6">
+          {connected && publicKey ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-muted-foreground">Wallet Address</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 px-2" 
+                    onClick={handleCopyAddress}
+                  >
+                    <Copy className="h-4 w-4 mr-1" />
+                    {copied ? 'Copied!' : 'Copy'}
+                  </Button>
+                </div>
+                <p className="font-mono text-sm break-all">{publicKey.toString()}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  (or {shortenAddress(publicKey.toString())})
+                </p>
               </div>
-              <span className="font-medium">{provider.name}</span>
-            </Button>
-          ))}
+              
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">SOL Balance</span>
+                </div>
+                <p className="text-xl font-semibold">{balance.toFixed(4)} SOL</p>
+                <p className="mt-1 text-sm text-muted-foreground">on Solana Devnet</p>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button 
+                  variant="destructive" 
+                  onClick={handleDisconnect}
+                >
+                  Disconnect
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                To interact with the Hacked ATM Token platform, please connect your Solana wallet.
+                If you don't have a wallet yet, we recommend using Phantom.
+              </p>
+              
+              <div className="flex flex-col gap-3">
+                <Button 
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                  onClick={handleConnect}
+                >
+                  Connect with Phantom
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => window.open('https://phantom.app/', '_blank')}
+                >
+                  Get Phantom Wallet
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -3,10 +3,10 @@ import { GradientText } from "@/components/ui/gradient-text";
 import { StatsCard } from "@/components/ui/stats-card";
 import BuyWidget from "@/components/BuyWidget";
 import { Link } from "wouter";
-import { useWalletContext } from "@/context/WalletContext";
+import { useSolana } from "@/context/SolanaContext";
 
 const HeroSection = () => {
-  const { setShowWalletModal } = useWalletContext();
+  const { connectWallet } = useSolana();
   
   return (
     <section className="section section-hero">
@@ -24,7 +24,7 @@ const HeroSection = () => {
             <div className="flex flex-wrap gap-4">
               <Button
                 className="px-6 py-3 gradient-button flex items-center gap-2"
-                onClick={() => setShowWalletModal(true)}
+                onClick={() => connectWallet()}
               >
                 <i className="ri-coins-line"></i>
                 Buy $HATM

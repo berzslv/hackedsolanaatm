@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
 import { WalletButton } from '@/components/ui/wallet-button';
-import { useWalletContext } from '@/context/WalletContext';
+import { useSolana } from '@/context/SolanaContext';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { connected } = useWalletContext();
+  const { connected } = useSolana();
   
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
@@ -73,7 +73,7 @@ const Header = () => {
             </div>
             {!connected && (
               <WalletButton 
-                variant="gradient" 
+                onClick={() => {}}
                 className="sm:hidden w-full z-10"
               />
             )}

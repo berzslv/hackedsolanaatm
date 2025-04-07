@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useWalletContext } from './WalletContext';
+import { useSolana } from './SolanaContext';
 import { generateUniqueId } from '@/lib/utils';
 
 interface ReferralActivity {
@@ -75,7 +75,7 @@ const mockStakersLeaderboard: Leaderboard = {
 };
 
 export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { connected, publicKey } = useWalletContext();
+  const { connected, publicKey } = useSolana();
   const [referralCode, setReferralCode] = useState<string>("");
   
   // Initialize with default values
