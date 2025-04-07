@@ -15,34 +15,55 @@ const StakingWidget = () => {
     setStakeAmount(userTokenBalance.toString());
   };
   
-  const handleStake = () => {
+  const handleStake = async () => {
     if (!connected) {
       connectWallet();
       return;
     }
     
-    // Process staking
-    alert('Staking functionality will be implemented when connected to Solana blockchain');
+    try {
+      const amountToStake = parseFloat(stakeAmount);
+      if (isNaN(amountToStake) || amountToStake <= 0) {
+        console.error('Invalid stake amount');
+        return;
+      }
+      
+      // TODO: Call Solana smart contract for staking
+      console.log(`Staking ${amountToStake} HATM tokens`);
+      
+      // Reset input after successful staking
+      setStakeAmount('');
+    } catch (error) {
+      console.error('Staking error:', error);
+    }
   };
   
-  const handleUnstake = () => {
+  const handleUnstake = async () => {
     if (!connected) {
       connectWallet();
       return;
     }
     
-    // Process unstaking
-    alert('Unstaking functionality will be implemented when connected to Solana blockchain');
+    try {
+      // TODO: Call Solana smart contract for unstaking
+      console.log('Unstaking tokens');
+    } catch (error) {
+      console.error('Unstaking error:', error);
+    }
   };
   
-  const handleClaimRewards = () => {
+  const handleClaimRewards = async () => {
     if (!connected) {
       connectWallet();
       return;
     }
     
-    // Process claiming rewards
-    alert('Claim rewards functionality will be implemented when connected to Solana blockchain');
+    try {
+      // TODO: Call Solana smart contract for claiming rewards
+      console.log('Claiming rewards');
+    } catch (error) {
+      console.error('Claim rewards error:', error);
+    }
   };
   
   return (

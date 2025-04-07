@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSolana } from '@/context/SolanaContext';
 import { useTokenData } from '@/context/TokenDataContext';
+import { useReferral } from '@/context/ReferralContext';
 import { formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -15,9 +16,11 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
   const { connected, connectWallet, balance } = useSolana();
   const { tokenPrice } = useTokenData();
   const { toast } = useToast();
+  const { referralCode: refFromContext, referralFromLink } = useReferral();
   const [solAmount, setSolAmount] = useState<string>('');
   const [hatchAmount, setHatchAmount] = useState<string>('');
   const [referralCode, setReferralCode] = useState<string>('');
+  const [referralValid, setReferralValid] = useState<boolean>(false);
   const [showReferralInput, setShowReferralInput] = useState<boolean>(false);
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const widgetRef = useRef<HTMLDivElement>(null);
@@ -48,6 +51,42 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       setShowReferralInput(true);
     }
   }, [connected]);
+  
+  // Apply referral code from URL if available
+  useEffect(() => {
+    if (refFromContext && refFromContext.length === 6) {
+      setReferralCode(refFromContext);
+      
+      // If the code is from a link, validate it automatically
+      if (referralFromLink) {
+        const validateCode = async () => {
+          try {
+            const response = await fetch(`/api/referrals/validate?code=${refFromContext}`);
+            const data = await response.json();
+            
+            if (response.ok && data.valid) {
+              setReferralValid(true);
+              toast({
+                title: "Referral code applied",
+                description: `Referral code ${refFromContext} has been automatically applied.`,
+              });
+            } else {
+              setReferralValid(false);
+              toast({
+                title: "Invalid referral code",
+                description: "The referral code in the URL is invalid.",
+                variant: "destructive",
+              });
+            }
+          } catch (error) {
+            console.error("Error validating referral code:", error);
+          }
+        };
+        
+        validateCode();
+      }
+    }
+  }, [refFromContext, referralFromLink, toast]);
   
   const handleSolInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -93,15 +132,17 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
     
     try {
       // Validate the referral code with the API
-      const response = await fetch(`/api/validate-referral/${referralCode}`);
+      const response = await fetch(`/api/referrals/validate?code=${referralCode}`);
       const data = await response.json();
       
       if (response.ok && data.valid) {
+        setReferralValid(true);
         toast({
           title: "Referral code applied",
           description: `Valid referral code ${referralCode} applied for this purchase.`,
         });
       } else {
+        setReferralValid(false);
         toast({
           title: "Invalid referral code",
           description: "This referral code does not exist. Please check and try again.",
@@ -152,7 +193,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
     // If a referral code is provided, validate it first
     if (referralCode) {
       try {
-        const response = await fetch(`/api/validate-referral/${referralCode}`);
+        const response = await fetch(`/api/referrals/validate?code=${referralCode}`);
         const data = await response.json();
         
         if (!response.ok || !data.valid) {
@@ -298,17 +339,25 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
                 <Input 
                   id="referral-code"
                   placeholder="ENTER REFERRAL CODE" 
-                  className="bg-background/30 border-border/30"
+                  className={`bg-background/30 border-border/30 ${referralFromLink ? 'opacity-80' : ''}`}
                   value={referralCode}
                   onChange={handleReferralCodeChange}
+                  readOnly={referralFromLink}
+                  disabled={referralFromLink}
                 />
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={applyReferralCode}
-                >
-                  Apply
-                </Button>
+                {!referralFromLink ? (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={applyReferralCode}
+                  >
+                    Apply
+                  </Button>
+                ) : (
+                  <div className="px-3 py-1 text-xs bg-secondary/20 text-secondary border border-secondary/30 rounded-md">
+                    Auto-applied
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TokenDataProvider } from "@/context/TokenDataContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { SolanaProvider } from "@/context/SolanaContext";
+import { ReferralProvider } from "@/context/ReferralContext";
 import NotFound from "@/pages/not-found";
 import Layout from "@/layout/Layout";
 import Home from "@/pages/Home";
@@ -26,10 +27,12 @@ function App() {
       <ThemeProvider>
         <SolanaProvider>
           <TokenDataProvider>
-            <Layout>
-              <Router />
-            </Layout>
-            <Toaster />
+            <ReferralProvider>
+              <Layout>
+                <Router />
+              </Layout>
+              <Toaster />
+            </ReferralProvider>
           </TokenDataProvider>
         </SolanaProvider>
       </ThemeProvider>
