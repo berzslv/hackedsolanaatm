@@ -193,11 +193,11 @@
   }
   
   .section-odd {
-    @apply bg-white dark:bg-[#121212] border-y border-gray-100 dark:border-gray-900;
+    @apply bg-white dark:bg-[#1a1432] border-y border-gray-100 dark:border-purple-900/20;
   }
   
   .section-even {
-    @apply bg-gray-50 dark:bg-[#0f0f14] border-y border-gray-100 dark:border-gray-900;
+    @apply bg-gray-50 dark:bg-[#0c0c11] border-y border-gray-100 dark:border-gray-900;
   }
   
   .section-accent {

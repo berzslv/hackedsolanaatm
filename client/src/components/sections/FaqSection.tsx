@@ -35,13 +35,13 @@ const FaqSection = () => {
   ];
 
   return (
-    <section id="faq" className="py-16 bg-dark-800/50">
+    <section id="faq" className="section section-odd">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-display mb-4 text-white">
+          <h2 className="text-3xl md:text-4xl font-display mb-4 text-foreground">
             Frequently Asked <GradientText>Questions</GradientText>
           </h2>
-          <p className="text-light-300 max-w-2xl mx-auto">
+          <p className="text-foreground/70 max-w-2xl mx-auto">
             Everything you need to know about Hacked ATM Token
           </p>
         </div>
@@ -52,12 +52,12 @@ const FaqSection = () => {
               <AccordionItem 
                 key={index} 
                 value={`item-${index}`}
-                className="bg-dark-700 rounded-xl overflow-hidden border border-dark-600"
+                className="bg-card rounded-xl overflow-hidden border border-border"
               >
-                <AccordionTrigger className="px-6 py-4 text-white font-semibold text-left">
+                <AccordionTrigger className="px-6 py-4 text-foreground font-semibold text-left">
                   {faq.question}
                 </AccordionTrigger>
-                <AccordionContent className="px-6 pb-4 text-light-300">
+                <AccordionContent className="px-6 pb-4 text-foreground/70">
                   {faq.answer}
                 </AccordionContent>
               </AccordionItem>
