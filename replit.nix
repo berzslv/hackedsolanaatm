@@ -7,5 +7,6 @@ pkgs.mkShell {
     pkgs.gcc
     pkgs.make
     pkgs.python3
+    pkgs.libudev-dev
   ];
 }
