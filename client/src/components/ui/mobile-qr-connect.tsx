@@ -35,17 +35,20 @@ export function MobileConnect({ onClose }: MobileConnectProps) {
   
   // Define the connection parameters for Phantom's deeplink protocol
   const buildPhantomConnectURL = () => {
-    // Use a better approach with Phantom's connect protocol 
-    // This is the version that works best with redirect back to original browser
-    const dappURL = window.location.origin + window.location.pathname;
-    const redirectURL = window.location.href; // Include any params or hash
+    // This uses Phantom's official connect protocol format
+    // https://docs.phantom.app/phantom-deeplinks/provider-methods/connect
     
-    // Build a connect URL that includes cluster and redirect
-    return `https://phantom.app/ul/v1/connect?` + 
-      `app=${encodeURIComponent('HackedATM Token')}&` +
-      `dapp=${encodeURIComponent(dappURL)}&` + 
-      `redirect=${encodeURIComponent(redirectURL)}&` +
-      `cluster=mainnet-beta`;
+    // We use a simple app name and the current URL for redirection
+    const appName = "HackedATM";
+    const redirectUrl = window.location.href;
+    
+    // Create a phantom connect URL with proper parameters
+    // The important part is setting the "redirect" parameter which tells Phantom
+    // where to return the user after approval
+    return `https://phantom.app/ul/v1/connect` +
+           `?app=${encodeURIComponent(appName)}` +
+           `&redirect=${encodeURIComponent(redirectUrl)}` +
+           `&cluster=mainnet-beta`;
   };
 
   // Open directly on mobile, or show QR code on desktop
@@ -81,15 +84,15 @@ export function MobileConnect({ onClose }: MobileConnectProps) {
       setTimeout(() => {
         if (document.hasFocus()) {
           // If document still has focus, the universal link didn't work
-          // Try the direct protocol scheme with the same params as the universal link
-          const dappURL = window.location.origin + window.location.pathname;
-          const redirectURL = window.location.href;
+          // Try the direct protocol scheme with the exact same parameters
+          const appName = "HackedATM";
+          const redirectUrl = window.location.href;
           
-          const protocolURL = `phantom://v1/connect?` + 
-            `app=${encodeURIComponent('HackedATM Token')}&` +
-            `dapp=${encodeURIComponent(dappURL)}&` + 
-            `redirect=${encodeURIComponent(redirectURL)}&` +
-            `cluster=mainnet-beta`;
+          // Use the phantom:// protocol instead of https://
+          const protocolURL = `phantom://v1/connect` +
+            `?app=${encodeURIComponent(appName)}` +
+            `&redirect=${encodeURIComponent(redirectUrl)}` +
+            `&cluster=mainnet-beta`;
             
           window.location.href = protocolURL;
         }
@@ -117,15 +120,15 @@ export function MobileConnect({ onClose }: MobileConnectProps) {
       }
     }
     
-    const dappURL = window.location.origin + window.location.pathname;
-    const redirectURL = window.location.href;
+    // Simplify the parameters for Solflare to match Phantom's approach
+    const appName = "HackedATM";
+    const redirectUrl = window.location.href;
     
-    // Using Solflare's deep link format with consistent parameters
+    // Using Solflare's deep link format
     const solflareURL = `https://solflare.com/ul/v1/connect?` +
-      `app=${encodeURIComponent('HackedATM Token')}&` +
-      `dapp=${encodeURIComponent(dappURL)}&` + 
-      `redirect=${encodeURIComponent(redirectURL)}&` +
-      `cluster=mainnet-beta`;
+      `app=${encodeURIComponent(appName)}` +
+      `&redirect=${encodeURIComponent(redirectUrl)}` +
+      `&cluster=mainnet-beta`;
     
     if (isMobile) {
       toast({
@@ -139,12 +142,11 @@ export function MobileConnect({ onClose }: MobileConnectProps) {
       // Fallback to direct protocol after a delay
       setTimeout(() => {
         if (document.hasFocus()) {
-          // If document still has focus, try the protocol URL
+          // If document still has focus, try the protocol URL with same parameters
           const protocolURL = `solflare://ul/v1/connect?` +
-            `app=${encodeURIComponent('HackedATM Token')}&` +
-            `dapp=${encodeURIComponent(dappURL)}&` + 
-            `redirect=${encodeURIComponent(redirectURL)}&` +
-            `cluster=mainnet-beta`;
+            `app=${encodeURIComponent(appName)}` +
+            `&redirect=${encodeURIComponent(redirectUrl)}` +
+            `&cluster=mainnet-beta`;
             
           window.location.href = protocolURL;
         }
