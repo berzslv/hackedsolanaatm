@@ -175,39 +175,68 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     switch (walletType) {
       case 'phantom':
-        // Check multiple ways that Phantom might be available in the window
-        if ('phantom' in window) {
-          // @ts-ignore - Standard way to access Phantom
-          provider = window.phantom?.solana;
-          if (provider?.isPhantom) {
-            return provider as unknown as WalletProvider;
-          }
-        }
-        // For Chrome extension detection, sometimes Phantom injects on window.solana
-        if ('solana' in window) {
-          try {
-            // @ts-ignore - Access window.solana
-            const solanaProvider = window.solana;
-            // Check if it's an object and has the correct property, with explicit any type
-            if (solanaProvider && typeof solanaProvider === 'object') {
-              // @ts-ignore - Safely access the isPhantom property
-              if (solanaProvider.isPhantom) {
-                return solanaProvider as unknown as WalletProvider;
-              }
+        // First check window.phantom which is the newer method
+        try {
+          // @ts-ignore - Phantom injects into window
+          if (window.phantom?.solana) {
+            // @ts-ignore - Phantom injects into window
+            provider = window.phantom.solana;
+            if (provider?.isPhantom) {
+              console.log("Found Phantom wallet via window.phantom.solana");
+              return provider as unknown as WalletProvider;
             }
-          } catch (error) {
-            console.error("Error accessing window.solana", error);
           }
+        } catch (e) {
+          console.error("Error checking window.phantom", e);
+        }
+        
+        // Then fallback to window.solana which might be injected by Phantom
+        try {
+          // @ts-ignore - Solana will be injected if the extension is installed
+          if (window.solana) {
+            console.log("Found window.solana, checking if it's Phantom");
+            // @ts-ignore - Access Phantom-specific properties
+            if (window.solana.isPhantom) {
+              console.log("Confirmed window.solana is Phantom");
+              // @ts-ignore - Access Phantom-specific properties
+              return window.solana as unknown as WalletProvider;
+            }
+          }
+        } catch (e) {
+          console.error("Error checking window.solana", e);
         }
         break;
+        
       case 'solflare':
-        if ('solflare' in window) {
-          // @ts-ignore
-          provider = window.solflare;
-          // @ts-ignore
-          if (provider && provider.isSolflare) {
-            return provider as unknown as WalletProvider;
+        // Try window.solflare first (newer method)
+        try {
+          // @ts-ignore - Solflare injects into window
+          if (window.solflare) {
+            // @ts-ignore - Solflare injects into window
+            if (window.solflare.isSolflare) {
+              console.log("Found Solflare wallet via window.solflare");
+              // @ts-ignore - Solflare injects into window
+              return window.solflare as unknown as WalletProvider;
+            }
           }
+        } catch (e) {
+          console.error("Error checking window.solflare", e);
+        }
+        
+        // Then try window.solana which might be Solflare
+        try {
+          // @ts-ignore - Solana will be injected if the extension is installed
+          if (window.solana) {
+            console.log("Found window.solana, checking if it's Solflare");
+            // @ts-ignore - Access Solflare-specific properties
+            if (window.solana.isSolflare) {
+              console.log("Confirmed window.solana is Solflare");
+              // @ts-ignore - Access Solflare-specific properties
+              return window.solana as unknown as WalletProvider;
+            }
+          }
+        } catch (e) {
+          console.error("Error checking window.solana for Solflare", e);
         }
         break;
       case 'slope':
@@ -270,107 +299,137 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const appName = 'HackedATM'; // Name to display in wallet connection
     const cluster = 'mainnet-beta'; // Using Solana mainnet
     
-    // Base parameters for connection request
-    const baseParams = {
-      redirect_link: currentUrl, // Return to this app after authorization
-      app_url: currentUrl,
-      cluster: cluster,
-      app_title: appName
-    };
-    
-    // Direct approach - use minimal parameters for cleaner URLs
-    let connectionParams = '';
-    
-    if (walletType === 'phantom') {
-      // For Phantom using the v1 connect protocol
-      // Format: https://phantom.app/ul/v1/connect?app=YourAppName&redirect=YourAppURL&cluster=mainnet-beta
-      connectionParams = new URLSearchParams({
-        app: appName,
-        redirect: currentUrl,
-        cluster: 'mainnet-beta'
-      }).toString();
+    // Try Solana Pay format first - this works with both Phantom and Solflare
+    // Format: solana:<BASE64_ENCODED_URL>
+    try {
+      const encodedUrl = btoa(currentUrl);
+      const solanaPayLink = `solana:${encodedUrl}`;
+      console.log(`Trying Solana Pay format link: ${solanaPayLink}`);
       
-      console.log("Generated connection params for Phantom:", connectionParams);
-    } else if (walletType === 'solflare') {
-      // Solflare needs these specific params
-      connectionParams = `dapp=${encodeURIComponent(appName)}&url=${encodeURIComponent(currentUrl)}`;
-    } else {
-      // For other wallets, keep it minimal
-      connectionParams = `url=${encodeURIComponent(currentUrl)}`;
-    }
-    
-    // Try connection-specific links first (these trigger connection dialogs)
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    
-    if (isIOS && appURL.connectUniversal) {
-      // iOS with universal link for connect
-      console.log(`Opening iOS universal connection link for ${walletType}`);
-      window.location.href = `${appURL.connectUniversal}?${connectionParams}`;
-    } 
-    else if (appURL.connectMobile) {
-      // Direct connect link (works on Android and sometimes iOS)
-      console.log(`Opening direct connection link for ${walletType}`);
-      const connectLink = `${appURL.connectMobile}?${connectionParams}`;
-      
-      // Try iframe for iOS
-      if (isIOS) {
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = connectLink;
-        document.body.appendChild(iframe);
-        
-        setTimeout(() => {
-          if (document.body.contains(iframe)) {
-            document.body.removeChild(iframe);
-          }
-        }, 1000);
-      }
-      
-      // Direct navigation
-      window.location.href = connectLink;
-      
-      // Fallback if not installed
-      setTimeout(() => {
-        console.log(`Connection attempt timed out, redirecting to fallback for ${walletType}`);
-        window.location.href = appURL.fallback;
-      }, 2500);
-    }
-    // Fallback to regular browsing links if no connection links available
-    else if (isIOS && appURL.universalLink) {
-      console.log(`Opening iOS universal browsing link for ${walletType}`);
-      window.location.href = `${appURL.universalLink}${encodeURIComponent(currentUrl)}`;
-    } 
-    else if (appURL.mobile) {
-      // For Android or fallback for iOS using browsing link
-      console.log(`Opening mobile browsing link for ${walletType}`);
-      const deepLink = `${appURL.mobile}${encodeURIComponent(currentUrl)}`;
-      
-      // Create an iframe to attempt opening the app
+      // Create an iframe to attempt opening the app via Solana Pay protocol
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
-      iframe.src = deepLink;
+      iframe.src = solanaPayLink;
       document.body.appendChild(iframe);
       
-      // Also try direct navigation for Android
-      window.location.href = deepLink;
+      // Also redirect via Solana Pay protocol
+      window.location.href = solanaPayLink;
       
-      // Set timeout for fallback
+      // Remove iframe after a short delay
       setTimeout(() => {
-        // If we're still here, the app isn't installed
-        // Remove iframe
         if (document.body.contains(iframe)) {
           document.body.removeChild(iframe);
         }
+      }, 500);
+      
+      // Set a timeout to try wallet-specific links if Solana Pay fails
+      setTimeout(() => {
+        // If we're still here, Solana Pay approach didn't work - try wallet specific approaches
+        continueWithWalletSpecificLinks();
+      }, 1500);
+      
+      return;
+    } catch (e) {
+      console.error("Error with Solana Pay approach:", e);
+      continueWithWalletSpecificLinks();
+    }
+    
+    // If Solana Pay approach fails or throws an error, continue with wallet-specific links
+    function continueWithWalletSpecificLinks() {
+      // Direct approach - use minimal parameters for cleaner URLs
+      let connectionParams = '';
+      
+      if (walletType === 'phantom') {
+        // For Phantom using the v1 connect protocol
+        // Format: https://phantom.app/ul/v1/connect?app=YourAppName&redirect=YourAppURL&cluster=mainnet-beta
+        connectionParams = new URLSearchParams({
+          app: appName,
+          redirect: currentUrl,
+          cluster: 'mainnet-beta'
+        }).toString();
         
-        // Redirect to download page
-        console.log(`App not detected, redirecting to download page for ${walletType}`);
+        console.log("Generated connection params for Phantom:", connectionParams);
+      } else if (walletType === 'solflare') {
+        // Solflare needs these specific params
+        connectionParams = `dapp=${encodeURIComponent(appName)}&url=${encodeURIComponent(currentUrl)}`;
+      } else {
+        // For other wallets, keep it minimal
+        connectionParams = `url=${encodeURIComponent(currentUrl)}`;
+      }
+      
+      // Try connection-specific links first (these trigger connection dialogs)
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      
+      if (isIOS && appURL.connectUniversal) {
+        // iOS with universal link for connect
+        console.log(`Opening iOS universal connection link for ${walletType}`);
+        window.location.href = `${appURL.connectUniversal}?${connectionParams}`;
+      } 
+      else if (appURL.connectMobile) {
+        // Direct connect link (works on Android and sometimes iOS)
+        console.log(`Opening direct connection link for ${walletType}`);
+        const connectLink = `${appURL.connectMobile}?${connectionParams}`;
+        
+        // Try iframe for iOS
+        if (isIOS) {
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = connectLink;
+          document.body.appendChild(iframe);
+          
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 1000);
+        }
+        
+        // Direct navigation
+        window.location.href = connectLink;
+        
+        // Fallback if not installed
+        setTimeout(() => {
+          console.log(`Connection attempt timed out, redirecting to fallback for ${walletType}`);
+          window.location.href = appURL.fallback;
+        }, 2500);
+      }
+      // Fallback to regular browsing links if no connection links available
+      else if (isIOS && appURL.universalLink) {
+        console.log(`Opening iOS universal browsing link for ${walletType}`);
+        window.location.href = `${appURL.universalLink}${encodeURIComponent(currentUrl)}`;
+      } 
+      else if (appURL.mobile) {
+        // For Android or fallback for iOS using browsing link
+        console.log(`Opening mobile browsing link for ${walletType}`);
+        const deepLink = `${appURL.mobile}${encodeURIComponent(currentUrl)}`;
+        
+        // Create an iframe to attempt opening the app
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = deepLink;
+        document.body.appendChild(iframe);
+        
+        // Also try direct navigation for Android
+        window.location.href = deepLink;
+        
+        // Set timeout for fallback
+        setTimeout(() => {
+          // If we're still here, the app isn't installed
+          // Remove iframe
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+          
+          // Redirect to download page
+          console.log(`App not detected, redirecting to download page for ${walletType}`);
+          window.location.href = appURL.fallback;
+        }, 2000);
+      } 
+      else {
+        // No mobile links available, go straight to fallback
+        console.log(`No mobile links available for ${walletType}, opening fallback`);
         window.location.href = appURL.fallback;
-      }, 2000);
-    } 
-    else {
-      // No mobile links available, go straight to fallback
-      console.log(`No mobile links available for ${walletType}, opening fallback`);
-      window.location.href = appURL.fallback;
+      }
     }
   };
 

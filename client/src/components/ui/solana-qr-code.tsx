@@ -11,20 +11,33 @@ export function SolanaQRCode({ walletType = 'phantom' }: SolanaQRCodeProps) {
   
   // Mobile deep link for direct app open
   const openMobileApp = () => {
-    // App name for branding
-    const appName = 'HackedATM';
     const currentUrl = window.location.href;
     
-    let deepLink = '';
+    // Create a Solana Pay format link that works with all wallets
+    const encodedUrl = btoa(currentUrl);
+    const solanaPayLink = `solana:${encodedUrl}`;
+    
+    // Create specific wallet links as fallbacks
+    let specificWalletLink = '';
     if (walletType === 'phantom') {
-      // Phantom universal link
-      deepLink = `https://phantom.app/ul/browse/${encodeURIComponent(currentUrl)}`;
-      window.location.href = deepLink;
+      // Try both direct protocol and universal link for Phantom
+      specificWalletLink = `https://phantom.app/ul/browse/${encodeURIComponent(currentUrl)}`;
     } else if (walletType === 'solflare') {
-      // Solflare universal link
-      deepLink = `https://solflare.com/ul/browse/${encodeURIComponent(currentUrl)}`;
-      window.location.href = deepLink;
+      // Try Solflare universal link
+      specificWalletLink = `https://solflare.com/ul/browse/${encodeURIComponent(currentUrl)}`;
     }
+    
+    // First try the Solana Pay format link
+    console.log(`Opening Solana Pay link: ${solanaPayLink}`);
+    window.location.href = solanaPayLink;
+    
+    // Set a timeout to try the specific wallet link if Solana Pay doesn't work
+    setTimeout(() => {
+      if (specificWalletLink) {
+        console.log(`Trying specific wallet link: ${specificWalletLink}`);
+        window.location.href = specificWalletLink;
+      }
+    }, 1000);
   };
   
   useEffect(() => {
@@ -38,16 +51,11 @@ export function SolanaQRCode({ walletType = 'phantom' }: SolanaQRCodeProps) {
         const appName = 'HackedATM';
         
         // Generate connection-specific deep link for wallet
-        let deepLink = '';
-        if (walletType === 'phantom') {
-          // Using Phantom's universal browsing protocol
-          deepLink = `https://phantom.app/ul/browse/${encodeURIComponent(currentUrl)}`;
-          console.log("Generated Phantom QR code link:", deepLink);
-        } else if (walletType === 'solflare') {
-          // Using Solflare's universal browsing protocol
-          deepLink = `https://solflare.com/ul/browse/${encodeURIComponent(currentUrl)}`;
-          console.log("Generated Solflare QR code link:", deepLink);
-        }
+        // Use Solana Pay format which is recognized by all Solana wallets
+        // solana:<BASE64_ENCODED_URL>
+        const encodedUrl = btoa(currentUrl);
+        const deepLink = `solana:${encodedUrl}`;
+        console.log("Generated Solana Pay QR code link:", deepLink);
         
         // Generate QR code for the deep link
         const QRCode = await import('qrcode');
