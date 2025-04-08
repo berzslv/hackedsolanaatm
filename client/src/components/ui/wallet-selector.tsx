@@ -48,18 +48,17 @@ const PhantomQRCode = () => {
   useEffect(() => {
     const generateQR = async () => {
       try {
-        // Using the official Phantom deep link format from docs
-        const baseUrl = 'https://phantom.app/ul/v1/connect';
-        const params = new URLSearchParams({
-          app: appName,
-          redirect: redirectUrl,
-          cluster: 'testnet' // Explicitly using testnet
-        });
-        const phantomUrl = `${baseUrl}?${params.toString()}`;
+        setLoading(true);
+        
+        // For most consistent wallet connection, use Phantom's browse link (browsing to the site in the wallet)
+        // This is their universal deep linking format that works across all platforms
+        const phantomBrowseLink = `https://phantom.app/ul/browse/${encodeURIComponent(window.location.href)}`;
+        
+        console.log("Generated QR code URL:", phantomBrowseLink);
         
         // Dynamic import of QRCode to avoid SSR issues
         const QRCode = await import('qrcode');
-        const dataUrl = await QRCode.toDataURL(phantomUrl, {
+        const dataUrl = await QRCode.toDataURL(phantomBrowseLink, {
           color: {
             dark: '#ffffff', // White QR code
             light: '#111111'  // Dark background

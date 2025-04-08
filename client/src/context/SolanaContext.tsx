@@ -175,11 +175,28 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     switch (walletType) {
       case 'phantom':
+        // Check multiple ways that Phantom might be available in the window
         if ('phantom' in window) {
-          // @ts-ignore
+          // @ts-ignore - Standard way to access Phantom
           provider = window.phantom?.solana;
           if (provider?.isPhantom) {
             return provider as unknown as WalletProvider;
+          }
+        }
+        // For Chrome extension detection, sometimes Phantom injects on window.solana
+        if ('solana' in window) {
+          try {
+            // @ts-ignore - Access window.solana
+            const solanaProvider = window.solana;
+            // Check if it's an object and has the correct property, with explicit any type
+            if (solanaProvider && typeof solanaProvider === 'object') {
+              // @ts-ignore - Safely access the isPhantom property
+              if (solanaProvider.isPhantom) {
+                return solanaProvider as unknown as WalletProvider;
+              }
+            }
+          } catch (error) {
+            console.error("Error accessing window.solana", error);
           }
         }
         break;
