@@ -4,12 +4,14 @@ import { StatsCard } from "@/components/ui/stats-card";
 import BuyWidget from "@/components/BuyWidget";
 import { Link } from "wouter";
 import { useSolana } from "@/context/SolanaContext";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
+import WhitepaperDialog from '@/components/WhitepaperDialog';
 
 const HeroSection = () => {
   const { connectWallet, connected } = useSolana();
   const buyWidgetFlashRef = useRef<() => void>(null);
-  
+  const [showWhitepaper, setShowWhitepaper] = useState(false);
+
   // Handler for the Buy $HATM button
   const handleBuyClick = () => {
     if (connected) {
@@ -22,7 +24,7 @@ const HeroSection = () => {
       connectWallet();
     }
   };
-  
+
   return (
     <section className="section section-hero">
       <div className="container mx-auto px-4 relative z-10">
@@ -38,36 +40,36 @@ const HeroSection = () => {
             </p>
             <div className="flex flex-wrap gap-4">
               <Button
-                className="px-6 py-3 gradient-button flex items-center gap-2"
+                className="px-6 py-3 gradient-button flex items-center gap-2 mr-4"
                 onClick={handleBuyClick}
               >
                 <i className="ri-coins-line"></i>
                 Buy $HATM
               </Button>
-              <Link href="/whitepaper">
-                <Button
-                  variant="outline"
-                  className="px-6 py-3 border-primary/30 text-foreground hover:bg-card/80 transition-colors flex items-center gap-2"
-                >
-                  <i className="ri-file-paper-2-line"></i>
-                  Whitepaper
-                </Button>
-              </Link>
+              <Button
+                variant="outline"
+                className="px-6 py-3 border-primary/30 text-foreground hover:bg-card/80 transition-colors flex items-center gap-2"
+                onClick={() => setShowWhitepaper(true)}
+              >
+                <i className="ri-file-paper-2-line"></i>
+                Whitepaper
+              </Button>
+              <WhitepaperDialog open={showWhitepaper} onOpenChange={setShowWhitepaper} />
             </div>
-            
+
             <div className="mt-12 grid grid-cols-3 gap-4">
               <StatsCard title="Referral Fee" value="6%" color="primary" />
               <StatsCard title="Auto-Compound" value="30m" color="secondary" />
               <StatsCard title="Blockchain" value="Solana" color="accent" />
             </div>
           </div>
-          
+
           <div className="order-2 relative">
             <BuyWidget flashRef={buyWidgetFlashRef} />
           </div>
         </div>
       </div>
-      
+
       {/* Background Elements */}
       <div className="pattern-wave"></div>
       <div className="pattern-circles">
