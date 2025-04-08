@@ -44,6 +44,8 @@ type WalletDeepLinks = {
     mobile: string;
     universalLink: string;
     fallback: string;
+    connectMobile?: string; // Special URL for connection requests
+    connectUniversal?: string; // Special URL for connection requests via universal links
   }
 };
 
@@ -52,16 +54,21 @@ const WALLET_DEEP_LINKS: WalletDeepLinks = {
     mobile: 'phantom://browse/',
     universalLink: 'https://phantom.app/ul/browse/',
     fallback: 'https://phantom.app/download',
+    connectMobile: 'phantom://connect/',
+    connectUniversal: 'https://phantom.app/ul/connect/',
   },
   solflare: {
     mobile: 'solflare://',
     universalLink: 'https://solflare.com/ul/v1/',
     fallback: 'https://solflare.com/download',
+    connectMobile: 'solflare://dapp/connect/',
+    connectUniversal: 'https://solflare.com/ul/v1/connect/',
   },
   slope: {
     mobile: 'slope://',
     universalLink: 'https://slope.finance/app/',
     fallback: 'https://slope.finance/download',
+    connectMobile: 'slope://connect/',
   },
   sollet: {
     mobile: '', // Sollet doesn't have a mobile app
@@ -72,11 +79,13 @@ const WALLET_DEEP_LINKS: WalletDeepLinks = {
     mobile: 'mathwallet://',
     universalLink: 'https://mathwallet.org',
     fallback: 'https://mathwallet.org/en-us/download/app',
+    connectMobile: 'mathwallet://connect/',
   },
   coin98: {
     mobile: 'coin98://',
     universalLink: 'https://coin98.com/wallet/',
     fallback: 'https://coin98.com/wallet',
+    connectMobile: 'coin98://connect/',
   }
 };
 
@@ -237,15 +246,87 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
     
+    // Create a URL with important connection info
     const currentUrl = window.location.href;
+    const appName = 'HackedATM'; // Name to display in wallet connection
+    const cluster = 'devnet'; // Using Solana devnet
     
-    // Try universal link first for iOS
-    if (/iPhone|iPad|iPod/i.test(navigator.userAgent) && appURL.universalLink) {
-      console.log(`Opening iOS universal link for ${walletType}`);
+    // Base parameters for connection request
+    const baseParams = {
+      redirect_link: currentUrl, // Return to this app after authorization
+      app_url: currentUrl,
+      cluster: cluster,
+      app_title: appName
+    };
+    
+    // Different wallets need different parameters
+    let connectionParams;
+    
+    if (walletType === 'phantom') {
+      // Phantom requires this specific format for connection
+      connectionParams = new URLSearchParams({
+        ...baseParams,
+        request: JSON.stringify({ method: 'connect', params: { app: appName } })
+      }).toString();
+    } else if (walletType === 'solflare') {
+      // Solflare uses a different format
+      connectionParams = new URLSearchParams({
+        dapp: appName,
+        url: currentUrl,
+        network: cluster
+      }).toString();
+    } else {
+      // General format for other wallets
+      connectionParams = new URLSearchParams({
+        ...baseParams,
+        dapp_encryption_public_key: '' // Not needed for basic connection
+      }).toString();
+    }
+    
+    // Try connection-specific links first (these trigger connection dialogs)
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
+    if (isIOS && appURL.connectUniversal) {
+      // iOS with universal link for connect
+      console.log(`Opening iOS universal connection link for ${walletType}`);
+      window.location.href = `${appURL.connectUniversal}?${connectionParams}`;
+    } 
+    else if (appURL.connectMobile) {
+      // Direct connect link (works on Android and sometimes iOS)
+      console.log(`Opening direct connection link for ${walletType}`);
+      const connectLink = `${appURL.connectMobile}?${connectionParams}`;
+      
+      // Try iframe for iOS
+      if (isIOS) {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = connectLink;
+        document.body.appendChild(iframe);
+        
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 1000);
+      }
+      
+      // Direct navigation
+      window.location.href = connectLink;
+      
+      // Fallback if not installed
+      setTimeout(() => {
+        console.log(`Connection attempt timed out, redirecting to fallback for ${walletType}`);
+        window.location.href = appURL.fallback;
+      }, 2500);
+    }
+    // Fallback to regular browsing links if no connection links available
+    else if (isIOS && appURL.universalLink) {
+      console.log(`Opening iOS universal browsing link for ${walletType}`);
       window.location.href = `${appURL.universalLink}${encodeURIComponent(currentUrl)}`;
-    } else if (appURL.mobile) {
-      // For Android or fallback for iOS
-      console.log(`Opening mobile deep link for ${walletType}`);
+    } 
+    else if (appURL.mobile) {
+      // For Android or fallback for iOS using browsing link
+      console.log(`Opening mobile browsing link for ${walletType}`);
       const deepLink = `${appURL.mobile}${encodeURIComponent(currentUrl)}`;
       
       // Create an iframe to attempt opening the app
@@ -269,9 +350,10 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.log(`App not detected, redirecting to download page for ${walletType}`);
         window.location.href = appURL.fallback;
       }, 2000);
-    } else {
-      // No mobile deep link available, go straight to fallback
-      console.log(`No mobile deep link available for ${walletType}, opening fallback`);
+    } 
+    else {
+      // No mobile links available, go straight to fallback
+      console.log(`No mobile links available for ${walletType}, opening fallback`);
       window.location.href = appURL.fallback;
     }
   };
