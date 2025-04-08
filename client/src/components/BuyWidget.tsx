@@ -132,7 +132,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
     
     try {
       // Validate the referral code with the API
-      const response = await fetch(`/api/referrals/validate?code=${referralCode}`);
+      const response = await fetch(`/api/validate-referral/${referralCode}`);
       const data = await response.json();
       
       if (response.ok && data.valid) {
