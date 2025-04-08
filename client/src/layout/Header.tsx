@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { WalletButton } from '@/components/ui/wallet-button';
 import { useSolana } from '@/context/SolanaContext';
+import WhitepaperDialog from '@/components/WhitepaperDialog';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showWhitepaper, setShowWhitepaper] = useState(false);
   const { connected } = useSolana();
   const [location] = useLocation();
-  const isWhitepaper = location === '/whitepaper';
   
   const NavigationLink = ({ href, children }: { href: string, children: React.ReactNode }) => {
     if (isWhitepaper && href.startsWith('/#')) {
@@ -52,7 +53,8 @@ const Header = () => {
           <NavigationLink href="/#referral">Referral</NavigationLink>
           <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
           <NavigationLink href="/#faq">FAQ</NavigationLink>
-          <Link href="/whitepaper" className="text-foreground/80 hover:text-primary transition-colors">Whitepaper</Link>
+          <button onClick={() => setShowWhitepaper(true)} className="text-foreground/80 hover:text-primary transition-colors">Whitepaper</button>
+          <WhitepaperDialog open={showWhitepaper} onOpenChange={setShowWhitepaper} />
         </div>
         
         <div className="flex items-center gap-3 z-10">
@@ -81,7 +83,7 @@ const Header = () => {
             <NavigationLink href="/#referral">Referral</NavigationLink>
             <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
             <NavigationLink href="/#faq">FAQ</NavigationLink>
-            <Link href="/whitepaper" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Whitepaper</Link>
+            <button onClick={() => setShowWhitepaper(true)} className="text-foreground/80 hover:text-primary py-2 transition-colors z-10 text-left w-full">Whitepaper</button>
             {!connected && (
               <WalletButton 
                 onClick={() => {}}
