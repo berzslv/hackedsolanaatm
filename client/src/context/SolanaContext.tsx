@@ -336,6 +336,18 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     // If Solana Pay approach fails or throws an error, continue with wallet-specific links
     function continueWithWalletSpecificLinks() {
+      // Safety check - if appURL is undefined, we can't continue
+      if (!appURL) {
+        console.error(`No deep link configuration for wallet type: ${walletType}`);
+        // Just open generic wallet website as fallback
+        if (walletType === 'phantom') {
+          window.open('https://phantom.app/download', '_blank');
+        } else if (walletType === 'solflare') {
+          window.open('https://solflare.com/download', '_blank');
+        }
+        return;
+      }
+      
       // Direct approach - use minimal parameters for cleaner URLs
       let connectionParams = '';
       
@@ -356,6 +368,11 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // For other wallets, keep it minimal
         connectionParams = `url=${encodeURIComponent(currentUrl)}`;
       }
+      
+      // Cache a reference to the download fallback
+      const fallbackUrl = appURL.fallback || 
+        (walletType === 'phantom' ? 'https://phantom.app/download' : 
+        (walletType === 'solflare' ? 'https://solflare.com/download' : ''));
       
       // Try connection-specific links first (these trigger connection dialogs)
       const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -390,7 +407,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Fallback if not installed
         setTimeout(() => {
           console.log(`Connection attempt timed out, redirecting to fallback for ${walletType}`);
-          window.location.href = appURL.fallback;
+          window.location.href = fallbackUrl;
         }, 2500);
       }
       // Fallback to regular browsing links if no connection links available
@@ -422,13 +439,13 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           
           // Redirect to download page
           console.log(`App not detected, redirecting to download page for ${walletType}`);
-          window.location.href = appURL.fallback;
+          window.location.href = fallbackUrl;
         }, 2000);
       } 
       else {
         // No mobile links available, go straight to fallback
         console.log(`No mobile links available for ${walletType}, opening fallback`);
-        window.location.href = appURL.fallback;
+        window.location.href = fallbackUrl;
       }
     }
   };

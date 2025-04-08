@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Copy } from 'lucide-react';
 
 interface SolanaQRCodeProps {
   walletType?: 'phantom' | 'solflare';
@@ -8,36 +9,39 @@ interface SolanaQRCodeProps {
 export function SolanaQRCode({ walletType = 'phantom' }: SolanaQRCodeProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+  
+  // Get wallet download URLs
+  const getWalletUrls = (): {download: string, app: string} => {
+    if (walletType === 'phantom') {
+      return {
+        download: 'https://phantom.app/download',
+        app: 'https://phantom.app/',
+      };
+    } else {
+      return {
+        download: 'https://solflare.com/download',
+        app: 'https://solflare.com/',
+      };
+    }
+  };
+  
+  const urls = getWalletUrls();
+  
+  const handleCopyAddress = () => {
+    const currentUrl = window.location.href;
+    navigator.clipboard.writeText(currentUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   
   // Mobile deep link for direct app open
-  const openMobileApp = () => {
-    const currentUrl = window.location.href;
-    
-    // Create a Solana Pay format link that works with all wallets
-    const encodedUrl = btoa(currentUrl);
-    const solanaPayLink = `solana:${encodedUrl}`;
-    
-    // Create specific wallet links as fallbacks
-    let specificWalletLink = '';
-    if (walletType === 'phantom') {
-      // Try both direct protocol and universal link for Phantom
-      specificWalletLink = `https://phantom.app/ul/browse/${encodeURIComponent(currentUrl)}`;
-    } else if (walletType === 'solflare') {
-      // Try Solflare universal link
-      specificWalletLink = `https://solflare.com/ul/browse/${encodeURIComponent(currentUrl)}`;
-    }
-    
-    // First try the Solana Pay format link
-    console.log(`Opening Solana Pay link: ${solanaPayLink}`);
-    window.location.href = solanaPayLink;
-    
-    // Set a timeout to try the specific wallet link if Solana Pay doesn't work
-    setTimeout(() => {
-      if (specificWalletLink) {
-        console.log(`Trying specific wallet link: ${specificWalletLink}`);
-        window.location.href = specificWalletLink;
-      }
-    }, 1000);
+  const openDownloadPage = () => {
+    window.open(urls.download, '_blank');
+  };
+  
+  const openWalletApp = () => {
+    window.open(urls.app, '_blank');
   };
   
   useEffect(() => {
@@ -45,21 +49,12 @@ export function SolanaQRCode({ walletType = 'phantom' }: SolanaQRCodeProps) {
       try {
         setLoading(true);
         
-        // Get current page URL
+        // Get current page URL - we'll just show this directly
         const currentUrl = window.location.href;
-        // Get app name
-        const appName = 'HackedATM';
         
-        // Generate connection-specific deep link for wallet
-        // Use Solana Pay format which is recognized by all Solana wallets
-        // solana:<BASE64_ENCODED_URL>
-        const encodedUrl = btoa(currentUrl);
-        const deepLink = `solana:${encodedUrl}`;
-        console.log("Generated Solana Pay QR code link:", deepLink);
-        
-        // Generate QR code for the deep link
+        // Generate QR code for the website URL directly
         const QRCode = await import('qrcode');
-        const dataUrl = await QRCode.toDataURL(deepLink, {
+        const dataUrl = await QRCode.toDataURL(currentUrl, {
           color: {
             dark: '#ffffff',  // White foreground
             light: '#111111'  // Dark background
@@ -92,7 +87,7 @@ export function SolanaQRCode({ walletType = 'phantom' }: SolanaQRCodeProps) {
           qrDataUrl ? (
             <img 
               src={qrDataUrl} 
-              alt={`${walletType} wallet QR code`} 
+              alt={`QR code for current URL`} 
               className="w-[200px] h-[200px]"
             />
           ) : (
@@ -103,16 +98,40 @@ export function SolanaQRCode({ walletType = 'phantom' }: SolanaQRCodeProps) {
         )}
       </div>
       
-      <p className="text-sm text-center text-muted-foreground px-4 mb-4">
-        Open the {walletType === 'phantom' ? 'Phantom' : 'Solflare'} app and scan this QR code to connect
-      </p>
+      <div className="w-full space-y-3 mb-2">
+        <p className="text-sm text-center text-muted-foreground px-4">
+          1. Open {walletType === 'phantom' ? 'Phantom' : 'Solflare'} app manually
+        </p>
+        
+        <p className="text-sm text-center text-muted-foreground px-4">
+          2. Copy this URL and paste it in your wallet's dApp browser
+        </p>
+        
+        <Button 
+          onClick={handleCopyAddress}
+          variant="outline" 
+          className="w-full flex items-center justify-center gap-2"
+        >
+          <Copy className="h-4 w-4" />
+          {copied ? 'Copied!' : 'Copy URL to Clipboard'}
+        </Button>
+      </div>
       
-      <Button 
-        onClick={openMobileApp}
-        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-      >
-        Open {walletType === 'phantom' ? 'Phantom' : 'Solflare'} App
-      </Button>
+      <div className="w-full grid grid-cols-2 gap-2 mt-2">
+        <Button 
+          onClick={openWalletApp}
+          className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+        >
+          Open {walletType} Website
+        </Button>
+        
+        <Button 
+          onClick={openDownloadPage}
+          className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+        >
+          Download {walletType}
+        </Button>
+      </div>
     </div>
   );
 }

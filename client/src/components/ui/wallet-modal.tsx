@@ -102,24 +102,18 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                 To interact with the Hacked ATM Token platform, please connect your Solana wallet.
               </p>
               
-              <Tabs defaultValue="web3auth" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="web3auth">Web3Auth</TabsTrigger>
+              <Tabs defaultValue="wallets" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="wallets">Wallets</TabsTrigger>
+                  <TabsTrigger value="manual">Manual</TabsTrigger>
                   <TabsTrigger value="mobile">QR Codes</TabsTrigger>
+                  <TabsTrigger value="web3auth">Web3Auth</TabsTrigger>
                 </TabsList>
-                
-                <TabsContent value="web3auth" className="mt-4">
-                  <div className="mb-2 px-1 text-sm text-muted-foreground">
-                    Email/social login with Solana wallet support
-                  </div>
-                  <Web3AuthButton />
-                </TabsContent>
                 
                 <TabsContent value="wallets" className="mt-4">
                   <div className="space-y-3">
                     <div className="mb-2 px-1 text-sm text-muted-foreground">
-                      Select your browser wallet
+                      Connect with browser extension wallets
                     </div>
                     <Button 
                       className="w-full bg-purple-600 hover:bg-purple-700"
@@ -130,11 +124,47 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                     <Button 
                       className="w-full bg-orange-600 hover:bg-orange-700"
                       onClick={() => {
-                        window.open('https://solflare.com/', '_blank');
+                        // First check if Solflare is available and connect
+                        // @ts-ignore - Solflare wallet may be injected
+                        if (window.solflare && window.solflare.isSolflare) {
+                          // @ts-ignore
+                          window.solflare.connect();
+                        } else {
+                          window.open('https://solflare.com/', '_blank');
+                        }
                       }}
                     >
-                      Use Solflare
+                      Connect with Solflare
                     </Button>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="manual" className="mt-4">
+                  <div className="space-y-3">
+                    <div className="mb-2 px-1 text-sm text-muted-foreground">
+                      Enter your Solana wallet address manually
+                    </div>
+                    
+                    <div className="relative">
+                      <input 
+                        type="text" 
+                        placeholder="Enter your Solana address (e.g., 4Zw...7Gn)" 
+                        className="w-full px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600"
+                      />
+                      
+                      <Button 
+                        className="w-full mt-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                        onClick={() => {
+                          alert("This is a demo feature. In a real app, this would validate and import your address for view-only mode.");
+                        }}
+                      >
+                        Continue in View-Only Mode
+                      </Button>
+                      
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Note: View-only mode lets you browse but not transact. For full functionality, use a wallet app.
+                      </p>
+                    </div>
                   </div>
                 </TabsContent>
                 
@@ -153,6 +183,13 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                       <SolanaQRCode walletType="solflare" />
                     </TabsContent>
                   </Tabs>
+                </TabsContent>
+                
+                <TabsContent value="web3auth" className="mt-4">
+                  <div className="mb-2 px-1 text-sm text-muted-foreground">
+                    Email/social login with Solana wallet support
+                  </div>
+                  <Web3AuthButton />
                 </TabsContent>
               </Tabs>
             </div>
