@@ -12,6 +12,7 @@ import { Copy, ExternalLink } from 'lucide-react';
 import { shortenAddress } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SolanaQRCode } from '@/components/ui/solana-qr-code';
+import { ManualConnect } from '@/components/ui/manual-connect';
 import { Web3AuthButton } from '@/components/Web3AuthButton';
 
 // Direct Connect Component specifically for Phantom using their v1 connection protocol
@@ -180,32 +181,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                 </TabsContent>
                 
                 <TabsContent value="manual" className="mt-4">
-                  <div className="space-y-3">
-                    <div className="mb-2 px-1 text-sm text-muted-foreground">
-                      Enter your Solana wallet address manually
-                    </div>
-                    
-                    <div className="relative">
-                      <input 
-                        type="text" 
-                        placeholder="Enter your Solana address (e.g., 4Zw...7Gn)" 
-                        className="w-full px-3 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-600"
-                      />
-                      
-                      <Button 
-                        className="w-full mt-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                        onClick={() => {
-                          alert("This is a demo feature. In a real app, this would validate and import your address for view-only mode.");
-                        }}
-                      >
-                        Continue in View-Only Mode
-                      </Button>
-                      
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Note: View-only mode lets you browse but not transact. For full functionality, use a wallet app.
-                      </p>
-                    </div>
-                  </div>
+                  <ManualConnect />
                 </TabsContent>
                 
                 <TabsContent value="mobile" className="mt-2">
