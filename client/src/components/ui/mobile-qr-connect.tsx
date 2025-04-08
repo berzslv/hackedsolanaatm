@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useToast } from '@/hooks/use-toast';
 
 interface MobileConnectProps {
   onClose?: () => void;
@@ -8,60 +9,148 @@ interface MobileConnectProps {
 
 export function MobileConnect({ onClose }: MobileConnectProps) {
   const isMobile = useIsMobile();
+  const { toast } = useToast();
+  const [isPhantomInstalled, setIsPhantomInstalled] = useState(false);
+  const [isSolflareInstalled, setIsSolflareInstalled] = useState(false);
   
-  // Define the connection parameters for Phantom
+  useEffect(() => {
+    // Check if wallets are available in window
+    const checkWalletInstallation = () => {
+      // @ts-ignore - Check if Phantom exists in window
+      if (window.phantom) {
+        setIsPhantomInstalled(true);
+      }
+      
+      // @ts-ignore - Check if Solflare exists in window
+      if (window.solflare) {
+        setIsSolflareInstalled(true);
+      }
+    };
+    
+    checkWalletInstallation();
+  }, []);
+  
+  // Create a unique session ID for the deep link to track this specific connection attempt
+  const sessionId = Math.random().toString(36).substring(2, 15);
+  
+  // Define the connection parameters for Phantom's deeplink protocol
   const buildPhantomConnectURL = () => {
-    const currentURL = window.location.href;
-    const appName = 'HackedATM';
+    // Use a better approach with Phantom's connect protocol 
+    // This is the version that works best with redirect back to original browser
+    const dappURL = window.location.origin + window.location.pathname;
+    const redirectURL = window.location.href; // Include any params or hash
     
-    // Build the connection URL using Phantom's deep link format
-    // This will open Phantom and request connection with a redirect back
-    const connectionParams = new URLSearchParams({
-      app: appName,
-      redirect: currentURL,
-      cluster: 'mainnet-beta'
-    }).toString();
-    
-    return `https://phantom.app/ul/v1/connect?${connectionParams}`;
+    // Build a connect URL that includes cluster and redirect
+    return `https://phantom.app/ul/v1/connect?` + 
+      `app=${encodeURIComponent('HackedATM Token')}&` +
+      `dapp=${encodeURIComponent(dappURL)}&` + 
+      `redirect=${encodeURIComponent(redirectURL)}&` +
+      `cluster=mainnet-beta`;
   };
 
   // Open directly on mobile, or show QR code on desktop
   const handleConnectPhantom = () => {
     const connectURL = buildPhantomConnectURL();
     
+    // If Phantom is already installed in this browser, prefer that
+    // @ts-ignore
+    if (window.phantom && isPhantomInstalled) {
+      try {
+        // @ts-ignore
+        const provider = window.phantom?.solana;
+        if (provider?.isPhantom) {
+          provider.connect();
+          if (onClose) onClose();
+          return;
+        }
+      } catch (err) {
+        console.error("Error connecting to Phantom: ", err);
+      }
+    }
+    
     if (isMobile) {
-      // Try both universal link and app URL scheme for best mobile compatibility
+      toast({
+        title: "Opening Phantom App",
+        description: "Please approve connection in Phantom and return to this app"
+      });
+      
+      // For mobile - try universal links first as they handle return better
       window.location.href = connectURL;
       
-      // Fallback to direct protocol if universal link fails 
+      // Fallback to direct protocol if universal link fails after a delay
       setTimeout(() => {
-        const deepLink = connectURL.replace('https://phantom.app/ul/v1/connect', 'phantom://v1/connect');
-        window.location.href = deepLink;
-      }, 1000);
+        if (document.hasFocus()) {
+          // If document still has focus, the universal link didn't work
+          // Try the direct protocol scheme with the same params as the universal link
+          const dappURL = window.location.origin + window.location.pathname;
+          const redirectURL = window.location.href;
+          
+          const protocolURL = `phantom://v1/connect?` + 
+            `app=${encodeURIComponent('HackedATM Token')}&` +
+            `dapp=${encodeURIComponent(dappURL)}&` + 
+            `redirect=${encodeURIComponent(redirectURL)}&` +
+            `cluster=mainnet-beta`;
+            
+          window.location.href = protocolURL;
+        }
+      }, 500);
     } else {
-      // For desktop - open instructions to scan QR code
+      // For desktop - open instructions to scan
       window.open(connectURL, '_blank');
     }
     
     if (onClose) onClose();
   };
   
-  // Handle Solflare connection  
+  // Handle Solflare connection using their universal link protocol
   const handleConnectSolflare = () => {
-    const currentURL = window.location.href;
-    const appName = 'HackedATM';
+    // If Solflare is available in this browser, use it directly
+    // @ts-ignore
+    if (window.solflare && isSolflareInstalled) {
+      try {
+        // @ts-ignore
+        window.solflare.connect();
+        if (onClose) onClose();
+        return;
+      } catch (err) {
+        console.error("Error connecting to Solflare: ", err);
+      }
+    }
     
-    // Solflare uses a different connection format
-    const solflareURL = `https://solflare.com/ul/v1/connect?app=${encodeURIComponent(appName)}&redirect=${encodeURIComponent(currentURL)}`;
+    const dappURL = window.location.origin + window.location.pathname;
+    const redirectURL = window.location.href;
+    
+    // Using Solflare's deep link format with consistent parameters
+    const solflareURL = `https://solflare.com/ul/v1/connect?` +
+      `app=${encodeURIComponent('HackedATM Token')}&` +
+      `dapp=${encodeURIComponent(dappURL)}&` + 
+      `redirect=${encodeURIComponent(redirectURL)}&` +
+      `cluster=mainnet-beta`;
     
     if (isMobile) {
+      toast({
+        title: "Opening Solflare App",
+        description: "Please approve connection in Solflare and return to this app"
+      });
+      
+      // For mobile - open universal link
       window.location.href = solflareURL;
       
-      // Fallback to direct protocol
+      // Fallback to direct protocol after a delay
       setTimeout(() => {
-        window.location.href = solflareURL.replace('https://solflare.com/ul', 'solflare://');
-      }, 1000);
+        if (document.hasFocus()) {
+          // If document still has focus, try the protocol URL
+          const protocolURL = `solflare://ul/v1/connect?` +
+            `app=${encodeURIComponent('HackedATM Token')}&` +
+            `dapp=${encodeURIComponent(dappURL)}&` + 
+            `redirect=${encodeURIComponent(redirectURL)}&` +
+            `cluster=mainnet-beta`;
+            
+          window.location.href = protocolURL;
+        }
+      }, 500);
     } else {
+      // For desktop - open in new tab for QR code
       window.open(solflareURL, '_blank');
     }
     
