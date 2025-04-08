@@ -70,18 +70,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ valid: false, message: "Referral code is required" });
       }
       
-      console.log("Validating referral code:", code);
+      console.log("Received referral code validation request for:", code);
       const isValid = await storage.validateReferralCode(code);
-      console.log("Validation result:", isValid);
+      console.log("Database validation result for code", code, ":", isValid);
       
-      if (isValid) {
-        return res.status(200).json({ valid: true, message: "Valid referral code" });
-      } else {
-        return res.status(404).json({ valid: false, message: "Invalid referral code" });
-      }
+      res.json({ valid: isValid, message: isValid ? "Valid referral code" : "Invalid referral code" });
     } catch (error) {
       console.error("Error validating referral code:", error);
-      res.status(500).json({ message: "Failed to validate referral code" });
+      res.status(500).json({ message: "Failed to validate referral code", error: String(error) });
     }
   });
   
