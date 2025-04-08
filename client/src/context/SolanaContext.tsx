@@ -54,9 +54,9 @@ const WALLET_DEEP_LINKS: WalletDeepLinks = {
     mobile: 'phantom://browse/',
     universalLink: 'https://phantom.app/ul/browse/',
     fallback: 'https://phantom.app/download',
-    // Phantom's mobile connection format (most direct way to request approval):
-    connectMobile: 'phantom://auth',
-    connectUniversal: 'https://phantom.app/ul/auth',
+    // Using the absolute simplest confirmed standard for Phantom connection
+    connectMobile: 'phantom://connect',
+    connectUniversal: 'https://phantom.app/ul/connect',
   },
   solflare: {
     mobile: 'solflare://',
@@ -265,9 +265,13 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     let connectionParams = '';
     
     if (walletType === 'phantom') {
-      // For Phantom auth endpoint, we need to use a specific format
-      // This is the official way to request connection in Phantom mobile
-      connectionParams = `dapp=${encodeURIComponent(appName)}&redirect=${encodeURIComponent(currentUrl)}`;
+      // For Phantom using the latest mobile connection protocol
+      connectionParams = new URLSearchParams({
+        app: appName,
+        redirect: currentUrl,
+        // Important: Specify devnet explicitly (default is mainnet)
+        cluster: 'devnet'
+      }).toString();
     } else if (walletType === 'solflare') {
       // Solflare needs these specific params
       connectionParams = `dapp=${encodeURIComponent(appName)}&url=${encodeURIComponent(currentUrl)}`;
