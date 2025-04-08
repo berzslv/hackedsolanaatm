@@ -1,11 +1,28 @@
 import { useState } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { WalletButton } from '@/components/ui/wallet-button';
 import { useSolana } from '@/context/SolanaContext';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { connected } = useSolana();
+  const [location] = useLocation();
+  const isWhitepaper = location === '/whitepaper';
+  
+  const NavigationLink = ({ href, children }: { href: string, children: React.ReactNode }) => {
+    if (isWhitepaper && href.startsWith('/#')) {
+      return (
+        <Link href={href} className="text-foreground/80 hover:text-primary transition-colors">
+          {children}
+        </Link>
+      );
+    }
+    return (
+      <a href={href.replace('/#', '#')} className="text-foreground/80 hover:text-primary transition-colors">
+        {children}
+      </a>
+    );
+  };
   
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
@@ -30,11 +47,11 @@ const Header = () => {
         </Link>
         
         <div className="hidden lg:flex items-center space-x-6 z-10">
-          <Link href="/#about" className="text-foreground/80 hover:text-primary transition-colors">About</Link>
-          <Link href="/#staking" className="text-foreground/80 hover:text-primary transition-colors">Staking</Link>
-          <Link href="/#referral" className="text-foreground/80 hover:text-primary transition-colors">Referral</Link>
-          <Link href="/#leaderboard" className="text-foreground/80 hover:text-primary transition-colors">Leaderboard</Link>
-          <Link href="/#faq" className="text-foreground/80 hover:text-primary transition-colors">FAQ</Link>
+          <NavigationLink href="/#about">About</NavigationLink>
+          <NavigationLink href="/#staking">Staking</NavigationLink>
+          <NavigationLink href="/#referral">Referral</NavigationLink>
+          <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
+          <NavigationLink href="/#faq">FAQ</NavigationLink>
           <Link href="/whitepaper" className="text-foreground/80 hover:text-primary transition-colors">Whitepaper</Link>
         </div>
         
@@ -59,11 +76,11 @@ const Header = () => {
               <div className="absolute right-1/4 bottom-1/4 w-2 h-2 bg-secondary/20 rounded-full"></div>
             </div>
             
-            <Link href="/#about" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">About</Link>
-            <Link href="/#staking" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Staking</Link>
-            <Link href="/#referral" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Referral</Link>
-            <Link href="/#leaderboard" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Leaderboard</Link>
-            <Link href="/#faq" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">FAQ</Link>
+            <NavigationLink href="/#about">About</NavigationLink>
+            <NavigationLink href="/#staking">Staking</NavigationLink>
+            <NavigationLink href="/#referral">Referral</NavigationLink>
+            <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
+            <NavigationLink href="/#faq">FAQ</NavigationLink>
             <Link href="/whitepaper" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Whitepaper</Link>
             {!connected && (
               <WalletButton 
