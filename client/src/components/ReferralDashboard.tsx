@@ -38,7 +38,15 @@ const ReferralDashboard = () => {
   };
 
   return (
-    <div className="grid lg:grid-cols-5 gap-8">
+    <div className="grid lg:grid-cols-5 gap-8 relative">
+      {!connected && (
+        <div className="absolute inset-0 backdrop-blur-md z-50 rounded-xl flex flex-col items-center justify-center gap-4 bg-background/50">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+            <i className="ri-lock-2-line text-3xl text-muted-foreground"></i>
+          </div>
+          <p className="text-lg font-medium text-muted-foreground">Connect wallet to view your referral dashboard</p>
+        </div>
+      )}
       <div className="bg-card rounded-xl p-6 border border-border lg:col-span-3 order-2 lg:order-1 shadow-lg">
         <h3 className="text-xl font-semibold mb-6 text-foreground">Your Referral Dashboard</h3>
         
