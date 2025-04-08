@@ -39,7 +39,15 @@ const SolanaContext = createContext<SolanaContextType>({
 export const useSolana = () => useContext(SolanaContext);
 
 // Deep linking URLs for mobile wallets
-const WALLET_DEEP_LINKS = {
+type WalletDeepLinks = {
+  [K in WalletType]?: {
+    mobile: string;
+    universalLink: string;
+    fallback: string;
+  }
+};
+
+const WALLET_DEEP_LINKS: WalletDeepLinks = {
   phantom: {
     mobile: 'phantom://browse/',
     universalLink: 'https://phantom.app/ul/browse/',
@@ -54,6 +62,16 @@ const WALLET_DEEP_LINKS = {
     mobile: 'slope://',
     universalLink: 'https://slope.finance/app/',
     fallback: 'https://slope.finance/download',
+  },
+  sollet: {
+    mobile: '', // Sollet doesn't have a mobile app
+    universalLink: 'https://www.sollet.io',
+    fallback: 'https://www.sollet.io',
+  },
+  math: {
+    mobile: 'mathwallet://',
+    universalLink: 'https://mathwallet.org',
+    fallback: 'https://mathwallet.org/en-us/download/app',
   },
   coin98: {
     mobile: 'coin98://',
@@ -141,27 +159,14 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Check if a wallet provider is available in the browser
   const getWalletProvider = (walletType: WalletType): WalletProvider | null => {
-    // Handle mobile deep linking
-    if (isMobileDevice() && WALLET_DEEP_LINKS[walletType]) {
-      const currentUrl = window.location.href;
-      const deepLink = WALLET_DEEP_LINKS[walletType].mobile + encodeURIComponent(currentUrl);
-
-      // Direct attempt to open the wallet app
-      window.location.href = deepLink;
-
-      // If wallet app doesn't open in 2 seconds, redirect to download page
-      const fallbackTimer = setTimeout(() => {
-        window.location.href = WALLET_DEEP_LINKS[walletType].fallback;
-      }, 2000);
-
-      return null;
-    }
-
+    // Check for desktop browser wallet providers first
+    let provider = null;
+    
     switch (walletType) {
       case 'phantom':
         if ('phantom' in window) {
           // @ts-ignore
-          const provider = window.phantom?.solana;
+          provider = window.phantom?.solana;
           if (provider?.isPhantom) {
             return provider as unknown as WalletProvider;
           }
@@ -170,8 +175,9 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       case 'solflare':
         if ('solflare' in window) {
           // @ts-ignore
-          const provider = window.solflare;
-          if (provider?.isSolflare) {
+          provider = window.solflare;
+          // @ts-ignore
+          if (provider && provider.isSolflare) {
             return provider as unknown as WalletProvider;
           }
         }
@@ -179,7 +185,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       case 'slope':
         if ('slope' in window) {
           // @ts-ignore
-          const provider = window.slope;
+          provider = window.slope;
           if (provider) {
             return provider as unknown as WalletProvider;
           }
@@ -188,7 +194,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       case 'sollet':
         if ('sollet' in window) {
           // @ts-ignore
-          const provider = window.sollet;
+          provider = window.sollet;
           if (provider) {
             return provider as unknown as WalletProvider;
           }
@@ -197,7 +203,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       case 'math':
         if ('solana' in window && 'isMathWallet' in window) {
           // @ts-ignore
-          const provider = window.solana;
+          provider = window.solana;
           if (provider) {
             return provider as unknown as WalletProvider;
           }
@@ -206,14 +212,68 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       case 'coin98':
         if ('coin98' in window) {
           // @ts-ignore
-          const provider = window.coin98?.sol;
+          provider = window.coin98?.sol;
           if (provider) {
             return provider as unknown as WalletProvider;
           }
         }
         break;
     }
+    
+    // If no desktop provider and on mobile, handle deep linking
+    if (!provider && isMobileDevice() && WALLET_DEEP_LINKS[walletType]) {
+      handleMobileWalletRedirect(walletType);
+      return null;
+    }
+    
     return null;
+  };
+  
+  // Separate function to handle mobile wallet redirects
+  const handleMobileWalletRedirect = (walletType: WalletType) => {
+    const appURL = WALLET_DEEP_LINKS[walletType];
+    if (!appURL) {
+      console.error(`No deep link configuration for wallet type: ${walletType}`);
+      return;
+    }
+    
+    const currentUrl = window.location.href;
+    
+    // Try universal link first for iOS
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent) && appURL.universalLink) {
+      console.log(`Opening iOS universal link for ${walletType}`);
+      window.location.href = `${appURL.universalLink}${encodeURIComponent(currentUrl)}`;
+    } else if (appURL.mobile) {
+      // For Android or fallback for iOS
+      console.log(`Opening mobile deep link for ${walletType}`);
+      const deepLink = `${appURL.mobile}${encodeURIComponent(currentUrl)}`;
+      
+      // Create an iframe to attempt opening the app
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = deepLink;
+      document.body.appendChild(iframe);
+      
+      // Also try direct navigation for Android
+      window.location.href = deepLink;
+      
+      // Set timeout for fallback
+      setTimeout(() => {
+        // If we're still here, the app isn't installed
+        // Remove iframe
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+        
+        // Redirect to download page
+        console.log(`App not detected, redirecting to download page for ${walletType}`);
+        window.location.href = appURL.fallback;
+      }, 2000);
+    } else {
+      // No mobile deep link available, go straight to fallback
+      console.log(`No mobile deep link available for ${walletType}, opening fallback`);
+      window.location.href = appURL.fallback;
+    }
   };
 
   // Function to open the wallet selector modal
@@ -242,35 +302,88 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       }
 
-      // Get the wallet provider based on the wallet type
+      // Set wallet type immediately to indicate user intent
+      setWalletType(type);
+      
+      // Close wallet selector if open
+      setShowWalletSelector(false);
+
+      // For mobile devices, we want to try connecting via deep linking
+      if (isMobileDevice() && WALLET_DEEP_LINKS[type]) {
+        console.log(`Attempting to connect to ${type} wallet on mobile`);
+        handleMobileWalletRedirect(type);
+        return; // The page will redirect, so we don't continue
+      }
+
+      // For desktop, get the wallet provider
       const walletProvider = getWalletProvider(type);
 
       if (!walletProvider) {
-        // If wallet is not installed, open the website for installation
-        const walletWebsites = {
-          phantom: 'https://phantom.app/',
-          solflare: 'https://solflare.com/',
-          slope: 'https://slope.finance/',
-          sollet: 'https://www.sollet.io/',
-          math: 'https://mathwallet.org/',
-          coin98: 'https://coin98.com/'
+        console.log(`${type} wallet not detected in browser. Opening website.`);
+        // Show a toast message that it's not installed
+        // If wallet is not installed, provide info on how to install
+        type WalletInfo = {
+          [key in WalletType]: {
+            name: string;
+            url: string;
+            message: string;
+          }
         };
-
-        window.open(walletWebsites[type], '_blank');
+        
+        const walletInfo: WalletInfo = {
+          phantom: {
+            name: 'Phantom',
+            url: 'https://phantom.app/download',
+            message: 'Phantom wallet not detected. Install it to connect.'
+          },
+          solflare: {
+            name: 'Solflare',
+            url: 'https://solflare.com/download',
+            message: 'Solflare wallet not detected. Install it to connect.'
+          },
+          slope: {
+            name: 'Slope',
+            url: 'https://slope.finance/download',
+            message: 'Slope wallet not detected. Install it to connect.'
+          },
+          sollet: {
+            name: 'Sollet',
+            url: 'https://www.sollet.io',
+            message: 'Sollet wallet not detected. Use it in browser to connect.'
+          },
+          math: {
+            name: 'MathWallet',
+            url: 'https://mathwallet.org/en-us/download/app',
+            message: 'MathWallet not detected. Install it to connect.'
+          },
+          coin98: {
+            name: 'Coin98',
+            url: 'https://coin98.com/wallet',
+            message: 'Coin98 wallet not detected. Install it to connect.'
+          }
+        };
+        
+        // We've already checked that type is defined earlier in the function
+        const info = walletInfo[type as WalletType];
+        console.log(info.message);
+        
+        // On mobile, we've already tried deep linking, so just open the download page
+        if (isMobileDevice()) {
+          window.location.href = info.url;
+        } else {
+          window.open(info.url, '_blank');
+        }
         return;
       }
 
-      // Set wallet type
-      setWalletType(type);
-
       // Connect to the wallet
+      console.log(`Connecting to ${type} wallet on desktop`);
       const { publicKey } = await walletProvider.connect();
 
       // Save the connected wallet info
       setProvider(walletProvider);
       setConnected(true);
       setPublicKey(publicKey);
-      setShowWalletSelector(false); // Close wallet selector if open
 
       // Save preference for next time
       saveWalletPreference(type);
@@ -281,6 +394,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     } catch (error) {
       console.error('Error connecting wallet:', error);
+      setWalletType(null); // Reset wallet type on error
     }
   };
 
