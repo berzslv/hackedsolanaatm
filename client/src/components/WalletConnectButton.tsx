@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import WalletConnectProvider from '@walletconnect/web3-provider';
 import { useSolana } from '@/context/SolanaContext';
+import { PublicKey } from '@solana/web3.js';
 
 export function WalletConnectButton() {
   const [connecting, setConnecting] = useState(false);

@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Copy } from 'lucide-react';
 
 interface SolanaQRCodeProps {
   walletType?: 'phantom' | 'solflare';
@@ -9,52 +7,28 @@ interface SolanaQRCodeProps {
 export function SolanaQRCode({ walletType = 'phantom' }: SolanaQRCodeProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
-  
-  // Get wallet download URLs
-  const getWalletUrls = (): {download: string, app: string} => {
-    if (walletType === 'phantom') {
-      return {
-        download: 'https://phantom.app/download',
-        app: 'https://phantom.app/',
-      };
-    } else {
-      return {
-        download: 'https://solflare.com/download',
-        app: 'https://solflare.com/',
-      };
-    }
-  };
-  
-  const urls = getWalletUrls();
-  
-  const handleCopyAddress = () => {
-    const currentUrl = window.location.href;
-    navigator.clipboard.writeText(currentUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  
-  // Mobile deep link for direct app open
-  const openDownloadPage = () => {
-    window.open(urls.download, '_blank');
-  };
-  
-  const openWalletApp = () => {
-    window.open(urls.app, '_blank');
-  };
   
   useEffect(() => {
     const generateQR = async () => {
       try {
         setLoading(true);
         
-        // Get current page URL - we'll just show this directly
+        // Get current page URL
         const currentUrl = window.location.href;
+        // Get app name
+        const appName = 'HackedATM';
         
-        // Generate QR code for the website URL directly
+        // Generate deep link for Phantom wallet
+        let deepLink = '';
+        if (walletType === 'phantom') {
+          deepLink = `https://phantom.app/ul/browse/${encodeURIComponent(currentUrl)}`;
+        } else if (walletType === 'solflare') {
+          deepLink = `https://solflare.com/ul/browse/${encodeURIComponent(currentUrl)}`;
+        }
+        
+        // Generate QR code for the deep link
         const QRCode = await import('qrcode');
-        const dataUrl = await QRCode.toDataURL(currentUrl, {
+        const dataUrl = await QRCode.toDataURL(deepLink, {
           color: {
             dark: '#ffffff',  // White foreground
             light: '#111111'  // Dark background
@@ -76,7 +50,7 @@ export function SolanaQRCode({ walletType = 'phantom' }: SolanaQRCodeProps) {
   
   return (
     <div className="flex flex-col items-center py-4">
-      <h3 className="text-lg font-medium mb-2">Connect with {walletType === 'phantom' ? 'Phantom' : 'Solflare'}</h3>
+      <h3 className="text-lg font-medium mb-2">Scan with {walletType === 'phantom' ? 'Phantom' : 'Solflare'}</h3>
       
       <div className="bg-card rounded-lg p-4 mb-2 border border-border">
         {loading ? (
@@ -87,7 +61,7 @@ export function SolanaQRCode({ walletType = 'phantom' }: SolanaQRCodeProps) {
           qrDataUrl ? (
             <img 
               src={qrDataUrl} 
-              alt={`QR code for current URL`} 
+              alt={`${walletType} wallet QR code`} 
               className="w-[200px] h-[200px]"
             />
           ) : (
@@ -98,40 +72,9 @@ export function SolanaQRCode({ walletType = 'phantom' }: SolanaQRCodeProps) {
         )}
       </div>
       
-      <div className="w-full space-y-3 mb-2">
-        <p className="text-sm text-center text-muted-foreground px-4">
-          1. Open {walletType === 'phantom' ? 'Phantom' : 'Solflare'} app manually
-        </p>
-        
-        <p className="text-sm text-center text-muted-foreground px-4">
-          2. Copy this URL and paste it in your wallet's dApp browser
-        </p>
-        
-        <Button 
-          onClick={handleCopyAddress}
-          variant="outline" 
-          className="w-full flex items-center justify-center gap-2"
-        >
-          <Copy className="h-4 w-4" />
-          {copied ? 'Copied!' : 'Copy URL to Clipboard'}
-        </Button>
-      </div>
-      
-      <div className="w-full grid grid-cols-2 gap-2 mt-2">
-        <Button 
-          onClick={openWalletApp}
-          className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-        >
-          Open {walletType} Website
-        </Button>
-        
-        <Button 
-          onClick={openDownloadPage}
-          className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-        >
-          Download {walletType}
-        </Button>
-      </div>
+      <p className="text-sm text-center text-muted-foreground px-4">
+        Open the {walletType === 'phantom' ? 'Phantom' : 'Solflare'} app and scan this QR code to connect
+      </p>
     </div>
   );
 }
