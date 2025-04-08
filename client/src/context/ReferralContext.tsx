@@ -26,34 +26,43 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [location] = useLocation();
   
   useEffect(() => {
-    // Parse URL parameters for referral code
-    const params = new URLSearchParams(window.location.search);
-    const codeFromUrl = params.get('ref');
-    
-    if (codeFromUrl) {
-      validateReferralCode(codeFromUrl).then(isValid => {
-        if (isValid) {
-          console.log(`Referral code from URL is valid: ${codeFromUrl}`);
-          setReferralCode(codeFromUrl);
-          setReferralFromLink(true);
-          
-          // Store in session storage for persistence across page refreshes
-          sessionStorage.setItem('referralCode', codeFromUrl);
-          sessionStorage.setItem('referralFromLink', 'true');
-        } else {
-          console.error(`Invalid referral code in URL: ${codeFromUrl}`);
-        }
-      });
-    } else {
-      // Check session storage for referral code
-      const storedCode = sessionStorage.getItem('referralCode');
-      const storedFromLink = sessionStorage.getItem('referralFromLink');
+    const checkReferralCode = async () => {
+      // Parse URL parameters for referral code
+      const params = new URLSearchParams(window.location.search);
+      const codeFromUrl = params.get('ref');
       
-      if (storedCode) {
-        setReferralCode(storedCode);
-        setReferralFromLink(storedFromLink === 'true');
+      if (codeFromUrl) {
+        try {
+          const response = await fetch(`/api/validate-referral/${codeFromUrl}`);
+          const data = await response.json();
+          
+          if (response.ok && data.valid) {
+            console.log(`Referral code from URL is valid: ${codeFromUrl}`);
+            setReferralCode(codeFromUrl);
+            setReferralFromLink(true);
+            
+            // Store in session storage for persistence across page refreshes
+            sessionStorage.setItem('referralCode', codeFromUrl);
+            sessionStorage.setItem('referralFromLink', 'true');
+          } else {
+            console.error(`Invalid referral code in URL: ${codeFromUrl}`);
+          }
+        } catch (error) {
+          console.error('Error validating referral code:', error);
+        }
+      } else {
+        // Check session storage for referral code
+        const storedCode = sessionStorage.getItem('referralCode');
+        const storedFromLink = sessionStorage.getItem('referralFromLink');
+        
+        if (storedCode) {
+          setReferralCode(storedCode);
+          setReferralFromLink(storedFromLink === 'true');
+        }
       }
-    }
+    };
+
+    checkReferralCode();
   }, [location]);
   
   const validateReferralCode = async (code: string): Promise<boolean> => {

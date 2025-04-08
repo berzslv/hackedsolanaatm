@@ -56,34 +56,14 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
   useEffect(() => {
     if (refFromContext && refFromContext.length === 6) {
       setReferralCode(refFromContext);
-
-      // If the code is from a link, validate it automatically
+      setReferralValid(true);
+      
       if (referralFromLink) {
-        const validateCode = async () => {
-          try {
-            const response = await fetch(`/api/referrals/validate?code=${refFromContext}`);
-            const data = await response.json();
-
-            if (response.ok && data.valid) {
-              setReferralValid(true);
-              toast({
-                title: "Referral code applied",
-                description: `Referral code ${refFromContext} has been automatically applied.`,
-              });
-            } else {
-              setReferralValid(false);
-              toast({
-                title: "Invalid referral code",
-                description: "The referral code in the URL is invalid.",
-                variant: "destructive",
-              });
-            }
-          } catch (error) {
-            console.error("Error validating referral code:", error);
-          }
-        };
-
-        validateCode();
+        // Automatically mark as valid since it was already validated in ReferralContext
+        toast({
+          title: "Referral code applied",
+          description: `Referral code ${refFromContext} has been automatically applied.`,
+        });
       }
     }
   }, [refFromContext, referralFromLink, toast]);
