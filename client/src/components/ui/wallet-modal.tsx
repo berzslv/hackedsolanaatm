@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { useSolana } from '@/context/SolanaContext';
 import { Copy } from 'lucide-react';
 import { shortenAddress } from '@/lib/utils';
-import { PhantomConnector } from '@/components/ui/phantom-connector';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SolanaQRCode } from '@/components/ui/solana-qr-code';
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -101,47 +102,25 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                 If you don't have a wallet yet, we recommend using Phantom.
               </p>
               
-              <div className="flex flex-col gap-3">
-                {/* Use our direct connector instead of the contextual one */}
-                <div className="mb-4 text-sm text-center text-muted-foreground">
-                  Connect directly with Phantom wallet for more reliable connection
-                </div>
+              <Tabs defaultValue="browser" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="browser">Browser</TabsTrigger>
+                  <TabsTrigger value="mobile">Mobile QR</TabsTrigger>
+                </TabsList>
                 
-                <PhantomConnector 
-                  onConnect={(pubKeyString: string) => {
-                    try {
-                      // Import the PublicKey class from @solana/web3.js
-                      const { PublicKey } = require('@solana/web3.js');
-                      
-                      // Create a PublicKey object from the string
-                      const solanaPublicKey = new PublicKey(pubKeyString);
-                      
-                      // Get the provider from window.solana or window.phantom.solana
-                      let provider = null;
-                      if ('phantom' in window) {
-                        // @ts-ignore
-                        provider = window.phantom?.solana;
-                      }
-                      if (!provider && 'solana' in window) {
-                        // @ts-ignore
-                        provider = window.solana;
-                      }
-                      
-                      // Use the connect method from SolanaContext
-                      connectWallet('phantom')
-                        .then(() => {
-                          console.log("Successfully connected via wallet modal direct connector");
-                          onClose();
-                        })
-                        .catch(error => {
-                          console.error("Error in connectWallet:", error);
-                        });
-                    } catch (e) {
-                      console.error("Error in PhantomConnector callback:", e);
-                    }
-                  }}
-                />
-              </div>
+                <TabsContent value="browser" className="mt-4">
+                  <Button 
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    onClick={handleConnect}
+                  >
+                    Connect with Phantom
+                  </Button>
+                </TabsContent>
+                
+                <TabsContent value="mobile" className="mt-2">
+                  <SolanaQRCode walletType="phantom" />
+                </TabsContent>
+              </Tabs>
             </div>
           )}
         </div>
