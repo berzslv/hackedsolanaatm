@@ -30,11 +30,11 @@ const Header = () => {
         </Link>
         
         <div className="hidden lg:flex items-center space-x-6 z-10">
-          <a href="#about" className="text-foreground/80 hover:text-primary transition-colors">About</a>
-          <a href="#staking" className="text-foreground/80 hover:text-primary transition-colors">Staking</a>
-          <a href="#referral" className="text-foreground/80 hover:text-primary transition-colors">Referral</a>
-          <a href="#leaderboard" className="text-foreground/80 hover:text-primary transition-colors">Leaderboard</a>
-          <a href="#faq" className="text-foreground/80 hover:text-primary transition-colors">FAQ</a>
+          <Link href="/#about" className="text-foreground/80 hover:text-primary transition-colors">About</Link>
+          <Link href="/#staking" className="text-foreground/80 hover:text-primary transition-colors">Staking</Link>
+          <Link href="/#referral" className="text-foreground/80 hover:text-primary transition-colors">Referral</Link>
+          <Link href="/#leaderboard" className="text-foreground/80 hover:text-primary transition-colors">Leaderboard</Link>
+          <Link href="/#faq" className="text-foreground/80 hover:text-primary transition-colors">FAQ</Link>
           <Link href="/whitepaper" className="text-foreground/80 hover:text-primary transition-colors">Whitepaper</Link>
         </div>
         
@@ -59,11 +59,11 @@ const Header = () => {
               <div className="absolute right-1/4 bottom-1/4 w-2 h-2 bg-secondary/20 rounded-full"></div>
             </div>
             
-            <a href="#about" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">About</a>
-            <a href="#staking" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Staking</a>
-            <a href="#referral" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Referral</a>
-            <a href="#leaderboard" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Leaderboard</a>
-            <a href="#faq" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">FAQ</a>
+            <Link href="/#about" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">About</Link>
+            <Link href="/#staking" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Staking</Link>
+            <Link href="/#referral" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Referral</Link>
+            <Link href="/#leaderboard" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Leaderboard</Link>
+            <Link href="/#faq" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">FAQ</Link>
             <Link href="/whitepaper" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10">Whitepaper</Link>
             {!connected && (
               <WalletButton 
