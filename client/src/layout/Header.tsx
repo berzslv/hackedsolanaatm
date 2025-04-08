@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useSolana } from '@/context/SolanaContext';
 import WhitepaperDialog from '@/components/WhitepaperDialog';
-import { WalletConnectOptions } from '@/components/WalletConnectOptions';
+import { MobileWalletConnect } from '@/components/ui/mobile-wallet-connect';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -61,8 +61,8 @@ const Header = () => {
         </div>
         
         <div className="flex items-center gap-3 z-10">
-          {/* Use our custom wallet connect options component */}
-          <WalletConnectOptions />
+          {/* Use our simplified mobile wallet connect component */}
+          <MobileWalletConnect />
           <button 
             className="lg:hidden text-foreground/80 hover:text-primary" 
             onClick={toggleMenu}
@@ -90,7 +90,7 @@ const Header = () => {
             <button onClick={() => setShowWhitepaper(true)} className="text-foreground/80 hover:text-primary py-2 transition-colors z-10 text-left w-full">Whitepaper</button>
             {/* Mobile wallet button */}
             <div className="sm:hidden w-full z-10">
-              <WalletConnectOptions />
+              <MobileWalletConnect />
             </div>
           </div>
         </div>
