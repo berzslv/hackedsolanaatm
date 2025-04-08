@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { WalletButton } from '@/components/ui/wallet-button';
 import { useSolana } from '@/context/SolanaContext';
 import WhitepaperDialog from '@/components/WhitepaperDialog';
 import { SolanaWalletButton } from '@/components/ui/wallet-adapter';

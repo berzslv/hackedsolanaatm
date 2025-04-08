@@ -6,6 +6,8 @@ import {
   WalletModalProvider, 
   WalletMultiButton 
 } from '@solana/wallet-adapter-react-ui';
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
+import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
 
 // Import CSS files for wallet adapter UI (required)
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -16,10 +18,19 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
   
   // Get connection endpoint for the network
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  
+  // Initialize wallet adapters
+  const wallets = useMemo(
+    () => [
+      new PhantomWalletAdapter(),
+      new SolflareWalletAdapter({ network }),
+    ],
+    [network]
+  );
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={[]} autoConnect>
+      <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
           {children}
         </WalletModalProvider>
@@ -38,7 +49,7 @@ export const SolanaWalletButton: FC = () => {
       <style dangerouslySetInnerHTML={{
         __html: `
           .wallet-adapter-button {
-            background-color: #4f46e5 !important; /* Indigo-600 */
+            background: linear-gradient(to right, #6366f1, #8b5cf6) !important;
             border-radius: 0.5rem !important;
             color: white !important;
             font-family: inherit !important;
@@ -46,22 +57,30 @@ export const SolanaWalletButton: FC = () => {
             padding: 0 1rem !important;
             font-size: 0.875rem !important;
             font-weight: 500 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+            transition: all 0.2s ease !important;
           }
           
           .wallet-adapter-button:hover {
-            background-color: #4338ca !important; /* Indigo-700 */
+            background: linear-gradient(to right, #4f46e5, #7c3aed) !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+            transform: translateY(-1px) !important;
           }
           
           .wallet-adapter-button-trigger {
-            background-color: #4f46e5 !important;
+            background: linear-gradient(to right, #6366f1, #8b5cf6) !important;
           }
           
           .wallet-adapter-modal-wrapper {
             background-color: #1f1f23 !important;
+            border-radius: 1rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
           }
           
           .wallet-adapter-modal-title {
             color: #ffffff !important;
+            font-weight: 700 !important;
+            font-size: 1.5rem !important;
           }
           
           .wallet-adapter-modal-content {
@@ -71,6 +90,21 @@ export const SolanaWalletButton: FC = () => {
           .wallet-adapter-modal-list .wallet-adapter-button {
             background-color: #27272a !important;
             color: #ffffff !important;
+            border-radius: 0.5rem !important;
+            transition: all 0.2s ease !important;
+          }
+          
+          .wallet-adapter-modal-list .wallet-adapter-button:hover {
+            background-color: #3f3f46 !important;
+            transform: translateY(-1px) !important;
+          }
+          
+          .wallet-adapter-modal-list-more {
+            color: #8b5cf6 !important;
+          }
+          
+          .wallet-adapter-modal-list-more:hover {
+            color: #6366f1 !important;
           }
         `
       }} />
