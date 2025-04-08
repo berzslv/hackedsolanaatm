@@ -50,15 +50,15 @@ const PhantomQRCode = () => {
       try {
         setLoading(true);
         
-        // For most consistent wallet connection, use Phantom's browse link (browsing to the site in the wallet)
-        // This is their universal deep linking format that works across all platforms
-        const phantomBrowseLink = `https://phantom.app/ul/browse/${encodeURIComponent(window.location.href)}`;
+        // Try Phantom's direct connect protocol (v1) with explicit mainnet specification
+        // QR code scans for direct connection without needing to browse first
+        const phantomConnectLink = `https://phantom.app/ul/v1/connect?app=${encodeURIComponent(appName)}&redirect=${encodeURIComponent(window.location.href)}&cluster=mainnet-beta`;
         
-        console.log("Generated QR code URL:", phantomBrowseLink);
+        console.log("Generated QR code URL:", phantomConnectLink);
         
         // Dynamic import of QRCode to avoid SSR issues
         const QRCode = await import('qrcode');
-        const dataUrl = await QRCode.toDataURL(phantomBrowseLink, {
+        const dataUrl = await QRCode.toDataURL(phantomConnectLink, {
           color: {
             dark: '#ffffff', // White QR code
             light: '#111111'  // Dark background

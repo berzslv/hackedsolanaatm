@@ -79,7 +79,7 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                   <span className="text-sm text-muted-foreground">SOL Balance</span>
                 </div>
                 <p className="text-xl font-semibold">{balance.toFixed(4)} SOL</p>
-                <p className="mt-1 text-sm text-muted-foreground">on Solana Devnet</p>
+                <p className="mt-1 text-sm text-muted-foreground">on Solana Mainnet</p>
               </div>
               
               <div className="flex justify-end">
