@@ -352,11 +352,20 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       let connectionParams = '';
       
       if (walletType === 'phantom') {
-        // For Phantom using the v1 connect protocol
-        // Format: https://phantom.app/ul/v1/connect?app=YourAppName&redirect=YourAppURL&cluster=mainnet-beta
+        // For Phantom using the v1 connect protocol with all required parameters
+        // Format: https://phantom.app/ul/v1/connect?app_url=...&redirect_url=...&dapp_encryption_public_key=...&nonce=...&session_id=...&cluster=...
+        
+        // Generate a unique session ID and nonce
+        const sessionId = Math.random().toString(36).substring(2, 15);
+        const nonce = Array.from(window.crypto.getRandomValues(new Uint8Array(16)))
+          .map(b => b.toString(16).padStart(2, '0')).join('');
+        
         connectionParams = new URLSearchParams({
-          app: appName,
-          redirect: currentUrl,
+          app_url: window.location.origin,
+          redirect_link: window.location.href, // Return to current page
+          dapp_encryption_public_key: 'BFnMU9BXmcfMPr4t9e4NpeNYTmAnKDK3VjMSnFS8vCHReT9FpT2NzGzU4JfMQDleNGER1dyxRUtw1PU8zLYHgxg', // Placeholder
+          nonce: nonce,
+          session_id: sessionId,
           cluster: 'mainnet-beta'
         }).toString();
         

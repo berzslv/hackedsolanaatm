@@ -8,11 +8,47 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useSolana } from '@/context/SolanaContext';
-import { Copy } from 'lucide-react';
+import { Copy, ExternalLink } from 'lucide-react';
 import { shortenAddress } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SolanaQRCode } from '@/components/ui/solana-qr-code';
 import { Web3AuthButton } from '@/components/Web3AuthButton';
+
+// Direct Connect Component specifically for Phantom using their v1 connection protocol
+function PhantomDirectConnect() {
+  const connectWithPhantomV1 = () => {
+    // Generate a unique session ID and nonce
+    const sessionId = Math.random().toString(36).substring(2, 15);
+    const nonce = Array.from(window.crypto.getRandomValues(new Uint8Array(16)))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    // Build the correct Phantom connection URL according to their docs
+    const PHANTOM_CONNECT_URL = new URL('https://phantom.app/ul/v1/connect');
+    PHANTOM_CONNECT_URL.searchParams.append('app_url', window.location.origin);
+    PHANTOM_CONNECT_URL.searchParams.append('redirect_link', window.location.href);
+    PHANTOM_CONNECT_URL.searchParams.append('dapp_encryption_public_key', 'BFnMU9BXmcfMPr4t9e4NpeNYTmAnKDK3VjMSnFS8vCHReT9FpT2NzGzU4JfMQDleNGER1dyxRUtw1PU8zLYHgxg');
+    PHANTOM_CONNECT_URL.searchParams.append('nonce', nonce);
+    PHANTOM_CONNECT_URL.searchParams.append('session_id', sessionId);
+    PHANTOM_CONNECT_URL.searchParams.append('cluster', 'mainnet-beta');
+    
+    console.log("Opening Phantom direct connect URL:", PHANTOM_CONNECT_URL.toString());
+    window.open(PHANTOM_CONNECT_URL.toString(), '_blank');
+  };
+  
+  return (
+    <div className="space-y-2 mt-3">
+      <p className="text-sm text-muted-foreground">
+        Connect directly using Phantom's official connection protocol:
+      </p>
+      <Button
+        onClick={connectWithPhantomV1}
+        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 flex items-center justify-center"
+      >
+        Open Phantom Connect <ExternalLink className="ml-2 h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -136,6 +172,10 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                     >
                       Connect with Solflare
                     </Button>
+                    
+                    <div className="border-t border-border pt-3 mt-4">
+                      <PhantomDirectConnect />
+                    </div>
                   </div>
                 </TabsContent>
                 
@@ -170,9 +210,10 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                 
                 <TabsContent value="mobile" className="mt-2">
                   <Tabs defaultValue="phantom" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid w-full grid-cols-3">
                       <TabsTrigger value="phantom">Phantom</TabsTrigger>
                       <TabsTrigger value="solflare">Solflare</TabsTrigger>
+                      <TabsTrigger value="direct">Direct</TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="phantom" className="mt-2">
@@ -181,6 +222,17 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                     
                     <TabsContent value="solflare" className="mt-2">
                       <SolanaQRCode walletType="solflare" />
+                    </TabsContent>
+                    
+                    <TabsContent value="direct" className="mt-2">
+                      <div className="p-4 border border-border rounded-lg bg-card">
+                        <h3 className="text-lg font-medium mb-3">Direct Connect</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Connect directly to your mobile wallet using Phantom's official protocol.
+                          This method works on all devices where Phantom is installed.
+                        </p>
+                        <PhantomDirectConnect />
+                      </div>
                     </TabsContent>
                   </Tabs>
                 </TabsContent>
