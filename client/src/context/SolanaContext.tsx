@@ -54,21 +54,23 @@ const WALLET_DEEP_LINKS: WalletDeepLinks = {
     mobile: 'phantom://browse/',
     universalLink: 'https://phantom.app/ul/browse/',
     fallback: 'https://phantom.app/download',
-    connectMobile: 'phantom://connect/',
-    connectUniversal: 'https://phantom.app/ul/connect/',
+    // Phantom's mobile connection format (most direct way to request approval):
+    connectMobile: 'phantom://auth',
+    connectUniversal: 'https://phantom.app/ul/auth',
   },
   solflare: {
     mobile: 'solflare://',
     universalLink: 'https://solflare.com/ul/v1/',
     fallback: 'https://solflare.com/download',
-    connectMobile: 'solflare://dapp/connect/',
-    connectUniversal: 'https://solflare.com/ul/v1/connect/',
+    // Solflare uses this specific format for their connection protocol:
+    connectMobile: 'solflare://dapp/',
+    connectUniversal: 'https://solflare.com/ul/v1/dapp/',
   },
   slope: {
     mobile: 'slope://',
     universalLink: 'https://slope.finance/app/',
     fallback: 'https://slope.finance/download',
-    connectMobile: 'slope://connect/',
+    connectMobile: 'slope://wallet/dapp/connect/',
   },
   sollet: {
     mobile: '', // Sollet doesn't have a mobile app
@@ -79,13 +81,13 @@ const WALLET_DEEP_LINKS: WalletDeepLinks = {
     mobile: 'mathwallet://',
     universalLink: 'https://mathwallet.org',
     fallback: 'https://mathwallet.org/en-us/download/app',
-    connectMobile: 'mathwallet://connect/',
+    connectMobile: 'mathwallet://dapp/',
   },
   coin98: {
     mobile: 'coin98://',
     universalLink: 'https://coin98.com/wallet/',
     fallback: 'https://coin98.com/wallet',
-    connectMobile: 'coin98://connect/',
+    connectMobile: 'coin98://dapp/',
   }
 };
 
@@ -259,28 +261,19 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       app_title: appName
     };
     
-    // Different wallets need different parameters
-    let connectionParams;
+    // Direct approach - use minimal parameters for cleaner URLs
+    let connectionParams = '';
     
     if (walletType === 'phantom') {
-      // Phantom requires this specific format for connection
-      connectionParams = new URLSearchParams({
-        ...baseParams,
-        request: JSON.stringify({ method: 'connect', params: { app: appName } })
-      }).toString();
+      // For Phantom auth endpoint, we need to use a specific format
+      // This is the official way to request connection in Phantom mobile
+      connectionParams = `dapp=${encodeURIComponent(appName)}&redirect=${encodeURIComponent(currentUrl)}`;
     } else if (walletType === 'solflare') {
-      // Solflare uses a different format
-      connectionParams = new URLSearchParams({
-        dapp: appName,
-        url: currentUrl,
-        network: cluster
-      }).toString();
+      // Solflare needs these specific params
+      connectionParams = `dapp=${encodeURIComponent(appName)}&url=${encodeURIComponent(currentUrl)}`;
     } else {
-      // General format for other wallets
-      connectionParams = new URLSearchParams({
-        ...baseParams,
-        dapp_encryption_public_key: '' // Not needed for basic connection
-      }).toString();
+      // For other wallets, keep it minimal
+      connectionParams = `url=${encodeURIComponent(currentUrl)}`;
     }
     
     // Try connection-specific links first (these trigger connection dialogs)
