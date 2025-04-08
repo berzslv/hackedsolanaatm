@@ -11,7 +11,10 @@ const Header = () => {
   const [location] = useLocation();
   
   const NavigationLink = ({ href, children }: { href: string, children: React.ReactNode }) => {
-    if (isWhitepaper && href.startsWith('/#')) {
+    const [location] = useLocation();
+    const isHome = location === '/';
+    
+    if (!isHome && href.startsWith('/#')) {
       return (
         <Link href={href} className="text-foreground/80 hover:text-primary transition-colors">
           {children}
