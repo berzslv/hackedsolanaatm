@@ -24,7 +24,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
   const [showReferralInput, setShowReferralInput] = useState<boolean>(false);
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const widgetRef = useRef<HTMLDivElement>(null);
-  
+
   // Function to trigger flash effect programmatically
   const triggerFlash = useCallback(() => {
     if (connected) {
@@ -36,7 +36,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       connectWallet();
     }
   }, [connected, connectWallet]);
-  
+
   // Expose the flash function via ref
   useEffect(() => {
     if (flashRef) {
@@ -44,26 +44,26 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       flashRef.current = triggerFlash;
     }
   }, [triggerFlash, flashRef]);
-  
+
   // Show referral code input if user is connected
   useEffect(() => {
     if (connected) {
       setShowReferralInput(true);
     }
   }, [connected]);
-  
+
   // Apply referral code from URL if available
   useEffect(() => {
     if (refFromContext && refFromContext.length === 6) {
       setReferralCode(refFromContext);
-      
+
       // If the code is from a link, validate it automatically
       if (referralFromLink) {
         const validateCode = async () => {
           try {
             const response = await fetch(`/api/referrals/validate?code=${refFromContext}`);
             const data = await response.json();
-            
+
             if (response.ok && data.valid) {
               setReferralValid(true);
               toast({
@@ -82,16 +82,16 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
             console.error("Error validating referral code:", error);
           }
         };
-        
+
         validateCode();
       }
     }
   }, [refFromContext, referralFromLink, toast]);
-  
+
   const handleSolInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSolAmount(value);
-    
+
     // Calculate HATM amount based on SOL input
     if (value && !isNaN(parseFloat(value))) {
       const hatmAmount = parseFloat(value) / tokenPrice;
@@ -100,11 +100,11 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       setHatchAmount('');
     }
   };
-  
+
   const handleHatmInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setHatchAmount(value);
-    
+
     // Calculate SOL amount based on HATM input
     if (value && !isNaN(parseFloat(value))) {
       const solAmount = parseFloat(value) * tokenPrice;
@@ -113,13 +113,13 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       setSolAmount('');
     }
   };
-  
+
   const handleReferralCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Convert input to uppercase and limit to 6 characters
     const value = e.target.value.toUpperCase().slice(0, 6);
     setReferralCode(value);
   };
-  
+
   const applyReferralCode = async () => {
     if (referralCode.length !== 6) {
       toast({
@@ -129,12 +129,12 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       });
       return;
     }
-    
+
     try {
       // Validate the referral code with the API
       const response = await fetch(`/api/validate-referral/${referralCode}`);
       const data = await response.json();
-      
+
       if (response.ok && data.valid) {
         setReferralValid(true);
         toast({
@@ -158,17 +158,17 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       });
     }
   };
-  
+
   const handleBuy = async () => {
     if (!connected) {
       connectWallet();
       return;
     }
-    
+
     // Flash the widget to highlight where to buy
     setIsFlashing(true);
     setTimeout(() => setIsFlashing(false), 1000); // Stop flashing after 1 second
-    
+
     // Validate the input amount
     const inputAmount = parseFloat(solAmount);
     if (isNaN(inputAmount) || inputAmount <= 0) {
@@ -179,7 +179,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       });
       return;
     }
-    
+
     // Check if user has enough balance
     if (inputAmount > balance) {
       toast({
@@ -189,13 +189,13 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       });
       return;
     }
-    
+
     // If a referral code is provided, validate it first
     if (referralCode) {
       try {
         const response = await fetch(`/api/referrals/validate?code=${referralCode}`);
         const data = await response.json();
-        
+
         if (!response.ok || !data.valid) {
           toast({
             title: "Invalid referral code",
@@ -204,7 +204,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
           });
           return;
         }
-        
+
         // Valid referral code
         toast({
           title: "Purchasing with referral",
@@ -225,11 +225,11 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
         description: "No referral code applied. You'll pay 8% fee instead of 6%.",
       });
     }
-    
+
     // Will be implemented with Solana integration
     // No popup alert, just the flashing effect
   };
-  
+
   return (
     <div className="relative max-w-md mx-auto" ref={widgetRef}>
       {/* Flash effect when button is clicked while connected */}
@@ -238,10 +238,10 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
           <div className="absolute inset-0 bg-gradient-to-r from-primary/80 via-secondary/80 to-accent/80 rounded-3xl shadow-[0_0_30px_rgba(255,255,255,0.6)]"></div>
         </div>
       )}
-      
+
       {/* Normal background glow */}
       <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-3xl blur-3xl opacity-30"></div>
-      
+
       <div className="bg-card/80 backdrop-blur-sm border border-border rounded-3xl p-6 relative z-10 shadow-xl">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-display text-foreground">ATM Terminal</h3>
@@ -251,7 +251,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
             <span className="w-3 h-3 rounded-full bg-green-500"></span>
           </div>
         </div>
-        
+
         <div className="bg-muted rounded-lg p-4 mb-6 font-mono">
           <div className="flex justify-between mb-2">
             <span className="text-foreground/70">Token:</span>
@@ -270,7 +270,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
             <span className="text-primary">{formatNumber(125, { suffix: '%' })}</span>
           </div>
         </div>
-        
+
         <div className="bg-card rounded-lg p-4 mb-6 border border-border/50">
           <div className="flex justify-between items-center mb-3">
             <h4 className="text-foreground font-medium">Buy $HATM</h4>
@@ -311,11 +311,11 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
               <span>SOL</span>
             </div>
           </div>
-          
+
           <div className="flex justify-center mb-4">
             <i className="ri-arrow-down-line text-foreground/50"></i>
           </div>
-          
+
           <div className="bg-muted rounded-lg p-3 mb-4 flex justify-between items-center">
             <Input 
               type="number" 
@@ -329,7 +329,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
               <span>HATM</span>
             </div>
           </div>
-          
+
           {showReferralInput && (
             <div className="bg-muted rounded-lg p-3 mb-4">
               <Label htmlFor="referral-code" className="text-xs text-foreground/70 mb-1 block">
@@ -339,11 +339,12 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
                 <Input 
                   id="referral-code"
                   placeholder="ENTER REFERRAL CODE" 
-                  className={`bg-background/30 border-border/30 ${referralFromLink ? 'opacity-80' : ''}`}
+                  className={`bg-background/30 border-border/30 ${referralFromLink ? 'opacity-80 cursor-not-allowed' : ''}`}
                   value={referralCode}
                   onChange={handleReferralCodeChange}
                   readOnly={referralFromLink}
                   disabled={referralFromLink}
+                  style={referralFromLink ? { backgroundColor: 'rgba(0,0,0,0.1)' } : {}}
                 />
                 {!referralFromLink ? (
                   <Button 
@@ -361,7 +362,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
               </div>
             </div>
           )}
-        
+
           <Button 
             className="w-full py-3 gradient-button"
             onClick={handleBuy}
@@ -369,7 +370,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
             {connected ? 'Buy $HATM' : 'Connect Wallet to Buy'}
           </Button>
         </div>
-        
+
         <div className="text-xs text-foreground/70 bg-muted p-2 rounded-lg">
           <p className="flex items-center gap-1">
             <i className="ri-information-line"></i>
