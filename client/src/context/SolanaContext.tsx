@@ -126,9 +126,9 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return localStorage.getItem('preferredWallet') as WalletType | null;
   };
 
-  // Initialize connection to Solana devnet
+  // Initialize connection to Solana testnet
   useEffect(() => {
-    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    const connection = new Connection(clusterApiUrl('testnet'), 'confirmed');
     setConnection(connection);
 
     // Try to reconnect to the previously used wallet
@@ -251,7 +251,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Create a URL with important connection info
     const currentUrl = window.location.href;
     const appName = 'HackedATM'; // Name to display in wallet connection
-    const cluster = 'devnet'; // Using Solana devnet
+    const cluster = 'testnet'; // Using Solana testnet
     
     // Base parameters for connection request
     const baseParams = {
@@ -269,8 +269,8 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       connectionParams = new URLSearchParams({
         app: appName,
         redirect: currentUrl,
-        // Important: Specify devnet explicitly (default is mainnet)
-        cluster: 'devnet'
+        // Important: Specify testnet explicitly (default is mainnet)
+        cluster: 'testnet'
       }).toString();
     } else if (walletType === 'solflare') {
       // Solflare needs these specific params

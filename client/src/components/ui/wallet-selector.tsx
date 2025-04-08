@@ -53,7 +53,7 @@ const PhantomQRCode = () => {
         const params = new URLSearchParams({
           app: appName,
           redirect: redirectUrl,
-          cluster: 'devnet' // Explicitly using devnet
+          cluster: 'testnet' // Explicitly using testnet
         });
         const phantomUrl = `${baseUrl}?${params.toString()}`;
         
