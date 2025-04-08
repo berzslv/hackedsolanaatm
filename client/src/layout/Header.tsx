@@ -3,6 +3,7 @@ import { Link, useLocation } from 'wouter';
 import { WalletButton } from '@/components/ui/wallet-button';
 import { useSolana } from '@/context/SolanaContext';
 import WhitepaperDialog from '@/components/WhitepaperDialog';
+import { SolanaWalletButton } from '@/components/ui/wallet-adapter';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -61,7 +62,8 @@ const Header = () => {
         </div>
         
         <div className="flex items-center gap-3 z-10">
-          <WalletButton />
+          {/* Use the new Solana wallet adapter button */}
+          <SolanaWalletButton />
           <button 
             className="lg:hidden text-foreground/80 hover:text-primary" 
             onClick={toggleMenu}
@@ -87,12 +89,10 @@ const Header = () => {
             <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
             <NavigationLink href="/#faq">FAQ</NavigationLink>
             <button onClick={() => setShowWhitepaper(true)} className="text-foreground/80 hover:text-primary py-2 transition-colors z-10 text-left w-full">Whitepaper</button>
-            {!connected && (
-              <WalletButton 
-                onClick={() => {}}
-                className="sm:hidden w-full z-10"
-              />
-            )}
+            {/* Mobile wallet button */}
+            <div className="sm:hidden w-full z-10">
+              <SolanaWalletButton />
+            </div>
           </div>
         </div>
       )}
