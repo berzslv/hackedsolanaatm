@@ -18,12 +18,15 @@ export function SolanaQRCode({ walletType = 'phantom' }: SolanaQRCodeProps) {
         // Get app name
         const appName = 'HackedATM';
         
-        // Generate deep link for Phantom wallet
+        // Generate deep link for Phantom wallet with v1 connect protocol
         let deepLink = '';
         if (walletType === 'phantom') {
-          deepLink = `https://phantom.app/ul/browse/${encodeURIComponent(currentUrl)}`;
+          // Use v1 connect protocol for direct connection
+          deepLink = `https://phantom.app/ul/v1/connect?app=${encodeURIComponent(appName)}&redirect=${encodeURIComponent(currentUrl)}&cluster=mainnet-beta`;
+          console.log("Generated Phantom QR code URL:", deepLink);
         } else if (walletType === 'solflare') {
           deepLink = `https://solflare.com/ul/browse/${encodeURIComponent(currentUrl)}`;
+          console.log("Generated Solflare QR code URL:", deepLink);
         }
         
         // Generate QR code for the deep link
