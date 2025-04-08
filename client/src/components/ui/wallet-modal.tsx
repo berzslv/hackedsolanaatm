@@ -12,6 +12,7 @@ import { Copy } from 'lucide-react';
 import { shortenAddress } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SolanaQRCode } from '@/components/ui/solana-qr-code';
+import { Web3AuthButton } from '@/components/Web3AuthButton';
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -97,28 +98,61 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground mb-4">
                 To interact with the Hacked ATM Token platform, please connect your Solana wallet.
-                If you don't have a wallet yet, we recommend using Phantom.
               </p>
               
-              <Tabs defaultValue="browser" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="browser">Browser</TabsTrigger>
-                  <TabsTrigger value="mobile">Mobile QR</TabsTrigger>
+              <Tabs defaultValue="web3auth" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="web3auth">Web3Auth</TabsTrigger>
+                  <TabsTrigger value="wallets">Wallets</TabsTrigger>
+                  <TabsTrigger value="mobile">QR Codes</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="browser" className="mt-4">
-                  <Button 
-                    className="w-full bg-purple-600 hover:bg-purple-700"
-                    onClick={handleConnect}
-                  >
-                    Connect with Phantom
-                  </Button>
+                <TabsContent value="web3auth" className="mt-4">
+                  <div className="mb-2 px-1 text-sm text-muted-foreground">
+                    Email/social login with Solana wallet support
+                  </div>
+                  <Web3AuthButton />
+                </TabsContent>
+                
+                <TabsContent value="wallets" className="mt-4">
+                  <div className="space-y-3">
+                    <div className="mb-2 px-1 text-sm text-muted-foreground">
+                      Select your browser wallet
+                    </div>
+                    <Button 
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                      onClick={handleConnect}
+                    >
+                      Connect with Phantom
+                    </Button>
+                    <Button 
+                      className="w-full bg-orange-600 hover:bg-orange-700"
+                      onClick={() => {
+                        window.open('https://solflare.com/', '_blank');
+                      }}
+                    >
+                      Use Solflare
+                    </Button>
+                  </div>
                 </TabsContent>
                 
                 <TabsContent value="mobile" className="mt-2">
-                  <SolanaQRCode walletType="phantom" />
+                  <Tabs defaultValue="phantom" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="phantom">Phantom</TabsTrigger>
+                      <TabsTrigger value="solflare">Solflare</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="phantom" className="mt-2">
+                      <SolanaQRCode walletType="phantom" />
+                    </TabsContent>
+                    
+                    <TabsContent value="solflare" className="mt-2">
+                      <SolanaQRCode walletType="solflare" />
+                    </TabsContent>
+                  </Tabs>
                 </TabsContent>
               </Tabs>
             </div>
