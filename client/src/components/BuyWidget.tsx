@@ -58,15 +58,15 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       setReferralCode(refFromContext);
       setReferralValid(true);
       
-      if (referralFromLink) {
-        // Automatically mark as valid since it was already validated in ReferralContext
+      if (referralFromLink && connected) {
+        // Only show toast when wallet is connected
         toast({
           title: "Referral code applied",
           description: `Referral code ${refFromContext} has been automatically applied.`,
         });
       }
     }
-  }, [refFromContext, referralFromLink, toast]);
+  }, [refFromContext, referralFromLink, connected, toast]);
 
   const handleSolInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
