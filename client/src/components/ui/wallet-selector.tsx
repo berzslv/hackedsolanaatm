@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useSolana, WalletType } from '@/context/SolanaContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { PhantomConnector } from '@/components/ui/phantom-connector';
 
 const walletInfo = {
   phantom: {
@@ -136,6 +137,40 @@ export function WalletSelector() {
           
           <TabsContent value="direct" className="mt-2">
             <div className="grid gap-4 py-2">
+              {/* Direct Phantom connector for more reliable connection */}
+              <div className="mb-3">
+                <div className="text-sm text-muted-foreground mb-2 text-center">
+                  Recommended Connection Method
+                </div>
+                
+                <PhantomConnector
+                  onConnect={(pubKeyString) => {
+                    try {
+                      // Use the connect method from context
+                      connectWallet('phantom')
+                        .then(() => {
+                          console.log("Successfully connected via PhantomConnector");
+                          setShowWalletSelector(false);
+                        })
+                        .catch(error => {
+                          console.error("Error in connectWallet:", error);
+                        });
+                    } catch (e) {
+                      console.error("Error in PhantomConnector callback:", e);
+                    }
+                  }}
+                />
+              </div>
+              
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t"></span>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">or Standard Wallet Options</span>
+                </div>
+              </div>
+              
               {(Object.keys(walletInfo) as WalletType[]).map((wallet) => (
                 <Button
                   key={wallet}

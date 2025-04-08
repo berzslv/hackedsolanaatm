@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useSolana } from '@/context/SolanaContext';
 import { Copy } from 'lucide-react';
 import { shortenAddress } from '@/lib/utils';
+import { PhantomConnector } from '@/components/ui/phantom-connector';
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -17,7 +18,9 @@ interface WalletModalProps {
 }
 
 export function WalletModal({ isOpen, onClose }: WalletModalProps) {
-  const { connected, publicKey, balance, connectWallet, disconnectWallet } = useSolana();
+  // Get the full context including internal setter methods 
+  const solanaContext = useSolana();
+  const { connected, publicKey, balance, connectWallet, disconnectWallet } = solanaContext;
   const [copied, setCopied] = useState(false);
   
   const handleCopyAddress = () => {
@@ -99,20 +102,45 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
               </p>
               
               <div className="flex flex-col gap-3">
-                <Button 
-                  className="w-full bg-purple-600 hover:bg-purple-700"
-                  onClick={handleConnect}
-                >
-                  Connect with Phantom
-                </Button>
+                {/* Use our direct connector instead of the contextual one */}
+                <div className="mb-4 text-sm text-center text-muted-foreground">
+                  Connect directly with Phantom wallet for more reliable connection
+                </div>
                 
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => window.open('https://phantom.app/', '_blank')}
-                >
-                  Get Phantom Wallet
-                </Button>
+                <PhantomConnector 
+                  onConnect={(pubKeyString: string) => {
+                    try {
+                      // Import the PublicKey class from @solana/web3.js
+                      const { PublicKey } = require('@solana/web3.js');
+                      
+                      // Create a PublicKey object from the string
+                      const solanaPublicKey = new PublicKey(pubKeyString);
+                      
+                      // Get the provider from window.solana or window.phantom.solana
+                      let provider = null;
+                      if ('phantom' in window) {
+                        // @ts-ignore
+                        provider = window.phantom?.solana;
+                      }
+                      if (!provider && 'solana' in window) {
+                        // @ts-ignore
+                        provider = window.solana;
+                      }
+                      
+                      // Use the connect method from SolanaContext
+                      connectWallet('phantom')
+                        .then(() => {
+                          console.log("Successfully connected via wallet modal direct connector");
+                          onClose();
+                        })
+                        .catch(error => {
+                          console.error("Error in connectWallet:", error);
+                        });
+                    } catch (e) {
+                      console.error("Error in PhantomConnector callback:", e);
+                    }
+                  }}
+                />
               </div>
             </div>
           )}
