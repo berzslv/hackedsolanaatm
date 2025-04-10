@@ -125,9 +125,10 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    // This method is not actively used in our application,
+    // as our user model doesn't have a username field, but
+    // it's kept for compatibility with the IStorage interface
+    return undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
@@ -753,5 +754,5 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Use DatabaseStorage instead of MemStorage
-export const storage = new DatabaseStorage();
+// Use MemStorage for simplicity
+export const storage = new MemStorage();

@@ -221,7 +221,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          walletAddress: publicKey.toString(),
+          walletAddress: publicKey ? publicKey.toString() : '',
           solAmount: inputAmount,
           referralCode: referralValid ? localReferralCode : undefined
         }),
