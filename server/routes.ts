@@ -241,44 +241,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Using mint: ${mintPublicKey.toString()}`);
       console.log(`Authority: ${mintAuthority.publicKey.toString()}`);
       
-      // Using program IDs imported from @solana/spl-token
-      
       // Recipient's wallet
       const recipientWallet = new PublicKey(walletAddress);
       
-      // Get the associated token account address
-      const associatedTokenAddress = await getAssociatedTokenAddress(
-        mintPublicKey,
-        recipientWallet,
-        false,
-        TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
-      );
-      
-      console.log(`Token account for recipient: ${associatedTokenAddress.toString()}`);
-      
-      // Check if the token account exists
-      let createAta = false;
       try {
-        await getAccount(connection, associatedTokenAddress, undefined, TOKEN_PROGRAM_ID);
-        console.log("Token account exists");
-      } catch (error) {
-        if (error instanceof TokenAccountNotFoundError) {
-          console.log("Token account does not exist, will create it");
-          createAta = true;
-        } else {
-          console.error("Error checking token account:", error);
-          throw error;
-        }
-      }
-      
-      // Create the transaction
-      const transaction = new Transaction();
-      
-      // First get a SOL airdrop for the authority if needed to pay for the transaction
-      try {
+        // Request SOL airdrop for the authority to pay for transaction fees if needed
         const authorityBalance = await connection.getBalance(mintAuthority.publicKey);
-        if (authorityBalance < 0.02 * LAMPORTS_PER_SOL) {
+        if (authorityBalance < 0.05 * LAMPORTS_PER_SOL) {
           console.log("Requesting SOL airdrop for authority to pay fees");
           const airdropSignature = await connection.requestAirdrop(
             mintAuthority.publicKey,
@@ -286,57 +255,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
           await connection.confirmTransaction(airdropSignature);
         }
-      } catch (error) {
-        console.error("Error with SOL airdrop for authority:", error);
-        // Continue anyway, might still have enough balance
-      }
-      
-      // If the token account doesn't exist, add instruction to create it
-      if (createAta) {
-        transaction.add(
-          createAssociatedTokenAccountInstruction(
-            mintAuthority.publicKey, // payer
-            associatedTokenAddress, // associated token account address
-            recipientWallet, // owner
+        
+        // Find or create the associated token account
+        let associatedTokenAddress: PublicKey;
+        
+        try {
+          // Try to find the recipient's token account
+          associatedTokenAddress = await getAssociatedTokenAddress(
+            mintPublicKey,
+            recipientWallet
+          );
+          
+          console.log(`Checking for token account: ${associatedTokenAddress.toString()}`);
+          
+          try {
+            await getAccount(connection, associatedTokenAddress);
+            console.log("Token account exists");
+          } catch (error) {
+            if (error instanceof TokenAccountNotFoundError) {
+              console.log("Creating associated token account...");
+              const tx = new Transaction().add(
+                createAssociatedTokenAccountInstruction(
+                  mintAuthority.publicKey, // payer
+                  associatedTokenAddress, // associated token account
+                  recipientWallet, // owner
+                  mintPublicKey // mint
+                )
+              );
+              
+              const createAccountSignature = await sendAndConfirmTransaction(
+                connection,
+                tx,
+                [mintAuthority]
+              );
+              
+              console.log(`Created token account: ${createAccountSignature}`);
+            } else {
+              throw error;
+            }
+          }
+        } catch (error) {
+          console.error("Error with token account:", error);
+          return res.status(500).json({
+            error: "Failed to create token account",
+            details: error instanceof Error ? error.message : String(error)
+          });
+        }
+        
+        // Now mint tokens to the associated token account
+        console.log("Minting tokens...");
+        const amount = BigInt(1000 * Math.pow(10, 9)); // 1000 tokens with 9 decimals
+        
+        const mintTx = new Transaction().add(
+          createMintToInstruction(
             mintPublicKey, // mint
-            TOKEN_PROGRAM_ID,
-            ASSOCIATED_TOKEN_PROGRAM_ID
+            associatedTokenAddress, // destination
+            mintAuthority.publicKey, // authority
+            amount // amount
           )
         );
+        
+        const signature = await sendAndConfirmTransaction(
+          connection,
+          mintTx,
+          [mintAuthority]
+        );
+        
+        console.log(`Tokens minted! Signature: ${signature}`);
+        
+        // Return success with the transaction signature
+        return res.json({
+          success: true,
+          message: "1000 HATM tokens have been airdropped to your wallet",
+          amount: 1000,
+          signature,
+          explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=devnet`
+        });
+      } catch (error) {
+        console.error("Error processing token airdrop:", error);
+        return res.status(500).json({
+          error: "Failed to airdrop tokens",
+          details: error instanceof Error ? error.message : String(error)
+        });
       }
-      
-      // Mint 1000 tokens to the recipient (with 9 decimals)
-      const amount = 1000 * Math.pow(10, 9); // 1000 tokens assuming 9 decimals
-      
-      transaction.add(
-        createMintToInstruction(
-          mintPublicKey, // mint
-          associatedTokenAddress, // destination
-          mintAuthority.publicKey, // authority
-          BigInt(amount), // amount
-          [],
-          TOKEN_PROGRAM_ID
-        )
-      );
-      
-      // Sign and send the transaction
-      console.log("Sending transaction...");
-      const signature = await sendAndConfirmTransaction(
-        connection,
-        transaction,
-        [mintAuthority] // signers
-      );
-      
-      console.log(`Transaction sent! Signature: ${signature}`);
-      
-      // Return success with the transaction signature
-      return res.json({
-        success: true,
-        message: "1000 HATM tokens have been airdropped to your wallet",
-        amount: 1000,
-        signature,
-        explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=devnet`
-      });
     } catch (error) {
       console.error("Error processing token airdrop:", error);
       return res.status(500).json({ 
@@ -363,8 +364,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Processing buy request for wallet: ${walletAddress}, SOL amount: ${parsedSolAmount}`);
       
-      // In a real implementation, we'd handle the actual token purchase here
-      // For now, we'll simulate the purchase by minting tokens
+      // Calculate fee based on referral code
+      let feePercentage = 0.08; // 8% default fee
+      
+      if (referralCode) {
+        // Check if referral code is valid
+        const isValid = await storage.validateReferralCode(referralCode);
+        if (isValid) {
+          feePercentage = 0.06; // 6% fee with valid referral
+          
+          // Record the referral
+          try {
+            // Create a referral record
+            const referralData = {
+              referrerAddress: "simulated-referrer-address", // Placeholder for demo
+              buyerAddress: walletAddress,
+              transactionHash: "devnet-" + Date.now(),
+              amount: parsedSolAmount,
+              reward: parsedSolAmount * 0.02 // 2% reward for referrer
+            };
+            
+            await storage.createReferral(referralData);
+            console.log(`Referral recorded for code: ${referralCode}`);
+          } catch (error) {
+            console.error("Error creating referral:", error);
+            // Continue with the purchase even if referral recording fails
+          }
+        }
+      }
       
       // Get Solana connection and mint authority
       const connection = getSolanaConnection();
@@ -373,115 +400,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Recipient's wallet
       const recipientWallet = new PublicKey(walletAddress);
       
-      // Using program IDs imported from @solana/spl-token
-
-      // Get the associated token account
-      const associatedTokenAddress = await getAssociatedTokenAddress(
-        mintPublicKey,
-        recipientWallet,
-        false,
-        TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
-      );
-      
-      // Check if the token account exists
-      let createAta = false;
-      try {
-        await getAccount(connection, associatedTokenAddress, undefined, TOKEN_PROGRAM_ID);
-      } catch (error) {
-        if (error instanceof TokenAccountNotFoundError) {
-          createAta = true;
-        } else {
-          throw error;
-        }
-      }
-      
-      // Create the transaction
-      const transaction = new Transaction();
-      
-      // If the token account doesn't exist, add instruction to create it
-      if (createAta) {
-        transaction.add(
-          createAssociatedTokenAccountInstruction(
-            mintAuthority.publicKey, // payer
-            associatedTokenAddress, // associated token account
-            recipientWallet, // owner
-            mintPublicKey, // mint
-            TOKEN_PROGRAM_ID,
-            ASSOCIATED_TOKEN_PROGRAM_ID
-          )
-        );
-      }
-      
-      // Calculate token amount (for now, a simple 1 SOL = 100 HATM ratio)
+      // Calculate token amount
       const tokenPrice = 0.01; // 1 HATM = 0.01 SOL
       const tokenAmount = Math.floor(parsedSolAmount / tokenPrice);
-      const tokenAmountWithDecimals = tokenAmount * Math.pow(10, 9); // 9 decimals
+      const tokenAmountWithDecimals = BigInt(tokenAmount * Math.pow(10, 9)); // 9 decimals
       
-      // Calculate fee based on referral code
-      let feePercentage = 0.08; // 8% default fee
-      let referrerWallet = null;
+      // Find or create the associated token account
+      let associatedTokenAddress: PublicKey;
       
-      if (referralCode) {
-        // Check if referral code is valid
-        const isValid = await storage.validateReferralCode(referralCode);
-        if (isValid) {
-          feePercentage = 0.06; // 6% fee with valid referral
-          
-          // In a real implementation, we'd send a portion of the fee to the referrer
-          // For this demo, we'll just record the referral
-          
-          // For demo purposes only, create a mock referral
-          try {
-            // Create a fake referral record
-            const referralData = {
-              referrerAddress: "simulated-referrer-address", // Since we're using MemStorage we can use placeholder values
-              buyerAddress: walletAddress,
-              transactionHash: "devnet-" + Date.now(),
-              amount: parsedSolAmount,
-              reward: parsedSolAmount * 0.02 // 2% reward for referrer
-            };
+      try {
+        // Get the associated token account address
+        associatedTokenAddress = await getAssociatedTokenAddress(
+          mintPublicKey,
+          recipientWallet
+        );
+        
+        console.log(`Checking for token account: ${associatedTokenAddress.toString()}`);
+        
+        try {
+          // Check if the token account exists
+          await getAccount(connection, associatedTokenAddress);
+          console.log("Token account exists");
+        } catch (error) {
+          if (error instanceof TokenAccountNotFoundError) {
+            console.log("Creating associated token account...");
             
-            await storage.createReferral(referralData);
-          } catch (error) {
-            console.error("Error creating referral:", error);
-            // Continue with the purchase even if referral recording fails
+            // Create a transaction to create the token account
+            const createTx = new Transaction().add(
+              createAssociatedTokenAccountInstruction(
+                mintAuthority.publicKey, // payer
+                associatedTokenAddress, // associated token account
+                recipientWallet, // owner
+                mintPublicKey // mint
+              )
+            );
+            
+            // Send and confirm the transaction
+            const createAccountSignature = await sendAndConfirmTransaction(
+              connection,
+              createTx,
+              [mintAuthority]
+            );
+            
+            console.log(`Created token account: ${createAccountSignature}`);
+          } else {
+            throw error;
           }
         }
+        
+        // Now mint tokens to the token account
+        console.log(`Minting ${tokenAmount} tokens...`);
+        
+        // Create a transaction to mint tokens
+        const mintTx = new Transaction().add(
+          createMintToInstruction(
+            mintPublicKey, // mint
+            associatedTokenAddress, // destination
+            mintAuthority.publicKey, // authority
+            tokenAmountWithDecimals // amount
+          )
+        );
+        
+        // Send and confirm the transaction
+        const signature = await sendAndConfirmTransaction(
+          connection,
+          mintTx,
+          [mintAuthority]
+        );
+        
+        console.log(`Buy transaction successful! Signature: ${signature}`);
+        
+        // Return success with transaction details
+        return res.json({
+          success: true,
+          message: `Successfully purchased ${tokenAmount} HATM tokens`,
+          solAmount: parsedSolAmount,
+          tokenAmount,
+          feePercentage: feePercentage * 100,
+          referralApplied: feePercentage === 0.06,
+          signature,
+          explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=devnet`
+        });
+      } catch (error) {
+        console.error("Error in buy transaction:", error);
+        return res.status(500).json({
+          error: "Failed to buy tokens",
+          details: error instanceof Error ? error.message : String(error)
+        });
       }
-      
-      // Mint tokens to recipient (simulating the purchase)
-      transaction.add(
-        createMintToInstruction(
-          mintPublicKey, // mint
-          associatedTokenAddress, // destination
-          mintAuthority.publicKey, // authority
-          BigInt(tokenAmountWithDecimals), // amount
-          [],
-          TOKEN_PROGRAM_ID
-        )
-      );
-      
-      // Sign and send the transaction
-      const signature = await sendAndConfirmTransaction(
-        connection,
-        transaction,
-        [mintAuthority] // signers
-      );
-      
-      console.log(`Buy transaction sent! Signature: ${signature}`);
-      
-      // Return success with transaction details
-      return res.json({
-        success: true,
-        message: `Successfully purchased ${tokenAmount} HATM tokens`,
-        solAmount: parsedSolAmount,
-        tokenAmount,
-        feePercentage: feePercentage * 100,
-        referralApplied: feePercentage === 0.06,
-        signature,
-        explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=devnet`
-      });
     } catch (error) {
       console.error("Error processing token purchase:", error);
       return res.status(500).json({
