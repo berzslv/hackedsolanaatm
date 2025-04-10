@@ -220,7 +220,11 @@ export class MemStorage implements IStorage {
     const id = this.currentId++;
     const referral: Referral = {
       id,
-      ...referralData,
+      referrerAddress: referralData.referrerAddress,
+      buyerAddress: referralData.buyerAddress, 
+      transactionHash: referralData.transactionHash,
+      amount: referralData.amount,
+      reward: referralData.reward,
       createdAt: new Date()
     };
     
@@ -294,7 +298,7 @@ export class MemStorage implements IStorage {
       };
       
       // Replace in Map
-      this.stakingData.set(existingStake.id, staking);
+      this.stakingData.set(String(existingStake.id), staking);
     } else {
       // Create new stake
       const id = this.currentId++;
@@ -306,7 +310,7 @@ export class MemStorage implements IStorage {
         stakedAt: new Date()
       };
       
-      this.stakingData.set(id, staking);
+      this.stakingData.set(String(id), staking);
     }
     
     // Update token stats
@@ -354,9 +358,9 @@ export class MemStorage implements IStorage {
     
     // If complete unstake, remove entry, otherwise update
     if (updatedStaking.amountStaked <= 0) {
-      this.stakingData.delete(stakingEntry.id);
+      this.stakingData.delete(String(stakingEntry.id));
     } else {
-      this.stakingData.set(stakingEntry.id, updatedStaking);
+      this.stakingData.set(String(stakingEntry.id), updatedStaking);
     }
     
     // Update token stats
@@ -387,11 +391,16 @@ export class MemStorage implements IStorage {
     const id = this.currentId++;
     const entry: Leaderboard = {
       id,
-      ...leaderboardEntry,
+      walletAddress: leaderboardEntry.walletAddress,
+      type: leaderboardEntry.type,
+      period: leaderboardEntry.period,
+      amount: leaderboardEntry.amount,
+      rank: leaderboardEntry.rank,
+      additionalInfo: leaderboardEntry.additionalInfo ?? null,
       updatedAt: new Date()
     };
     
-    this.leaderboardData.set(id, entry);
+    this.leaderboardData.set(String(id), entry);
     return entry;
   }
 }
