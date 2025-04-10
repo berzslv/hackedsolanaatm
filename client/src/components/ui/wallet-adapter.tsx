@@ -99,7 +99,7 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
     
     // Add a global unhandled promise rejection handler
     const originalUnhandledRejection = window.onunhandledrejection;
-    window.onunhandledrejection = function(this: Window, event: PromiseRejectionEvent) {
+    window.onunhandledrejection = function(event: PromiseRejectionEvent) {
       const reason = event.reason;
       // Check if it's a wallet-related error
       if (reason && 
@@ -115,9 +115,9 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
       
       // Otherwise, call the original handler
       if (typeof originalUnhandledRejection === 'function') {
-        return originalUnhandledRejection.call(this, event);
+        return originalUnhandledRejection(event);
       }
-    } as OnUnhandledRejectionEventHandler;
+    };
     
     // Listen for wallet connection events from wallet apps
     const handleWalletConnect = (event: MessageEvent) => {

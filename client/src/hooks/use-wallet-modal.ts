@@ -1,25 +1,25 @@
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 
-// This hook wraps the wallet adapter's useWalletModal to provide consistent behavior
-export function useOpenWalletModal() {
-  const { setVisible } = useWalletModal();
-  
-  // Return a function that safely opens the wallet modal
-  return () => {
-    try {
-      setVisible(true);
-    } catch (error) {
-      console.error("Error opening wallet modal:", error);
-      
-      // Alternative approach using direct DOM interaction with the wallet button
-      setTimeout(() => {
-        const walletButton = document.querySelector('.wallet-adapter-button-trigger');
-        if (walletButton && walletButton instanceof HTMLElement) {
-          walletButton.click();
-        } else {
-          console.warn("Could not find wallet button to click");
-        }
-      }, 100);
+// This function directly opens the wallet adapter modal
+const openModal = () => {
+  try {
+    // Find and click the wallet connect button
+    const walletButton = document.querySelector('.wallet-adapter-button-trigger');
+    if (walletButton && walletButton instanceof HTMLElement) {
+      walletButton.click();
+    } else {
+      console.warn("Could not find wallet button to click");
     }
-  };
+  } catch (error) {
+    console.error("Error opening wallet modal:", error);
+  }
+};
+
+// Main export - for backward compatibility, this is a function that can be called directly
+export function useOpenWalletModal() {
+  // Return the function for backward compatibility
+  return openModal;
 }
+
+// For places that try to directly import the open function
+export const openWalletModal = openModal;
