@@ -173,48 +173,99 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       return;
     }
 
-    // If a referral code is provided, validate it first
-    if (localReferralCode && localReferralCode.length === 6) {
-      try {
-        const response = await fetch(`/api/validate-referral/${localReferralCode}`);
-        const data = await response.json();
-
-        if (!response.ok || !data.valid) {
+    try {
+      // If a referral code is provided, validate it first
+      if (localReferralCode && localReferralCode.length === 6) {
+        try {
+          const response = await fetch(`/api/validate-referral/${localReferralCode}`);
+          const data = await response.json();
+  
+          if (!response.ok || !data.valid) {
+            toast({
+              title: "Invalid referral code",
+              description: "The referral code you entered does not exist. Please remove it or use a valid code.",
+              variant: "destructive",
+            });
+            return;
+          }
+  
+          // Confirm referral code was successfully applied
+          setReferralCode(localReferralCode);
+          setReferralValid(true);
+          
           toast({
-            title: "Invalid referral code",
-            description: "The referral code you entered does not exist. Please remove it or use a valid code.",
+            title: "Referral code valid",
+            description: `Using referral code: ${localReferralCode} (6% fee)`,
+          });
+        } catch (error) {
+          console.error("Error validating referral code:", error);
+          toast({
+            title: "Validation failed",
+            description: "Could not validate the referral code. Please try again.",
             variant: "destructive",
           });
           return;
         }
-
-        // Confirm referral code was successfully applied
-        setReferralCode(localReferralCode);
-        setReferralValid(true);
-        
-        // Valid referral code
-        toast({
-          title: "Purchasing with referral",
-          description: `Buying HATM with valid referral code: ${localReferralCode}`,
-        });
-      } catch (error) {
-        console.error("Error validating referral code:", error);
-        toast({
-          title: "Validation failed",
-          description: "Could not validate the referral code. Please try again.",
-          variant: "destructive",
-        });
-        return;
       }
-    } else {
+      
+      // Show purchasing toast
       toast({
-        title: "Purchase initiated",
-        description: "No referral code applied. You'll pay 8% fee instead of 6%.",
+        title: "Processing purchase",
+        description: `Buying HATM tokens with ${inputAmount} SOL...`,
+      });
+      
+      // Call our buy endpoint
+      const response = await fetch('/api/buy-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: publicKey.toString(),
+          solAmount: inputAmount,
+          referralCode: referralValid ? localReferralCode : undefined
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        toast({
+          title: "Purchase successful!",
+          description: (
+            <div className="flex flex-col gap-1">
+              <p>{data.message}</p>
+              <p className="text-xs">Fee: {data.feePercentage}%</p>
+              {data.referralApplied && <p className="text-xs text-primary">Referral code applied</p>}
+              {data.explorerUrl && (
+                <a 
+                  href={data.explorerUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary underline text-xs"
+                >
+                  View transaction on Solana Explorer
+                </a>
+              )}
+            </div>
+          ),
+          duration: 10000, // Show for 10 seconds so user can click the link
+        });
+        
+        // Clear input fields
+        setSolAmount('');
+        setHatchAmount('');
+      } else {
+        throw new Error(data.error || "Failed to purchase tokens");
+      }
+    } catch (error) {
+      console.error("Error processing purchase:", error);
+      toast({
+        title: "Purchase failed",
+        description: "Failed to complete the token purchase. Please try again.",
+        variant: "destructive",
       });
     }
-
-    // Will be implemented with Solana integration
-    // No popup alert, just the flashing effect
   };
 
   return (

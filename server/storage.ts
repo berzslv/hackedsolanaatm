@@ -61,6 +61,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getUserByWalletAddress(walletAddress: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
   
   // Token stats methods
   getTokenStats(): Promise<TokenStats>;

@@ -1,7 +1,7 @@
 // Solana token configuration
 export const TOKEN_CONFIG = {
   // HackATM Token on Devnet
-  mint: "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk",
+  mint: "12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5",
   authority: "2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap",
   name: "Hacked ATM Token",
   symbol: "HATM",
