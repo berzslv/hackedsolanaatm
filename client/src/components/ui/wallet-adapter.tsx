@@ -97,10 +97,11 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
       return false;
     };
     
-    // Add a global unhandled promise rejection handler
-    const originalUnhandledRejection = window.onunhandledrejection;
-    window.onunhandledrejection = function(event: PromiseRejectionEvent) {
+    // Add a global unhandled promise rejection handler without using the window handler
+    // which avoids TypeScript issues with 'this' binding
+    function handleUnhandledRejection(event: PromiseRejectionEvent) {
       const reason = event.reason;
+      
       // Check if it's a wallet-related error
       if (reason && 
          (reason.toString().includes('wallet') || 
@@ -110,14 +111,16 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
         
         console.warn('Suppressing wallet-related unhandled rejection:', reason);
         event.preventDefault(); // Prevent default error handling
+        event.stopPropagation(); // Stop propagation
         return true; // Prevent the error from bubbling up
       }
       
-      // Otherwise, call the original handler
-      if (typeof originalUnhandledRejection === 'function') {
-        return originalUnhandledRejection(event);
-      }
-    };
+      // For other errors, let them propagate
+      return false;
+    }
+    
+    // Add event listener directly instead of using the onunhandledrejection property
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
     
     // Listen for wallet connection events from wallet apps
     const handleWalletConnect = (event: MessageEvent) => {
@@ -198,8 +201,8 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
     
     return () => {
       window.removeEventListener('message', handleWalletConnect);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       window.onerror = originalOnError;
-      window.onunhandledrejection = originalUnhandledRejection;
     };
   }, []);
 

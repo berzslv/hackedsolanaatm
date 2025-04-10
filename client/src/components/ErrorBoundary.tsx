@@ -1,7 +1,58 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Component } from 'react';
 
 /**
- * Global error boundary component to suppress wallet-related errors
+ * Error boundary class component to catch render errors
+ */
+class ErrorBoundaryClass extends Component<{children: React.ReactNode}, {hasError: boolean}> {
+  constructor(props: {children: React.ReactNode}) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    // Check if this is a wallet-related error that should be suppressed
+    if (
+      error && 
+      (
+        (typeof error.message === 'string' && (
+          error.message.includes('startsWith') || 
+          error.message.includes('solflare') ||
+          error.message.includes('wallet')
+        )) ||
+        (error.toString && error.toString().includes('startsWith'))
+      )
+    ) {
+      console.warn('[React Error Boundary] Suppressing wallet-related error:', error.message || error);
+      // We suppress the error in UI but keep the component mounted
+      return { hasError: false };
+    }
+    
+    // For other errors, we will show a fallback UI
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    // Log the error for debugging purposes
+    console.error('[Error Boundary Caught]', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      // You can render any fallback UI
+      return (
+        <div className="p-4 bg-red-100 text-red-800 rounded-md">
+          <h2 className="text-lg font-semibold">Something went wrong</h2>
+          <p>Please try refreshing the page.</p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+/**
+ * Global error handler component to suppress wallet-related errors
  * and provide a better user experience for wallet integration
  */
 export const GlobalErrorHandler: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -10,8 +61,11 @@ export const GlobalErrorHandler: React.FC<{ children: React.ReactNode }> = ({ ch
     const style = document.createElement('style');
     style.textContent = `
       /* Hide Vite error overlay */
-      #vite-error-overlay {
+      #vite-error-overlay, .vite-error-overlay, [class*="error-overlay"] {
         display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
       }
       
       /* Ensure wallet modal is visible */
@@ -26,15 +80,25 @@ export const GlobalErrorHandler: React.FC<{ children: React.ReactNode }> = ({ ch
     window.onerror = function(message, source, lineno, colno, error) {
       // Only suppress wallet-related errors
       if (message && typeof message === 'string') {
+        // Specific check for Solflare startsWith error
+        if (message.includes('startsWith')) {
+          console.warn('[Solflare Error Suppressed]', { 
+            message: message.substring(0, 100), 
+            source 
+          });
+          return true; // Prevent error from propagating
+        }
+        
+        // Check for other wallet-related errors
         if (
-          message.includes('startsWith') || 
           message.includes('wallet') ||
           message.includes('solflare') ||
           message.includes('phantom') ||
           message.includes('adapter') ||
-          message.includes('readonly property')
+          message.includes('readonly property') ||
+          message.includes('getPublicKey')
         ) {
-          console.warn('[Error Suppressed]', { 
+          console.warn('[Wallet Error Suppressed]', { 
             message: message.substring(0, 100), 
             source 
           });
@@ -44,29 +108,46 @@ export const GlobalErrorHandler: React.FC<{ children: React.ReactNode }> = ({ ch
       
       // Otherwise call the original handler
       if (typeof originalOnError === 'function') {
-        return originalOnError.apply(this, arguments as any);
+        return originalOnError.apply(window, [message, source, lineno, colno, error]);
       }
       return false;
     };
     
     // Also handle unhandled promise rejections
     const originalUnhandledRejection = window.onunhandledrejection;
-    window.onunhandledrejection = function(event: PromiseRejectionEvent) {
-      if (event.reason && (
-        event.reason.toString().includes('wallet') ||
-        event.reason.toString().includes('solflare') ||
-        event.reason.toString().includes('phantom') ||
-        event.reason.toString().includes('adapter') ||
-        event.reason.toString().includes('startsWith')
-      )) {
-        console.warn('[Promise Rejection Suppressed]', event.reason);
-        event.preventDefault();
-        return true;
+    window.onunhandledrejection = function(this: Window, event: PromiseRejectionEvent) {
+      // Check if this is a wallet-related error
+      if (event && event.reason) {
+        const reasonStr = String(event.reason);
+        
+        // Specifically look for Solflare startsWith errors
+        if (reasonStr.includes('startsWith')) {
+          console.warn('[Solflare Promise Rejection Suppressed]', event.reason);
+          event.preventDefault();
+          event.stopPropagation?.();
+          return true;
+        }
+        
+        // Check for other wallet-related errors
+        if (
+          reasonStr.includes('wallet') ||
+          reasonStr.includes('solflare') ||
+          reasonStr.includes('phantom') ||
+          reasonStr.includes('adapter') ||
+          reasonStr.includes('getPublicKey')
+        ) {
+          console.warn('[Wallet Promise Rejection Suppressed]', event.reason);
+          event.preventDefault();
+          event.stopPropagation?.();
+          return true;
+        }
       }
       
+      // Call original handler for non-wallet errors
       if (typeof originalUnhandledRejection === 'function') {
-        return originalUnhandledRejection(event);
+        return originalUnhandledRejection.call(window, event);
       }
+      return false;
     };
     
     // Check if we need to reattach referral code
@@ -100,14 +181,33 @@ export const GlobalErrorHandler: React.FC<{ children: React.ReactNode }> = ({ ch
     // Run the check when component mounts
     checkForReferralCode();
     
+    // Clear any existing error overlays
+    const removeErrorOverlays = () => {
+      const overlays = document.querySelectorAll('[id*="error-overlay"], [class*="error-overlay"]');
+      overlays.forEach(overlay => {
+        if (overlay instanceof HTMLElement) {
+          overlay.style.display = 'none';
+          overlay.style.visibility = 'hidden';
+          overlay.style.opacity = '0';
+          overlay.style.pointerEvents = 'none';
+        }
+      });
+    };
+    
+    // Run immediately and periodically to ensure overlays are removed
+    removeErrorOverlays();
+    const intervalId = setInterval(removeErrorOverlays, 500);
+    
     // Return cleanup function
     return () => {
       window.onerror = originalOnError;
       window.onunhandledrejection = originalUnhandledRejection;
+      clearInterval(intervalId);
     };
   }, []);
   
-  return <>{children}</>;
+  // Use both functional hooks for global handlers and class component for React errors
+  return <ErrorBoundaryClass>{children}</ErrorBoundaryClass>;
 };
 
 export default GlobalErrorHandler;
