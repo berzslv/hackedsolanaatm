@@ -86,7 +86,22 @@ const AirdropButton: React.FC = () => {
       if (response.ok && data.success) {
         toast({
           title: "Airdrop successful!",
-          description: data.message,
+          description: (
+            <div className="flex flex-col gap-1">
+              <p>{data.message}</p>
+              {data.explorerUrl && (
+                <a 
+                  href={data.explorerUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary underline text-xs"
+                >
+                  View transaction on Solana Explorer
+                </a>
+              )}
+            </div>
+          ),
+          duration: 10000, // Show for 10 seconds so user can click the link
         });
         
         // For a better UX, we should update the user's token balance here
