@@ -244,6 +244,7 @@ export function SerumWalletAdapter() {
         </Button>
       ) : (
         <Button
+          id="connect-wallet-button"
           onClick={() => setShowDialog(true)}
           className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
         >

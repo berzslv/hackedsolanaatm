@@ -7,6 +7,7 @@ interface SolanaContextType {
   connected: boolean;
   publicKey: PublicKey | null;
   balance: number;
+  connectWallet: () => void;
   disconnectWallet: () => void;
   signMessage: (message: Uint8Array) => Promise<Uint8Array>;
   signTransaction: (transaction: VersionedTransaction) => Promise<VersionedTransaction>;
@@ -18,6 +19,7 @@ const SolanaContext = createContext<SolanaContextType>({
   connected: false,
   publicKey: null,
   balance: 0,
+  connectWallet: () => {},
   disconnectWallet: () => {},
   signMessage: async () => new Uint8Array(),
   signTransaction: async (tx) => tx,
@@ -34,7 +36,8 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     disconnect, 
     signMessage: adapterSignMessage,
     signTransaction: adapterSignTransaction,
-    sendTransaction: adapterSendTransaction, 
+    sendTransaction: adapterSendTransaction,
+    select, // Add wallet select method
   } = useWallet();
   
   const [connection, setConnection] = useState<Connection | null>(null);
@@ -67,6 +70,13 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch (error) {
       console.error('Error fetching balance:', error);
     }
+  };
+
+  // Connect wallet - show the wallet selection dialog
+  const connectWallet = () => {
+    // Set showWalletModal to true to show the wallet dialog
+    // This is a bridge to our SerumWalletAdapter dialog
+    document.getElementById('connect-wallet-button')?.click();
   };
 
   // Disconnect wallet
@@ -123,6 +133,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         connected,
         publicKey,
         balance,
+        connectWallet,
         disconnectWallet,
         signMessage,
         signTransaction,
