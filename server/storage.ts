@@ -239,11 +239,18 @@ export class MemStorage implements IStorage {
   }
   
   async validateReferralCode(code: string): Promise<boolean> {
+    // For development/testing, accept "TEST" as a valid referral code
+    if (code === "TEST") {
+      console.log("TEST referral code accepted for testing");
+      return true;
+    }
+    
     // Find a user with this referral code
     const userWithCode = Array.from(this.users.values()).find(
       (user) => user.referralCode === code
     );
     
+    console.log(`Validating referral code "${code}": ${!!userWithCode}`);
     return !!userWithCode; // Return true if found, false if not
   }
 
@@ -538,12 +545,19 @@ export class DatabaseStorage implements IStorage {
   }
   
   async validateReferralCode(code: string): Promise<boolean> {
+    // For development/testing, accept "TEST" as a valid referral code
+    if (code === "TEST") {
+      console.log("TEST referral code accepted for testing");
+      return true;
+    }
+    
     // Find a user with this referral code
     const [user] = await db
       .select()
       .from(users)
       .where(eq(users.referralCode, code));
     
+    console.log(`Validating referral code "${code}": ${!!user}`);
     return !!user; // Return true if user exists with this code, false otherwise
   }
 
