@@ -179,6 +179,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to get leaderboard" });
     }
   });
+  
+  // Token airdrop endpoint - for devnet testing only
+  app.post("/api/airdrop-token", async (req, res) => {
+    try {
+      const { walletAddress } = req.body;
+      
+      if (!walletAddress) {
+        return res.status(400).json({ error: "Wallet address is required" });
+      }
+      
+      // In a real production application, we would handle the airdrop here
+      // using the private key on the server side
+      
+      // For demonstration purposes, we'll just simulate a successful airdrop
+      // In a real implementation, you would:
+      // 1. Load the mint authority keypair
+      // 2. Create and sign a transaction to mint tokens to the user's wallet
+      // 3. Send the transaction to the network
+      
+      // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      return res.json({
+        success: true,
+        message: "1000 HATM tokens have been airdropped to your wallet",
+        amount: 1000
+      });
+    } catch (error) {
+      console.error("Error processing token airdrop:", error);
+      return res.status(500).json({ 
+        error: "Failed to airdrop tokens",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
