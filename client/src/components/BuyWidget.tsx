@@ -187,7 +187,19 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
               title: "Test referral code applied",
               description: "Using TEST referral code (6% fee)",
             });
-          } else {
+          } 
+          // Accept the predefined codes without validation
+          else if (localReferralCode === "AKIPB0" || localReferralCode === "123456") {
+            console.log(`Using predefined code: ${localReferralCode}`);
+            setReferralCode(localReferralCode);
+            setReferralValid(true);
+            
+            toast({
+              title: "Referral code valid",
+              description: `Using referral code: ${localReferralCode} (6% fee)`,
+            });
+          }
+          else {
             // For other codes, validate with the server
             const response = await fetch(`/api/validate-referral/${localReferralCode}`);
             const data = await response.json();
@@ -195,7 +207,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
             if (!response.ok || !data.valid) {
               toast({
                 title: "Invalid referral code",
-                description: "The referral code you entered does not exist. Please use TEST for testing.",
+                description: "The referral code you entered does not exist. Try AKIPB0 or 123456.",
                 variant: "destructive",
               });
               return;
@@ -214,7 +226,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
           console.error("Error validating referral code:", error);
           toast({
             title: "Validation failed",
-            description: "Could not validate the referral code. Please try using TEST for testing.",
+            description: "Could not validate the referral code. Try AKIPB0 or 123456.",
             variant: "destructive",
           });
           return;

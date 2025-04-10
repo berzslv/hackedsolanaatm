@@ -239,9 +239,9 @@ export class MemStorage implements IStorage {
   }
   
   async validateReferralCode(code: string): Promise<boolean> {
-    // For development/testing, accept "TEST" as a valid referral code
-    if (code === "TEST") {
-      console.log("TEST referral code accepted for testing");
+    // For development/testing, accept specific codes
+    if (code === "TEST" || code === "AKIPB0" || code === "123456") {
+      console.log(`Referral code "${code}" accepted for testing`);
       return true;
     }
     
@@ -545,9 +545,9 @@ export class DatabaseStorage implements IStorage {
   }
   
   async validateReferralCode(code: string): Promise<boolean> {
-    // For development/testing, accept "TEST" as a valid referral code
-    if (code === "TEST") {
-      console.log("TEST referral code accepted for testing");
+    // For development/testing, accept specific codes
+    if (code === "TEST" || code === "AKIPB0" || code === "123456") {
+      console.log(`Referral code "${code}" accepted for testing`);
       return true;
     }
     
