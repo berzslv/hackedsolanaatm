@@ -1,16 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { GradientText } from "@/components/ui/gradient-text";
 import { StatsCard } from "@/components/ui/stats-card";
+import { useWalletModalOpener } from "@/components/ui/wallet-adapter";
 import BuyWidget from "@/components/BuyWidget";
 import { Link } from "wouter";
 import { useSolana } from "@/context/SolanaContext";
-import { useWallet } from "@solana/wallet-adapter-react";
 import React, { useRef, useState } from "react";
 import WhitepaperDialog from '@/components/WhitepaperDialog';
 
 const HeroSection = () => {
   const { connected } = useSolana();
-  const { select } = useWallet();
+  const { openWalletModal } = useWalletModalOpener();
   const buyWidgetFlashRef = useRef<() => void>(null);
   const [showWhitepaper, setShowWhitepaper] = useState(false);
 
@@ -22,8 +22,8 @@ const HeroSection = () => {
         buyWidgetFlashRef.current();
       }
     } else {
-      // If not connected, open wallet selector
-      select(null); // This opens the wallet selection modal
+      // If not connected, open wallet selector modal
+      openWalletModal();
     }
   };
 
