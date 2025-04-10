@@ -1,4 +1,4 @@
-import React, { FC, useMemo } from 'react';
+import React, { FC, useMemo, useEffect } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { clusterApiUrl } from '@solana/web3.js';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
@@ -13,6 +13,11 @@ import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
 // Import CSS files for wallet adapter UI (required)
 import '@solana/wallet-adapter-react-ui/styles.css';
 
+// Mobile detection utility
+const isMobile = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
 export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ children }) => {
   // Set to 'mainnet-beta' for production, 'devnet' for development
   const network = 'mainnet-beta' as WalletAdapterNetwork;
@@ -20,14 +25,42 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
   // Get connection endpoint for the network
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
   
-  // Initialize wallet adapters
+  // Initialize wallet adapters with the correct configuration
   const wallets = useMemo(
     () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter({ network }),
+      new PhantomWalletAdapter({
+        // Enable deep linking for better mobile experience
+        appIdentity: { name: "Hacked ATM" }
+      }),
+      new SolflareWalletAdapter({ 
+        network
+      }),
     ],
     [network]
   );
+
+  // Add listener for mobile wallet connections
+  useEffect(() => {
+    // Only apply on mobile devices
+    if (isMobile()) {
+      console.log("Mobile device detected, enhancing wallet connections");
+      
+      // Listen for wallet connection events from mobile wallet app
+      const handleWalletConnect = (event: MessageEvent) => {
+        // Handle potential wallet connection messages
+        if (event.data && event.data.type === 'wallet-connect') {
+          console.log("Received wallet connect event from mobile wallet");
+          // Refresh the page to reconnect properly - only needed in certain cases
+          if (window.location.pathname !== '/') {
+            window.location.href = '/';
+          }
+        }
+      };
+      
+      window.addEventListener('message', handleWalletConnect);
+      return () => window.removeEventListener('message', handleWalletConnect);
+    }
+  }, []);
 
   return (
     <ConnectionProvider endpoint={endpoint}>

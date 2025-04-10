@@ -52,6 +52,8 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
   useEffect(() => {
     if (connected) {
       setShowReferralInput(true);
+    } else {
+      setShowReferralInput(false);
     }
   }, [connected]);
 
