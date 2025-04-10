@@ -239,13 +239,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Using mint: ${mintPublicKey.toString()}`);
       console.log(`Authority: ${mintAuthority.publicKey.toString()}`);
       
+      // Define program IDs
+      const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+      const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+      
       // Recipient's wallet
       const recipientWallet = new PublicKey(walletAddress);
       
-      // Get the associated token account
+      // Get the associated token account address
       const associatedTokenAddress = await getAssociatedTokenAddress(
         mintPublicKey,
-        recipientWallet
+        recipientWallet,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       );
       
       console.log(`Token account for recipient: ${associatedTokenAddress.toString()}`);
@@ -253,7 +260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if the token account exists
       let createAta = false;
       try {
-        await getAccount(connection, associatedTokenAddress);
+        await getAccount(connection, associatedTokenAddress, undefined, TOKEN_PROGRAM_ID);
         console.log("Token account exists");
       } catch (error) {
         if (error instanceof TokenAccountNotFoundError) {
@@ -291,7 +298,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             mintAuthority.publicKey, // payer
             associatedTokenAddress, // associated token account address
             recipientWallet, // owner
-            mintPublicKey // mint
+            mintPublicKey, // mint
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
           )
         );
       }
@@ -304,7 +313,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mintPublicKey, // mint
           associatedTokenAddress, // destination
           mintAuthority.publicKey, // authority
-          BigInt(amount) // amount
+          BigInt(amount), // amount
+          [],
+          TOKEN_PROGRAM_ID
         )
       );
       
@@ -362,16 +373,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Recipient's wallet
       const recipientWallet = new PublicKey(walletAddress);
       
+      // Define program IDs
+      const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+      const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+
       // Get the associated token account
       const associatedTokenAddress = await getAssociatedTokenAddress(
         mintPublicKey,
-        recipientWallet
+        recipientWallet,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       );
       
       // Check if the token account exists
       let createAta = false;
       try {
-        await getAccount(connection, associatedTokenAddress);
+        await getAccount(connection, associatedTokenAddress, undefined, TOKEN_PROGRAM_ID);
       } catch (error) {
         if (error instanceof TokenAccountNotFoundError) {
           createAta = true;
@@ -390,7 +408,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             mintAuthority.publicKey, // payer
             associatedTokenAddress, // associated token account
             recipientWallet, // owner
-            mintPublicKey // mint
+            mintPublicKey, // mint
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
           )
         );
       }
@@ -438,7 +458,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mintPublicKey, // mint
           associatedTokenAddress, // destination
           mintAuthority.publicKey, // authority
-          BigInt(tokenAmountWithDecimals) // amount
+          BigInt(tokenAmountWithDecimals), // amount
+          [],
+          TOKEN_PROGRAM_ID
         )
       );
       

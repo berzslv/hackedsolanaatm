@@ -135,7 +135,9 @@ export class MemStorage implements IStorage {
     const id = this.currentId++;
     const user: User = { 
       id, 
-      ...insertUser, 
+      walletAddress: insertUser.walletAddress,
+      referralCode: insertUser.referralCode,
+      referredBy: insertUser.referredBy ?? null,
       createdAt: new Date() 
     };
     this.users.set(id, user);
