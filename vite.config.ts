@@ -7,8 +7,8 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 export default defineConfig({
   server: {
     hmr: {
-      overlay: false
-    }
+      overlay: false,
+    },
   },
   plugins: [
     react(),
