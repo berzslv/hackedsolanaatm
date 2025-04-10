@@ -39,6 +39,94 @@ import path from "path";
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes
   
+  // Add a route to get token balance
+  app.get("/api/token-balance/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      
+      if (!walletAddress) {
+        return res.status(400).json({ error: "Wallet address is required" });
+      }
+      
+      // Import the token utility
+      const simpleToken = await import('./simple-token');
+      
+      // Get the token balance
+      const balance = await simpleToken.getTokenBalance(walletAddress);
+      
+      // Return the balance
+      return res.json({
+        success: true,
+        walletAddress,
+        balance
+      });
+    } catch (error) {
+      console.error("Error getting token balance:", error);
+      return res.status(500).json({
+        error: "Failed to get token balance",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // Add a route to transfer tokens between wallets
+  app.post("/api/transfer-token", async (req, res) => {
+    try {
+      const { senderWalletAddress, recipientWalletAddress, amount } = req.body;
+      
+      if (!senderWalletAddress || !recipientWalletAddress || !amount) {
+        return res.status(400).json({ 
+          error: "Sender wallet, recipient wallet, and amount are required" 
+        });
+      }
+      
+      // Parse amount
+      const parsedAmount = parseFloat(amount);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({ error: "Invalid amount" });
+      }
+      
+      console.log(`Processing transfer: ${parsedAmount} tokens from ${senderWalletAddress} to ${recipientWalletAddress}`);
+      
+      // Import the token transfer utility
+      const tokenTransfer = await import('./token-transfer');
+      
+      try {
+        // For demonstration, we're using the authority to transfer the tokens
+        // In a real application, the sender would sign this transaction from their wallet
+        const signature = await tokenTransfer.authorityTransferTokens(
+          recipientWalletAddress,
+          parsedAmount
+        );
+        
+        console.log(`Transfer successful! Signature: ${signature}`);
+        
+        // Return success with the transaction signature
+        return res.json({
+          success: true,
+          message: `${parsedAmount} tokens transferred successfully`,
+          senderWalletAddress,
+          recipientWalletAddress,
+          amount: parsedAmount,
+          signature,
+          explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=devnet`
+        });
+      } catch (error) {
+        console.error("Error in token transfer:", error);
+        return res.status(500).json({
+          error: "Failed to transfer tokens",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } catch (error) {
+      console.error("Error processing token transfer:", error);
+      return res.status(500).json({
+        error: "Failed to transfer tokens",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
   // Get token stats
   app.get("/api/token-stats", async (req, res) => {
     try {
@@ -222,17 +310,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Processing airdrop request for wallet: ${walletAddress}`);
       
       try {
-        // Import the simplified token utilities
+        // Import the token utilities
         const simpleToken = await import('./simple-token');
         
-        // Mint tokens (this is now using a much simpler approach as a fallback)
+        // Mint tokens using SPL token program
         const signature = await simpleToken.mintTokens(walletAddress, 1000);
+        
+        // Get the updated token balance
+        const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
         
         // Return success with the transaction signature
         return res.json({
           success: true,
-          message: "SOL has been transferred to your wallet (simplified fallback)",
+          message: "1000 HATM tokens have been airdropped to your wallet",
           amount: 1000,
+          currentBalance: tokenBalance,
           signature,
           explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=devnet`
         });
@@ -298,25 +390,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Import the simplified token utilities
+      // Import the token utilities
       const simpleToken = await import('./simple-token');
       
-      // Calculate token amount
+      // Calculate token amount with fees applied
       const tokenPrice = 0.01; // 1 HATM = 0.01 SOL
-      const tokenAmount = Math.floor(parsedSolAmount / tokenPrice);
+      const effectiveSolAmount = parsedSolAmount * (1 - feePercentage);
+      const tokenAmount = Math.floor(effectiveSolAmount / tokenPrice);
       
       try {
-        // Use simplified approach to transfer SOL as a fallback
+        // Use SPL token program to mint tokens
         const signature = await simpleToken.mintTokens(walletAddress, tokenAmount);
+        
+        // Get the updated token balance
+        const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
         
         console.log(`Buy transaction successful! Signature: ${signature}`);
         
         // Return success with transaction details
         return res.json({
           success: true,
-          message: `SOL has been transferred to your wallet (simplified fallback)`,
+          message: `${tokenAmount} HATM tokens have been purchased successfully`,
           solAmount: parsedSolAmount,
           tokenAmount,
+          currentBalance: tokenBalance,
           feePercentage: feePercentage * 100,
           referralApplied: feePercentage === 0.06,
           signature,
