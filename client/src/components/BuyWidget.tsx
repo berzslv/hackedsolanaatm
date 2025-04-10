@@ -47,11 +47,9 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
     }
   }, [triggerFlash, flashRef]);
 
-  // Show referral code input if user is connected
+  // Show referral code input if user is connected, hide if disconnected
   useEffect(() => {
-    if (connected) {
-      setShowReferralInput(true);
-    }
+    setShowReferralInput(connected);
   }, [connected]);
 
   // Apply referral code from URL if available
@@ -143,7 +141,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
 
   const handleBuy = async () => {
     if (!connected) {
-      connectWallet();
+      select(null); // Open wallet selector
       return;
     }
 
