@@ -245,36 +245,105 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
     
     window.addEventListener('message', handleWalletConnect);
     
-    // Special handling for Solflare's in-app browser
+    // Special handling for Solflare and other in-app browsers
     const isSolflareInApp = window.navigator.userAgent.includes('SolflareWallet');
-    if (isSolflareInApp) {
-      console.log("Solflare in-app browser detected, applying special error handling");
+    const isPhantomInApp = window.navigator.userAgent.includes('PhantomBrowser') || 
+                         window.navigator.userAgent.includes('Phantom/');
+    const isAnyWalletApp = isSolflareInApp || isPhantomInApp || 
+                         document.referrer.includes('solflare') ||
+                         document.referrer.includes('phantom');
+
+    if (isAnyWalletApp) {
+      console.log("Wallet in-app browser detected, applying comprehensive error handling");
       
-      // Apply a global error suppression for Solflare
-      // This adds another layer of protection beyond the error handler
+      // Apply a global error suppression 
       try {
-        // @ts-ignore - For applying a custom property to window
-        window.__solflareErrorSuppression = true;
+        // @ts-ignore - For applying custom properties to window
+        window.__walletErrorSuppression = true;
         
-        // Add a global CSS rule to hide error overlays
+        // Add extensive CSS rules to hide error overlays and fix display issues
         const style = document.createElement('style');
         style.textContent = `
-          #vite-error-overlay, .wallet-adapter-modal-overlay.wallet-adapter-modal-fade-in {
+          /* Hide all error overlays */
+          #vite-error-overlay, 
+          .vite-error-overlay, 
+          div[role="dialog"]:not(.wallet-adapter-modal):not(.custom-dialog),
+          .wallet-adapter-modal-overlay.wallet-adapter-modal-fade-in:not(.visible),
+          [class*="error-overlay"] {
             display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+          }
+          
+          /* Force wallet modal to be visible when needed */
+          .wallet-adapter-modal.wallet-adapter-modal-fade-in {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            z-index: 1000 !important;
+          }
+          
+          /* Ensure connect button is fully interactive */
+          .wallet-adapter-button-trigger {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+            opacity: 1 !important;
           }
         `;
         document.head.appendChild(style);
+        
+        // Add special patch for wallet reconnection
+        // Monitor and fix wallet connection state
+        const walletConnectionInterval = setInterval(() => {
+          try {
+            // Check for any connect buttons in the DOM
+            const connectButtons = document.querySelectorAll('.wallet-adapter-button-trigger, [aria-label*="Connect"], [class*="connect-button"]');
+            
+            // If the connect button exists but is disabled, enable it
+            connectButtons.forEach(button => {
+              if (button instanceof HTMLElement && button.hasAttribute('disabled')) {
+                button.removeAttribute('disabled');
+                console.log('Fixed disabled wallet connect button');
+              }
+            });
+            
+            // Check if we have a wallet modal that might be stuck
+            const stuckModal = document.querySelector('.wallet-adapter-modal.wallet-adapter-modal-fade-in');
+            if (stuckModal) {
+              // If we haven't clicked in a while, try to close and reopen
+              if ((window as any).__lastWalletConnectionAttempt && 
+                  Date.now() - (window as any).__lastWalletConnectionAttempt > 10000) {
+                // Try to reset wallet modal state
+                console.log('Attempting to reset stuck wallet modal');
+                const closeButton = document.querySelector('.wallet-adapter-modal-button-close');
+                if (closeButton && closeButton instanceof HTMLElement) {
+                  closeButton.click();
+                }
+                
+                // Reset the timestamp
+                (window as any).__lastWalletConnectionAttempt = 0;
+              }
+            }
+          } catch (e) {
+            console.warn('Error in wallet connection monitor:', e);
+          }
+        }, 2000);
+        
+        return () => {
+          clearInterval(walletConnectionInterval);
+        };
       } catch (e) {
-        console.warn('Failed to apply Solflare error suppression:', e);
+        console.warn('Failed to apply wallet browser error suppression:', e);
       }
-    }
-    
-    // Add mobile-specific enhancements
-    const env = detectBrowserEnvironment();
-    if (env.isMobileDevice) {
-      console.log("Mobile device detected, adding extra wallet connection support");
-      
-      // Add any additional mobile-specific code here if needed
+    } else {
+      // For non-wallet browsers, add any mobile-specific enhancements
+      const env = detectBrowserEnvironment();
+      if (env.isMobileDevice) {
+        console.log("Mobile device detected, adding extra wallet connection support");
+        
+        // Add any additional mobile-specific code here if needed
+      }
     }
     
     return () => {

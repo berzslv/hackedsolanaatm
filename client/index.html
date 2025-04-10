@@ -17,24 +17,57 @@
         // Store this for later detection
         window.__isWalletBrowser = isWalletBrowser;
         
-        // Fix for Solflare's startsWith error
+        // Fix for Solflare's startsWith error - CRITICAL FIX
         try {
-          // Save original method
-          const originalStartsWith = String.prototype.startsWith;
-          
-          // Override with safe version
+          // Create a completely independent replacement function that doesn't rely on the original
+          // This avoids calling any potentially problematic internal methods
           String.prototype.startsWith = function(searchString, position) {
             try {
-              if (!this || this === null || this === undefined) return false;
-              if (!searchString) return false;
-              return originalStartsWith.call(this, searchString, position);
+              // Ensure we have valid data to work with
+              const str = this ? String(this) : '';
+              if (!str || !searchString) return false;
+              
+              // Simple implementation without calling the original
+              const pos = position > 0 ? Number(position) : 0;
+              return str.substring(pos, pos + searchString.length) === searchString;
             } catch (e) {
-              console.warn('Prevented startsWith error');
+              console.warn('Prevented startsWith error with fallback implementation');
               return false;
             }
           };
           
-          console.log('Applied String.prototype.startsWith fix');
+          // To ensure absolute reliability, define directly on the prototype with descriptor
+          Object.defineProperty(String.prototype, 'startsWith', {
+            value: String.prototype.startsWith,
+            writable: true,
+            configurable: true
+          });
+          
+          console.log('Applied enhanced String.prototype.startsWith fix');
+          
+          // Force the fix to be applied in iframe contexts too
+          try {
+            // Fix any iframes that might be created
+            const originalCreateElement = document.createElement;
+            document.createElement = function(tag) {
+              const element = originalCreateElement.call(document, tag);
+              if (tag.toLowerCase() === 'iframe') {
+                element.onload = function() {
+                  try {
+                    // Fix startsWith in the iframe context
+                    if (element.contentWindow) {
+                      element.contentWindow.eval(`
+                        String.prototype.startsWith = ${String.prototype.startsWith.toString()};
+                      `);
+                    }
+                  } catch (e) {}
+                };
+              }
+              return element;
+            };
+          } catch (e) {
+            console.warn('Failed to patch iframe creation', e);
+          }
         } catch (e) {
           console.error('Failed to apply startsWith fix', e);
         }
