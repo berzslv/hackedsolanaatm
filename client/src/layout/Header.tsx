@@ -56,6 +56,7 @@ const Header = () => {
         
         <div className="hidden lg:flex items-center space-x-6 z-10">
           <NavigationLink href="/#about">About</NavigationLink>
+          <NavigationLink href="/#tokens">Tokens</NavigationLink>
           <NavigationLink href="/#staking">Staking</NavigationLink>
           <NavigationLink href="/#referral">Referral</NavigationLink>
           <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
@@ -87,6 +88,7 @@ const Header = () => {
             </div>
             
             <NavigationLink href="/#about">About</NavigationLink>
+            <NavigationLink href="/#tokens">Tokens</NavigationLink>
             <NavigationLink href="/#staking">Staking</NavigationLink>
             <NavigationLink href="/#referral">Referral</NavigationLink>
             <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>

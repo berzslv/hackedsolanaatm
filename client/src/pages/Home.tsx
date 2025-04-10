@@ -1,5 +1,6 @@
 import HeroSection from '@/components/sections/HeroSection';
 import FeaturesSection from '@/components/sections/FeaturesSection';
+import TokensSection from '@/components/sections/TokensSection';
 import StakingSection from '@/components/sections/StakingSection';
 import ReferralSection from '@/components/sections/ReferralSection';
 import LeaderboardSection from '@/components/sections/LeaderboardSection';
@@ -15,6 +16,7 @@ const Home = () => {
     <>
       <HeroSection />
       <FeaturesSection />
+      <TokensSection /> {/* Add the new tokens section */}
       <StakingSection />
       <ReferralSection />
       <LeaderboardSection />
