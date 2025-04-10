@@ -4,7 +4,8 @@ import { clusterApiUrl } from '@solana/web3.js';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { 
   WalletModalProvider, 
-  WalletMultiButton 
+  WalletMultiButton,
+  useWalletModal
 } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
 import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
@@ -39,10 +40,13 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
   );
 };
 
+// Export a helper function to directly open the wallet modal
+export function useOpenWalletModal() {
+  const { setVisible } = useWalletModal();
+  return () => setVisible(true);
+}
+
 export const SolanaWalletButton: FC = () => {
-  // For simplicity, let's just use dark theme styling
-  const theme = 'dark';
-  
   return (
     <div className="wallet-adapter-container">
       <WalletMultiButton className="wallet-adapter-button" />
