@@ -22,7 +22,9 @@ import {
   createMintToInstruction,
   getAccount,
   getMint,
-  TokenAccountNotFoundError
+  TokenAccountNotFoundError,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
 import fs from "fs";
 import path from "path";
@@ -239,9 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Using mint: ${mintPublicKey.toString()}`);
       console.log(`Authority: ${mintAuthority.publicKey.toString()}`);
       
-      // Define program IDs
-      const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-      const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+      // Using program IDs imported from @solana/spl-token
       
       // Recipient's wallet
       const recipientWallet = new PublicKey(walletAddress);
@@ -373,9 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Recipient's wallet
       const recipientWallet = new PublicKey(walletAddress);
       
-      // Define program IDs
-      const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-      const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+      // Using program IDs imported from @solana/spl-token
 
       // Get the associated token account
       const associatedTokenAddress = await getAssociatedTokenAddress(

@@ -86,18 +86,18 @@ export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private stakingData: Map<string, Staking>;
   private referralsData: Map<number, Referral>;
-  private leaderboardData: Map<number, Leaderboard>;
+  private leaderboardData: Map<string, Leaderboard>;
   private rewardsData: Map<number, Reward>;
   private tokenStatsData: TokenStats | null;
   
   currentId: number;
 
   constructor() {
-    this.users = new Map();
-    this.stakingData = new Map();
-    this.referralsData = new Map();
-    this.leaderboardData = new Map();
-    this.rewardsData = new Map();
+    this.users = new Map<number, User>();
+    this.stakingData = new Map<string, Staking>();
+    this.referralsData = new Map<number, Referral>();
+    this.leaderboardData = new Map<string, Leaderboard>();
+    this.rewardsData = new Map<number, Reward>();
     this.tokenStatsData = null;
     this.currentId = 1;
     
