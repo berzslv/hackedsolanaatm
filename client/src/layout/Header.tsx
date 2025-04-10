@@ -48,7 +48,10 @@ const Header = () => {
             <i className="ri-bank-fill text-primary text-2xl"></i>
             <div className="absolute inset-0 animate-pulse-slow opacity-50 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-full"></div>
           </div>
-          <span className="font-display text-xl text-foreground">Hacked<span className="text-primary">ATM</span></span>
+          <div className="flex flex-col">
+            <span className="font-display text-xl text-foreground">Hacked<span className="text-primary">ATM</span></span>
+            <span className="text-[10px] -mt-1 text-accent">DEVNET MODE</span>
+          </div>
         </Link>
         
         <div className="hidden lg:flex items-center space-x-6 z-10">

@@ -245,7 +245,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
           </div>
           <div className="flex justify-between mb-2">
             <span className="text-foreground/70">Network:</span>
-            <span className="text-secondary">Solana</span>
+            <span className="text-secondary">Solana (Devnet)</span>
           </div>
           <div className="flex justify-between mb-2">
             <span className="text-foreground/70">Current Price:</span>

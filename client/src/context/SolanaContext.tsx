@@ -40,20 +40,20 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [connection, setConnection] = useState<Connection | null>(null);
   const [balance, setBalance] = useState(0);
 
-  // Initialize connection to Solana
+  // Initialize connection to Solana (using devnet for testing)
   useEffect(() => {
-    const connection = new Connection(clusterApiUrl('mainnet-beta'), 'confirmed');
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
     setConnection(connection);
   }, []);
 
   // Fetch balance when connected
   useEffect(() => {
-    if (connection && publicKey && publicKey.toBase58) {
+    if (connection && publicKey && typeof publicKey.toBase58 === 'function') {
       fetchBalance(connection, publicKey);
 
       // Setup balance refresh interval
       const intervalId = setInterval(() => {
-        if (connection && publicKey && publicKey.toBase58) {
+        if (connection && publicKey && typeof publicKey.toBase58 === 'function') {
           fetchBalance(connection, publicKey);
         }
       }, 30000); // every 30 seconds
@@ -78,8 +78,8 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Sign message
   const signMessage = async (message: Uint8Array): Promise<Uint8Array> => {
-    if (!connected || !publicKey || !publicKey.toBase58) {
-      throw new Error('Wallet not connected');
+    if (!connected || !publicKey || !adapterSignMessage) {
+      throw new Error('Wallet not connected or signMessage not available');
     }
 
     try {
@@ -92,8 +92,8 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Sign transaction
   const signTransaction = async (transaction: VersionedTransaction): Promise<VersionedTransaction> => {
-    if (!connected || !publicKey || !publicKey.toBase58) {
-      throw new Error('Wallet not connected');
+    if (!connected || !publicKey || !adapterSignTransaction) {
+      throw new Error('Wallet not connected or signTransaction not available');
     }
 
     try {
@@ -106,8 +106,12 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Send transaction
   const sendTransaction = async (transaction: VersionedTransaction): Promise<string> => {
-    if (!connected || !publicKey || !publicKey.toBase58) {
-      throw new Error('Wallet not connected');
+    if (!connected || !publicKey || !adapterSendTransaction) {
+      throw new Error('Wallet not connected or sendTransaction not available');
+    }
+    
+    if (!connection) {
+      throw new Error('Solana connection not established');
     }
 
     try {
