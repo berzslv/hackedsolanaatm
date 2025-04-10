@@ -41,6 +41,13 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         document.referrer.includes('phantom') ||
         document.referrer.includes('solflare');
       
+      console.log('Current browser environment:', {
+        isInWalletBrowser,
+        userAgent: window.navigator.userAgent,
+        referrer: document.referrer,
+        hasCodeFromUrl: !!codeFromUrl
+      });
+      
       // Check for a new referral code in the URL
       if (codeFromUrl) {
         try {
@@ -52,14 +59,14 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setReferralCode(codeFromUrl);
             setReferralFromLink(true);
             
-            // Store in session storage for persistence across page refreshes
+            // Store in both session and local storage for maximum persistence
             sessionStorage.setItem('referralCode', codeFromUrl);
+            localStorage.setItem('referralCode', codeFromUrl);
             sessionStorage.setItem('referralFromLink', 'true');
+            localStorage.setItem('referralFromLink', 'true');
             
             // Add a special flag for wallet browser detection
-            if (isInWalletBrowser) {
-              localStorage.setItem('walletReferralCode', codeFromUrl);
-            }
+            localStorage.setItem('walletReferralCode', codeFromUrl);
           } else {
             console.error(`Invalid referral code in URL: ${codeFromUrl}`);
           }
@@ -67,47 +74,54 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           console.error('Error validating referral code:', error);
         }
       } else {
-        // No referral code in URL, try to restore from storage
+        // No referral code in URL, try all storage options to restore one
+        const walletReferralCode = localStorage.getItem('walletReferralCode');
+        const localStorageCode = localStorage.getItem('referralCode');
+        const sessionStorageCode = sessionStorage.getItem('referralCode');
+        const finalCode = walletReferralCode || localStorageCode || sessionStorageCode;
         
-        // If in wallet browser, try to use the special wallet referral code
-        if (isInWalletBrowser) {
-          const walletReferralCode = localStorage.getItem('walletReferralCode');
-          if (walletReferralCode) {
-            console.log('Restored referral code in wallet browser:', walletReferralCode);
-            setReferralCode(walletReferralCode);
-            setReferralFromLink(true);
-            
-            // Reattach the code to the URL to ensure it persists
-            const currentUrl = new URL(window.location.href);
-            currentUrl.searchParams.set('ref', walletReferralCode);
-            window.history.replaceState({}, '', currentUrl.toString());
-            return;
-          }
-        }
+        console.log('Attempting to restore referral code from storage:', {
+          walletReferralCode,
+          localStorageCode,
+          sessionStorageCode,
+          finalCode
+        });
         
-        // Otherwise, check regular session storage
-        const storedCode = sessionStorage.getItem('referralCode');
-        const storedFromLink = sessionStorage.getItem('referralFromLink');
-        
-        if (storedCode) {
-          setReferralCode(storedCode);
-          setReferralFromLink(storedFromLink === 'true');
+        if (finalCode) {
+          console.log('Restored referral code from storage:', finalCode);
+          setReferralCode(finalCode);
+          setReferralFromLink(true);
           
-          // If we're in a wallet browser and have a referral code but it's not in the URL,
-          // reattach it to the URL
-          if (isInWalletBrowser) {
-            const currentUrl = new URL(window.location.href);
-            if (!currentUrl.searchParams.has('ref')) {
-              currentUrl.searchParams.set('ref', storedCode);
-              window.history.replaceState({}, '', currentUrl.toString());
-              console.log('Reattached referral code to URL in wallet browser:', storedCode);
-            }
+          // Always reattach the code to URL for consistency
+          const currentUrl = new URL(window.location.href);
+          if (!currentUrl.searchParams.has('ref')) {
+            currentUrl.searchParams.set('ref', finalCode);
+            window.history.replaceState({}, '', currentUrl.toString());
+            console.log('Reattached referral code to URL:', finalCode);
           }
         }
       }
     };
 
+    // Run immediately and also after a short delay to catch any late initializations
     checkReferralCode();
+    
+    // Add a small delay for in-wallet browsers that might need time to fully initialize
+    const delayedCheck = setTimeout(() => {
+      // Only run the delayed check if we're in a wallet browser or just loaded the page
+      const isInWalletBrowser = 
+        window.navigator.userAgent.includes('SolflareWallet') || 
+        window.navigator.userAgent.includes('PhantomWallet') ||
+        document.referrer.includes('phantom') ||
+        document.referrer.includes('solflare');
+        
+      if (isInWalletBrowser || location === '/') {
+        console.log('Running delayed referral code check for wallet browser');
+        checkReferralCode();
+      }
+    }, 1000);
+    
+    return () => clearTimeout(delayedCheck);
   }, [location]);
   
   const validateReferralCode = async (code: string): Promise<boolean> => {
