@@ -1,4 +1,4 @@
-import React, { FC, useMemo, useEffect } from 'react';
+import React, { FC, useMemo, useEffect, useState } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { clusterApiUrl } from '@solana/web3.js';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
@@ -9,13 +9,42 @@ import {
 } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
 import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
+import SolflareErrorHandler from './SolflareErrorHandler';
 
 // Import CSS files for wallet adapter UI (required)
 import '@solana/wallet-adapter-react-ui/styles.css';
 
-// Mobile detection utility
-const isMobile = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+// Enhanced mobile and wallet-browser detection utility
+const detectBrowserEnvironment = () => {
+  const userAgent = navigator.userAgent;
+  const referrer = document.referrer;
+  
+  // Check if mobile device
+  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+  
+  // Check specific wallet in-app browsers
+  const isPhantomBrowser = userAgent.includes('PhantomBrowser') || 
+                          referrer.includes('phantom') || 
+                          /Phantom/i.test(userAgent);
+                          
+  const isSolflareBrowser = userAgent.includes('SolflareWallet') || 
+                           referrer.includes('solflare') || 
+                           /Solflare/i.test(userAgent);
+  
+  // General wallet browser detection
+  const isWalletBrowser = isPhantomBrowser || 
+                         isSolflareBrowser || 
+                         referrer.includes('wallet') ||
+                         (isMobileDevice && window.parent !== window);
+  
+  return {
+    isMobileDevice,
+    isPhantomBrowser,
+    isSolflareBrowser,
+    isWalletBrowser,
+    userAgent,
+    referrer
+  };
 };
 
 export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -25,22 +54,68 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
   // Define a fixed endpoint for Solana mainnet-beta
   const endpoint = useMemo(() => 'https://api.mainnet-beta.solana.com', []);
   
+  // Track the environment for special handling
+  const [environment, setEnvironment] = useState({
+    isWalletBrowser: false,
+    isPhantomBrowser: false,
+    isSolflareBrowser: false,
+    isMobileDevice: false
+  });
+  
   // Initialize wallet adapters with the correct configuration
   const wallets = useMemo(
     () => {
-      // Check for referral code in URL or storage
+      // Check for referral code in URL or storage using multiple methods
       const urlParams = new URLSearchParams(window.location.search);
       const refCode = urlParams.get('ref');
-      const storedCode = localStorage.getItem('walletReferralCode') || 
-                        sessionStorage.getItem('referralCode');
       
-      // If we have a referral code, save it for wallet connection
+      // Try getting code from various storage mechanisms
+      const localStorageCode = localStorage.getItem('walletReferralCode') || 
+                              localStorage.getItem('referralCode');
+      const sessionStorageCode = sessionStorage.getItem('referralCode') || 
+                               sessionStorage.getItem('walletReferralCode');
+      const walletDataCode = localStorage.getItem('wallet_referral_data');
+      
+      // If we have a referral code in the URL, save it everywhere
       if (refCode) {
-        localStorage.setItem('walletReferralCode', refCode);
+        try {
+          localStorage.setItem('walletReferralCode', refCode);
+          localStorage.setItem('referralCode', refCode);
+          sessionStorage.setItem('referralCode', refCode);
+          sessionStorage.setItem('walletReferralCode', refCode);
+          localStorage.setItem('wallet_referral_data', refCode);
+          
+          // Also save it as a cookie for 30 days
+          const d = new Date();
+          d.setTime(d.getTime() + (30 * 24 * 60 * 60 * 1000));
+          const expires = "expires=" + d.toUTCString();
+          document.cookie = "referralCode=" + refCode + ";" + expires + ";path=/";
+        } catch (e) {
+          console.warn('Failed to save referral code to storage:', e);
+        }
       }
       
       // Final code to use (prioritize URL, then stored values)
-      const referralCode = refCode || storedCode;
+      const referralCode = refCode || 
+                         localStorageCode || 
+                         sessionStorageCode || 
+                         walletDataCode;
+      
+      // Attempt to extract referral code from cookie as fallback
+      if (!referralCode) {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.startsWith('referralCode=')) {
+            const cookieCode = cookie.substring('referralCode='.length, cookie.length);
+            if (cookieCode) {
+              localStorage.setItem('walletReferralCode', cookieCode);
+              localStorage.setItem('referralCode', cookieCode);
+              break;
+            }
+          }
+        }
+      }
       
       // Create deep link URL with referral code if available
       const deepLinkUrl = referralCode ? 
@@ -56,8 +131,10 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
             url: deepLinkUrl
           }
         }),
-        // Create Solflare adapter without network parameter to avoid type issues
-        new SolflareWalletAdapter(),
+        // Create Solflare adapter with improved config
+        new SolflareWalletAdapter({
+          network: network
+        }),
       ];
     },
     []
@@ -193,7 +270,8 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
     }
     
     // Add mobile-specific enhancements
-    if (isMobile()) {
+    const env = detectBrowserEnvironment();
+    if (env.isMobileDevice) {
       console.log("Mobile device detected, adding extra wallet connection support");
       
       // Add any additional mobile-specific code here if needed
@@ -207,11 +285,69 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
+  // Update the environment detection when the component mounts
+  useEffect(() => {
+    const env = detectBrowserEnvironment();
+    console.log("Current browser environment:", env);
+    setEnvironment({
+      isWalletBrowser: env.isWalletBrowser,
+      isPhantomBrowser: env.isPhantomBrowser,
+      isSolflareBrowser: env.isSolflareBrowser,
+      isMobileDevice: env.isMobileDevice
+    });
+    
+    // Check for referral code and restore it if needed
+    const checkReferralCode = () => {
+      // Try to get code from various sources
+      const urlParams = new URLSearchParams(window.location.search);
+      const refCode = urlParams.get('ref');
+      
+      const walletReferralCode = localStorage.getItem('walletReferralCode');
+      const localStorageCode = localStorage.getItem('referralCode');
+      const sessionStorageCode = sessionStorage.getItem('referralCode');
+      
+      console.log("Attempting to restore referral code from storage:", {
+        walletReferralCode,
+        localStorageCode,
+        sessionStorageCode,
+        finalCode: refCode || walletReferralCode || localStorageCode || sessionStorageCode
+      });
+      
+      // If we have a stored code but not in URL, add it to URL
+      const finalCode = refCode || walletReferralCode || localStorageCode || sessionStorageCode;
+      if (finalCode && !refCode) {
+        // Add it to the URL without reloading
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('ref', finalCode);
+        window.history.replaceState({}, '', currentUrl.toString());
+        console.log('Restored referral code to URL:', finalCode);
+      }
+    };
+    
+    // Run immediately
+    checkReferralCode();
+    
+    // For wallet browsers, do a delayed check to catch cases where the browser
+    // might have loaded partially
+    if (env.isWalletBrowser || env.isMobileDevice) {
+      setTimeout(() => {
+        console.log("Running delayed referral code check for wallet browser");
+        // Re-run environment detection in case it changed
+        const updatedEnv = detectBrowserEnvironment();
+        console.log("Current browser environment:", updatedEnv);
+        checkReferralCode();
+      }, 1000);
+    }
+  }, []);
+
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
-          {children}
+          {/* Use the SolflareErrorHandler to catch and suppress startsWith errors */}
+          <SolflareErrorHandler>
+            {children}
+          </SolflareErrorHandler>
         </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>

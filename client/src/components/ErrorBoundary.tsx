@@ -198,7 +198,12 @@ export const GlobalErrorHandler: React.FC<{ children: React.ReactNode }> = ({ ch
     
     // Return cleanup function
     return () => {
-      window.onerror = originalOnError;
+      // Restore original error handler if it exists
+      if (originalOnError) {
+        window.onerror = originalOnError;
+      }
+      
+      // Remove our custom event listeners
       window.removeEventListener('unhandledrejection', handleErrorBoundaryRejection);
       clearInterval(intervalId);
     };
