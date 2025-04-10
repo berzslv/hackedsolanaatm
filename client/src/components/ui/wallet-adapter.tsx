@@ -264,11 +264,10 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
         // Add extensive CSS rules to hide error overlays and fix display issues
         const style = document.createElement('style');
         style.textContent = `
-          /* Hide all error overlays */
+          /* Hide ONLY error overlays, but allow our own dialogs to display */
           #vite-error-overlay, 
           .vite-error-overlay, 
-          div[role="dialog"]:not(.wallet-adapter-modal):not(.custom-dialog),
-          .wallet-adapter-modal-overlay.wallet-adapter-modal-fade-in:not(.visible),
+          div[role="dialog"][aria-label*="error"]:not(.wallet-adapter-modal):not(.custom-dialog),
           [class*="error-overlay"] {
             display: none !important;
             visibility: hidden !important;
