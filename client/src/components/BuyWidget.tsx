@@ -143,7 +143,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
 
   const handleBuy = async () => {
     if (!connected) {
-      connectWallet();
+      select(null); // Open wallet selection modal
       return;
     }
 
