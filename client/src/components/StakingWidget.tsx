@@ -3,10 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSolana } from '@/context/SolanaContext';
 import { useTokenData } from '@/context/TokenDataContext';
+import { useWalletModalOpener } from '@/components/ui/wallet-adapter';
 import { shortenAddress } from '@/lib/utils';
 
 const StakingWidget = () => {
-  const { connected, publicKey, connectWallet } = useSolana();
+  const { connected, publicKey } = useSolana();
+  const { openWalletModal } = useWalletModalOpener();
   const { userStakedBalance, userPendingRewards, userTokenBalance } = useTokenData();
   
   const [stakeAmount, setStakeAmount] = useState<string>('');
@@ -17,7 +19,7 @@ const StakingWidget = () => {
   
   const handleStake = async () => {
     if (!connected) {
-      connectWallet();
+      openWalletModal();
       return;
     }
     
@@ -40,7 +42,7 @@ const StakingWidget = () => {
   
   const handleUnstake = async () => {
     if (!connected) {
-      connectWallet();
+      openWalletModal();
       return;
     }
     
@@ -54,7 +56,7 @@ const StakingWidget = () => {
   
   const handleClaimRewards = async () => {
     if (!connected) {
-      connectWallet();
+      openWalletModal();
       return;
     }
     
