@@ -22,21 +22,45 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
   // Set to 'mainnet-beta' for production, 'devnet' for development
   const network = 'mainnet-beta' as WalletAdapterNetwork;
   
-  // Get connection endpoint for the network
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  // Define a fixed endpoint for Solana mainnet-beta
+  const endpoint = useMemo(() => 'https://api.mainnet-beta.solana.com', []);
   
   // Initialize wallet adapters with the correct configuration
   const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter({
-        // Enable deep linking for better mobile experience
-        appIdentity: { name: "Hacked ATM" }
-      }),
-      new SolflareWalletAdapter({ 
-        network
-      }),
-    ],
-    [network]
+    () => {
+      // Check for referral code in URL or storage
+      const urlParams = new URLSearchParams(window.location.search);
+      const refCode = urlParams.get('ref');
+      const storedCode = localStorage.getItem('walletReferralCode') || 
+                        sessionStorage.getItem('referralCode');
+      
+      // If we have a referral code, save it for wallet connection
+      if (refCode) {
+        localStorage.setItem('walletReferralCode', refCode);
+      }
+      
+      // Final code to use (prioritize URL, then stored values)
+      const referralCode = refCode || storedCode;
+      
+      // Create deep link URL with referral code if available
+      const deepLinkUrl = referralCode ? 
+        `${window.location.origin}/?ref=${referralCode}` : 
+        window.location.origin;
+      
+      return [
+        new PhantomWalletAdapter({
+          // Enable deep linking for better mobile experience
+          appIdentity: { name: "Hacked ATM" },
+          // Add deep link redirect with referral code
+          metadata: {
+            url: deepLinkUrl
+          }
+        }),
+        // Create Solflare adapter without network parameter to avoid type issues
+        new SolflareWalletAdapter(),
+      ];
+    },
+    []
   );
 
   // Add error handling and message listening for wallet connections
