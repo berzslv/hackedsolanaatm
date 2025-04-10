@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useSolana } from '@/context/SolanaContext';
 import { useTokenData } from '@/context/TokenDataContext';
@@ -9,24 +9,14 @@ const ReferralDashboard = () => {
   const { connected, publicKey } = useSolana();
   const { referralCode, referralStats } = useTokenData();
   const { toast } = useToast();
-  const [referralLink, setReferralLink] = useState("");
-  
-  useEffect(() => {
-    if (connected && referralCode) {
-      const baseUrl = window.location.origin;
-      setReferralLink(`${baseUrl}/?ref=${referralCode}`);
-    } else {
-      setReferralLink("");
-    }
-  }, [connected, referralCode]);
   
   const copyToClipboard = () => {
-    if (!referralLink) return;
+    if (!referralCode) return;
     
-    navigator.clipboard.writeText(referralLink).then(() => {
+    navigator.clipboard.writeText(referralCode).then(() => {
       toast({
-        title: "Link copied!",
-        description: "Your referral link has been copied to clipboard."
+        title: "Code copied!",
+        description: "Your referral code has been copied to clipboard."
       });
     }).catch(err => {
       toast({
@@ -52,7 +42,7 @@ const ReferralDashboard = () => {
         
         <div className="bg-muted rounded-lg p-5 mb-6 border border-border/50">
           <div className="flex justify-between items-center mb-4">
-            <h4 className="text-foreground">Your Referral Link</h4>
+            <h4 className="text-foreground">Your Referral Code</h4>
             <div className="px-3 py-1 bg-background/50 rounded-full text-sm text-foreground/70">
               {connected && publicKey && typeof publicKey.toString === 'function' 
                 ? shortenAddress(publicKey.toString()) 
@@ -60,27 +50,18 @@ const ReferralDashboard = () => {
             </div>
           </div>
           
-          <div className="bg-background/50 rounded-lg p-3 mb-3 flex justify-between items-center">
-            <input 
-              type="text" 
-              value={connected ? referralLink : 'Connect wallet to generate your referral link'} 
-              className="bg-transparent w-full outline-none text-foreground/70 text-sm" 
-              readOnly 
-            />
+          <div className="bg-background/50 rounded-lg p-3 flex justify-between items-center">
+            <div className="text-foreground/80 text-lg font-mono">
+              {connected && referralCode ? referralCode : '------'}
+            </div>
             <button 
               className={`ml-2 px-3 py-1 bg-card/80 rounded text-sm text-foreground/70 hover:bg-card ${!connected && 'opacity-50'}`}
               onClick={copyToClipboard}
               disabled={!connected}
+              title="Copy referral code"
             >
               <i className="ri-file-copy-line"></i>
             </button>
-          </div>
-          
-          <div className="bg-background/50 rounded-lg p-3 flex justify-between items-center">
-            <div className="text-foreground/70 text-sm">Your Referral Code</div>
-            <div className="px-3 py-1 bg-card/80 rounded font-mono text-secondary">
-              {connected && referralCode ? referralCode : '----'}
-            </div>
           </div>
         </div>
         
@@ -135,7 +116,7 @@ const ReferralDashboard = () => {
                       <div className="flex items-center justify-center">
                         <p>
                           {connected 
-                            ? 'No referral activity yet. Share your link to start earning!' 
+                            ? 'No referral activity yet. Share your code to start earning!' 
                             : 'Connect wallet to see your referral activity'
                           }
                         </p>
@@ -165,8 +146,8 @@ const ReferralDashboard = () => {
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center text-secondary shrink-0">2</div>
               <div>
-                <h4 className="text-foreground font-medium mb-1">Share Your Link</h4>
-                <p className="text-foreground/70 text-sm">Share your referral link with friends, on social media, or in communities.</p>
+                <h4 className="text-foreground font-medium mb-1">Share Your Code</h4>
+                <p className="text-foreground/70 text-sm">Share your referral code with friends, on social media, or in communities.</p>
               </div>
             </div>
             
@@ -174,7 +155,7 @@ const ReferralDashboard = () => {
               <div className="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center text-secondary shrink-0">3</div>
               <div>
                 <h4 className="text-foreground font-medium mb-1">Earn Rewards</h4>
-                <p className="text-foreground/70 text-sm">When anyone buys or sells using your link, you earn 3% of the transaction value.</p>
+                <p className="text-foreground/70 text-sm">When anyone buys or sells using your code, you earn 3% of the transaction value.</p>
               </div>
             </div>
             

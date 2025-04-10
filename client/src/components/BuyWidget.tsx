@@ -319,26 +319,18 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
                 <Input 
                   id="referral-code"
                   placeholder="ENTER REFERRAL CODE" 
-                  className={`bg-background/30 border-border/30 ${referralFromLink ? 'opacity-80 cursor-not-allowed' : ''}`}
+                  className="bg-background/30 border-border/30"
                   value={referralCode}
                   onChange={handleReferralCodeChange}
-                  readOnly={referralFromLink}
-                  disabled={referralFromLink}
-                  style={referralFromLink ? { backgroundColor: 'rgba(0,0,0,0.1)' } : {}}
+                  maxLength={6}
                 />
-                {!referralFromLink ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={applyReferralCode}
-                  >
-                    Apply
-                  </Button>
-                ) : (
-                  <div className="px-3 py-1 text-xs bg-secondary/20 text-secondary border border-secondary/30 rounded-md">
-                    Auto-applied
-                  </div>
-                )}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={applyReferralCode}
+                >
+                  Apply
+                </Button>
               </div>
             </div>
           )}
