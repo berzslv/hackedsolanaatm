@@ -48,12 +48,12 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Fetch balance when connected
   useEffect(() => {
-    if (connection && publicKey && typeof publicKey.toBase58 === 'function') {
+    if (connection && publicKey && publicKey.toBase58) {
       fetchBalance(connection, publicKey);
 
       // Setup balance refresh interval
       const intervalId = setInterval(() => {
-        if (connection && publicKey && typeof publicKey.toBase58 === 'function') {
+        if (connection && publicKey && publicKey.toBase58) {
           fetchBalance(connection, publicKey);
         }
       }, 30000); // every 30 seconds
@@ -78,14 +78,11 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Sign message
   const signMessage = async (message: Uint8Array): Promise<Uint8Array> => {
-    if (!connected || !publicKey || typeof publicKey.toBase58 !== 'function') {
+    if (!connected || !publicKey || !publicKey.toBase58) {
       throw new Error('Wallet not connected');
     }
 
     try {
-      if (typeof adapterSignMessage !== 'function') {
-        throw new Error('Wallet does not support signing messages');
-      }
       return await adapterSignMessage(message);
     } catch (error) {
       console.error('Error signing message:', error);
@@ -95,14 +92,11 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Sign transaction
   const signTransaction = async (transaction: VersionedTransaction): Promise<VersionedTransaction> => {
-    if (!connected || !publicKey || typeof publicKey.toBase58 !== 'function') {
+    if (!connected || !publicKey || !publicKey.toBase58) {
       throw new Error('Wallet not connected');
     }
 
     try {
-      if (typeof adapterSignTransaction !== 'function') {
-        throw new Error('Wallet does not support signing transactions');
-      }
       return await adapterSignTransaction(transaction);
     } catch (error) {
       console.error('Error signing transaction:', error);
@@ -112,18 +106,11 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Send transaction
   const sendTransaction = async (transaction: VersionedTransaction): Promise<string> => {
-    if (!connected || !publicKey || typeof publicKey.toBase58 !== 'function') {
+    if (!connected || !publicKey || !publicKey.toBase58) {
       throw new Error('Wallet not connected');
-    }
-    
-    if (!connection) {
-      throw new Error('Connection not established');
     }
 
     try {
-      if (typeof adapterSendTransaction !== 'function') {
-        throw new Error('Wallet does not support sending transactions');
-      }
       return await adapterSendTransaction(transaction, connection);
     } catch (error) {
       console.error('Error sending transaction:', error);
