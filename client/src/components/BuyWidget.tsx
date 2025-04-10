@@ -18,11 +18,11 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
   const { openWalletModal } = useWalletModalOpener();
   const { tokenPrice } = useTokenData();
   const { toast } = useToast();
-  const { referralCode: refFromContext, referralFromLink } = useReferral();
+  const { referralCode, setReferralCode, validateReferralCode } = useReferral();
   const [solAmount, setSolAmount] = useState<string>('');
   const [hatchAmount, setHatchAmount] = useState<string>('');
-  const [referralCode, setReferralCode] = useState<string>('');
   const [referralValid, setReferralValid] = useState<boolean>(false);
+  const [localReferralCode, setLocalReferralCode] = useState<string>('');
   const [showReferralInput, setShowReferralInput] = useState<boolean>(false);
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const widgetRef = useRef<HTMLDivElement>(null);
@@ -52,22 +52,22 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
     setShowReferralInput(connected);
   }, [connected]);
 
-  // Apply referral code from URL if available
+  // Initialize localReferralCode from context's referralCode
   useEffect(() => {
-    if (refFromContext && refFromContext.length === 6) {
-      setReferralCode(refFromContext);
-      setReferralValid(true);
-      
-      if (referralFromLink && connected) {
-        // Only show toast when wallet is connected
-        toast({
-          title: "Referral code applied",
-          description: `Referral code ${refFromContext} has been automatically applied.`,
-        });
-      }
+    if (referralCode) {
+      setLocalReferralCode(referralCode);
     }
-  }, [refFromContext, referralFromLink, connected, toast]);
+  }, [referralCode]);
 
+  // Update referralValid state when a valid referral code is selected
+  useEffect(() => {
+    if (localReferralCode && localReferralCode.length === 6) {
+      setReferralValid(true);
+    } else {
+      setReferralValid(false);
+    }
+  }, [localReferralCode]);
+  
   const handleSolInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSolAmount(value);
@@ -97,11 +97,11 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
   const handleReferralCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Convert input to uppercase and limit to 6 characters
     const value = e.target.value.toUpperCase().slice(0, 6);
-    setReferralCode(value);
+    setLocalReferralCode(value);
   };
 
   const applyReferralCode = async () => {
-    if (referralCode.length !== 6) {
+    if (!localReferralCode || localReferralCode.length !== 6) {
       toast({
         title: "Invalid referral code",
         description: "Please enter a valid 6-character referral code.",
@@ -112,14 +112,16 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
 
     try {
       // Validate the referral code with the API
-      const response = await fetch(`/api/validate-referral/${referralCode}`);
+      const response = await fetch(`/api/validate-referral/${localReferralCode}`);
       const data = await response.json();
 
       if (response.ok && data.valid) {
         setReferralValid(true);
+        // Set the global context referral code when validated
+        setReferralCode(localReferralCode);
         toast({
           title: "Referral code applied",
-          description: `Valid referral code ${referralCode} applied for this purchase.`,
+          description: `Valid referral code ${localReferralCode} applied for this purchase.`,
         });
       } else {
         setReferralValid(false);
@@ -171,9 +173,9 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
     }
 
     // If a referral code is provided, validate it first
-    if (referralCode) {
+    if (localReferralCode && localReferralCode.length === 6) {
       try {
-        const response = await fetch(`/api/referrals/validate?code=${referralCode}`);
+        const response = await fetch(`/api/validate-referral/${localReferralCode}`);
         const data = await response.json();
 
         if (!response.ok || !data.valid) {
@@ -185,10 +187,14 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
           return;
         }
 
+        // Confirm referral code was successfully applied
+        setReferralCode(localReferralCode);
+        setReferralValid(true);
+        
         // Valid referral code
         toast({
           title: "Purchasing with referral",
-          description: `Buying HATM with valid referral code: ${referralCode}`,
+          description: `Buying HATM with valid referral code: ${localReferralCode}`,
         });
       } catch (error) {
         console.error("Error validating referral code:", error);

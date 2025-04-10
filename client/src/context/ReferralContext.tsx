@@ -47,10 +47,20 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   
   const validateReferralCode = async (code: string): Promise<boolean> => {
     try {
+      // Make sure code is valid format before making API call
+      if (!code || code.length !== 6) {
+        return false;
+      }
+      
       const response = await fetch(`/api/validate-referral/${code}`);
       const data = await response.json();
       
       if (response.ok) {
+        // If valid, also save to context and session storage
+        if (data.valid) {
+          setReferralCode(code);
+          setReferralFromLink(false);
+        }
         return data.valid;
       }
       
