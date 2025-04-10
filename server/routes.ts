@@ -14,6 +14,7 @@ import {
   Transaction,
   clusterApiUrl,
   sendAndConfirmTransaction,
+  SystemProgram,
   LAMPORTS_PER_SOL
 } from "@solana/web3.js";
 import {
@@ -22,32 +23,18 @@ import {
   createMintToInstruction,
   getAccount,
   getMint,
-  TokenAccountNotFoundError,
   TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TokenAccountNotFoundError
 } from "@solana/spl-token";
+
+// For debugging
+console.log("TOKEN_PROGRAM_ID:", TOKEN_PROGRAM_ID.toString());
+console.log("ASSOCIATED_TOKEN_PROGRAM_ID:", ASSOCIATED_TOKEN_PROGRAM_ID.toString());
 import fs from "fs";
 import path from "path";
 
-// Helper function to get a Solana connection
-function getSolanaConnection() {
-  return new Connection(clusterApiUrl("devnet"), "confirmed");
-}
-
-// Helper function to load mint authority
-function getMintAuthority() {
-  const tokenKeypairPath = path.join(process.cwd(), "token-keypair.json");
-  if (!fs.existsSync(tokenKeypairPath)) {
-    throw new Error("Token keypair file not found: " + tokenKeypairPath);
-  }
-  
-  const tokenData = JSON.parse(fs.readFileSync(tokenKeypairPath, "utf-8"));
-  const authoritySecretKey = new Uint8Array(tokenData.authority.secretKey);
-  return {
-    keypair: Keypair.fromSecretKey(authoritySecretKey),
-    mintPublicKey: new PublicKey(tokenData.mint.publicKey)
-  };
-}
+// These functions are now moved to token-utils.ts
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes
@@ -234,94 +221,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Processing airdrop request for wallet: ${walletAddress}`);
       
-      // Get Solana connection and mint authority
-      const connection = getSolanaConnection();
-      const { keypair: mintAuthority, mintPublicKey } = getMintAuthority();
+      // Import the token utilities
+      const tokenUtils = await import('./token-utils');
       
-      console.log(`Using mint: ${mintPublicKey.toString()}`);
-      console.log(`Authority: ${mintAuthority.publicKey.toString()}`);
+      // Get connection and mint authority
+      const connection = tokenUtils.getSolanaConnection();
+      const mintAuthority = tokenUtils.getMintAuthority();
       
       // Recipient's wallet
       const recipientWallet = new PublicKey(walletAddress);
       
       try {
-        // Request SOL airdrop for the authority to pay for transaction fees if needed
-        const authorityBalance = await connection.getBalance(mintAuthority.publicKey);
-        if (authorityBalance < 0.05 * LAMPORTS_PER_SOL) {
-          console.log("Requesting SOL airdrop for authority to pay fees");
-          const airdropSignature = await connection.requestAirdrop(
-            mintAuthority.publicKey,
-            0.1 * LAMPORTS_PER_SOL
-          );
-          await connection.confirmTransaction(airdropSignature);
-        }
+        // Ensure the mint authority has enough SOL
+        await tokenUtils.ensureSufficientSol(connection, mintAuthority.keypair.publicKey);
         
-        // Find or create the associated token account
-        let associatedTokenAddress: PublicKey;
-        
-        try {
-          // Try to find the recipient's token account
-          associatedTokenAddress = await getAssociatedTokenAddress(
-            mintPublicKey,
-            recipientWallet
-          );
-          
-          console.log(`Checking for token account: ${associatedTokenAddress.toString()}`);
-          
-          try {
-            await getAccount(connection, associatedTokenAddress);
-            console.log("Token account exists");
-          } catch (error) {
-            if (error instanceof TokenAccountNotFoundError) {
-              console.log("Creating associated token account...");
-              const tx = new Transaction().add(
-                createAssociatedTokenAccountInstruction(
-                  mintAuthority.publicKey, // payer
-                  associatedTokenAddress, // associated token account
-                  recipientWallet, // owner
-                  mintPublicKey // mint
-                )
-              );
-              
-              const createAccountSignature = await sendAndConfirmTransaction(
-                connection,
-                tx,
-                [mintAuthority]
-              );
-              
-              console.log(`Created token account: ${createAccountSignature}`);
-            } else {
-              throw error;
-            }
-          }
-        } catch (error) {
-          console.error("Error with token account:", error);
-          return res.status(500).json({
-            error: "Failed to create token account",
-            details: error instanceof Error ? error.message : String(error)
-          });
-        }
-        
-        // Now mint tokens to the associated token account
-        console.log("Minting tokens...");
-        const amount = BigInt(1000 * Math.pow(10, 9)); // 1000 tokens with 9 decimals
-        
-        const mintTx = new Transaction().add(
-          createMintToInstruction(
-            mintPublicKey, // mint
-            associatedTokenAddress, // destination
-            mintAuthority.publicKey, // authority
-            amount // amount
-          )
-        );
-        
-        const signature = await sendAndConfirmTransaction(
+        // Mint tokens to the recipient (will create token account if needed)
+        const signature = await tokenUtils.mintTokens(
           connection,
-          mintTx,
-          [mintAuthority]
+          mintAuthority,
+          recipientWallet,
+          1000 // 1000 tokens
         );
-        
-        console.log(`Tokens minted! Signature: ${signature}`);
         
         // Return success with the transaction signature
         return res.json({
@@ -393,79 +313,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Get Solana connection and mint authority
-      const connection = getSolanaConnection();
-      const { keypair: mintAuthority, mintPublicKey } = getMintAuthority();
+      // Import the token utilities
+      const tokenUtils = await import('./token-utils');
       
-      // Recipient's wallet
-      const recipientWallet = new PublicKey(walletAddress);
+      // Get connection and mint authority
+      const connection = tokenUtils.getSolanaConnection();
+      const mintAuthority = tokenUtils.getMintAuthority();
       
       // Calculate token amount
       const tokenPrice = 0.01; // 1 HATM = 0.01 SOL
       const tokenAmount = Math.floor(parsedSolAmount / tokenPrice);
-      const tokenAmountWithDecimals = BigInt(tokenAmount * Math.pow(10, 9)); // 9 decimals
       
-      // Find or create the associated token account
-      let associatedTokenAddress: PublicKey;
+      // Recipient's wallet
+      const recipientWallet = new PublicKey(walletAddress);
       
       try {
-        // Get the associated token account address
-        associatedTokenAddress = await getAssociatedTokenAddress(
-          mintPublicKey,
-          recipientWallet
-        );
-        
-        console.log(`Checking for token account: ${associatedTokenAddress.toString()}`);
-        
-        try {
-          // Check if the token account exists
-          await getAccount(connection, associatedTokenAddress);
-          console.log("Token account exists");
-        } catch (error) {
-          if (error instanceof TokenAccountNotFoundError) {
-            console.log("Creating associated token account...");
-            
-            // Create a transaction to create the token account
-            const createTx = new Transaction().add(
-              createAssociatedTokenAccountInstruction(
-                mintAuthority.publicKey, // payer
-                associatedTokenAddress, // associated token account
-                recipientWallet, // owner
-                mintPublicKey // mint
-              )
-            );
-            
-            // Send and confirm the transaction
-            const createAccountSignature = await sendAndConfirmTransaction(
-              connection,
-              createTx,
-              [mintAuthority]
-            );
-            
-            console.log(`Created token account: ${createAccountSignature}`);
-          } else {
-            throw error;
-          }
-        }
-        
-        // Now mint tokens to the token account
-        console.log(`Minting ${tokenAmount} tokens...`);
-        
-        // Create a transaction to mint tokens
-        const mintTx = new Transaction().add(
-          createMintToInstruction(
-            mintPublicKey, // mint
-            associatedTokenAddress, // destination
-            mintAuthority.publicKey, // authority
-            tokenAmountWithDecimals // amount
-          )
-        );
-        
-        // Send and confirm the transaction
-        const signature = await sendAndConfirmTransaction(
+        // Mint tokens to the recipient (will create token account if needed)
+        const signature = await tokenUtils.mintTokens(
           connection,
-          mintTx,
-          [mintAuthority]
+          mintAuthority,
+          recipientWallet,
+          tokenAmount
         );
         
         console.log(`Buy transaction successful! Signature: ${signature}`);
