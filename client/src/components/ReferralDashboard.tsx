@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useSolana } from '@/context/SolanaContext';
 import { useTokenData } from '@/context/TokenDataContext';
+import { useReferral } from '@/context/ReferralContext';
 import { useToast } from '@/hooks/use-toast';
 import { shortenAddress } from '@/lib/utils';
 
 const ReferralDashboard = () => {
   const { connected, publicKey } = useSolana();
-  const { referralCode, referralStats } = useTokenData();
+  const { referralStats } = useTokenData();
+  const { referralCode } = useReferral();
   const { toast } = useToast();
   
   const copyToClipboard = () => {

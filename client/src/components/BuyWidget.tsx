@@ -23,6 +23,13 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
   const [hatchAmount, setHatchAmount] = useState<string>('');
   const [referralValid, setReferralValid] = useState<boolean>(false);
   const [localReferralCode, setLocalReferralCode] = useState<string>('');
+  
+  // Initialize localReferralCode from context referralCode
+  useEffect(() => {
+    if (referralCode) {
+      setLocalReferralCode(referralCode);
+    }
+  }, [referralCode]);
   const [showReferralInput, setShowReferralInput] = useState<boolean>(false);
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const widgetRef = useRef<HTMLDivElement>(null);
@@ -51,13 +58,6 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
   useEffect(() => {
     setShowReferralInput(connected);
   }, [connected]);
-
-  // Initialize localReferralCode from context's referralCode
-  useEffect(() => {
-    if (referralCode) {
-      setLocalReferralCode(referralCode);
-    }
-  }, [referralCode]);
 
   // Update referralValid state when a valid referral code is selected
   useEffect(() => {
@@ -326,7 +326,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
                   id="referral-code"
                   placeholder="ENTER REFERRAL CODE" 
                   className="bg-background/30 border-border/30"
-                  value={referralCode}
+                  value={localReferralCode}
                   onChange={handleReferralCodeChange}
                   maxLength={6}
                 />
@@ -352,8 +352,8 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
         <div className="text-xs text-foreground/70 bg-muted p-2 rounded-lg">
           <p className="flex items-center gap-1">
             <i className="ri-information-line"></i>
-            {referralCode ? (
-              <>6% fee with referral code: <span className="font-mono text-primary">{referralCode}</span></>
+            {localReferralCode ? (
+              <>6% fee with referral code: <span className="font-mono text-primary">{localReferralCode}</span></>
             ) : (
               <>6% referral fee | 8% without referral</>
             )}

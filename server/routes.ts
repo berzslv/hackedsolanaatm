@@ -61,7 +61,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Validate a referral code
+  // RESTful endpoint for validating referral codes
   app.get("/api/validate-referral/:code", async (req, res) => {
     try {
       const { code } = req.params;
@@ -74,14 +74,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isValid = await storage.validateReferralCode(code);
       console.log("Validating referral code:", code, "Result:", isValid);
       
-      if (isValid) {
-        res.json({ valid: true, message: "Valid referral code" });
-      } else {
-        res.status(404).json({ valid: false, message: "Invalid referral code" });
-      }
+      // Always return JSON with consistent format, don't use 404 status
+      return res.json({ 
+        valid: isValid, 
+        message: isValid ? "Valid referral code" : "Invalid referral code" 
+      });
     } catch (error) {
       console.error("Error validating referral code:", error);
-      res.status(500).json({ message: "Failed to validate referral code" });
+      res.status(500).json({ valid: false, message: "Failed to validate referral code" });
     }
   });
 
@@ -98,28 +98,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isValid = await storage.validateReferralCode(code);
       console.log("Database validation result for code", code, ":", isValid);
       
-      res.json({ valid: isValid, message: isValid ? "Valid referral code" : "Invalid referral code" });
+      return res.json({ 
+        valid: isValid, 
+        message: isValid ? "Valid referral code" : "Invalid referral code" 
+      });
     } catch (error) {
       console.error("Error validating referral code:", error);
-      res.status(500).json({ message: "Failed to validate referral code", error: String(error) });
-    }
-  });
-  
-  // Legacy route for compatibility
-  app.get("/api/validate-referral/:code", async (req, res) => {
-    try {
-      const { code } = req.params;
-      
-      // Find a user with this referral code
-      const isValid = await storage.validateReferralCode(code);
-      
-      if (isValid) {
-        res.json({ valid: true, message: "Valid referral code" });
-      } else {
-        res.status(404).json({ valid: false, message: "Invalid referral code" });
-      }
-    } catch (error) {
-      res.status(500).json({ message: "Failed to validate referral code" });
+      res.status(500).json({ valid: false, message: "Failed to validate referral code", error: String(error) });
     }
   });
 
