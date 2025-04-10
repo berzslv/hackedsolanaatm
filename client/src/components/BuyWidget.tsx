@@ -15,7 +15,7 @@ interface BuyWidgetProps {
 }
 
 const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
-  const { connected, balance } = useSolana();
+  const { connected, balance, publicKey } = useSolana();
   const { openWalletModal } = useWalletModalOpener();
   const { tokenPrice } = useTokenData();
   const { toast } = useToast();

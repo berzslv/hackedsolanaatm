@@ -146,6 +146,10 @@ export class MemStorage implements IStorage {
       (user) => user.walletAddress === walletAddress,
     );
   }
+  
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
 
   // Token stats methods
   async getTokenStats(): Promise<TokenStats> {
@@ -415,6 +419,10 @@ export class DatabaseStorage implements IStorage {
   async getUserByWalletAddress(walletAddress: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.walletAddress, walletAddress));
     return user || undefined;
+  }
+  
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
   }
 
   async getTokenStats(): Promise<TokenStats> {
