@@ -76,14 +76,12 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Sign message
   const signMessage = async (message: Uint8Array): Promise<Uint8Array> => {
-    if (!connected || !publicKey || !adapterSignMessage) {
-      throw new Error('Wallet not connected or sign function not available');
+    if (!connected || !publicKey) {
+      throw new Error('Wallet not connected');
     }
 
     try {
-      // Use type assertion to tell TypeScript we checked adapterSignMessage is available
-      const signFn = adapterSignMessage as (message: Uint8Array) => Promise<Uint8Array>;
-      return await signFn(message);
+      return await adapterSignMessage(message);
     } catch (error) {
       console.error('Error signing message:', error);
       throw error;
@@ -92,14 +90,12 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Sign transaction
   const signTransaction = async (transaction: VersionedTransaction): Promise<VersionedTransaction> => {
-    if (!connected || !publicKey || !adapterSignTransaction) {
-      throw new Error('Wallet not connected or sign function not available');
+    if (!connected || !publicKey) {
+      throw new Error('Wallet not connected');
     }
 
     try {
-      // Use type assertion to tell TypeScript we checked adapterSignTransaction is available
-      const signFn = adapterSignTransaction as (tx: VersionedTransaction) => Promise<VersionedTransaction>;
-      return await signFn(transaction);
+      return await adapterSignTransaction(transaction);
     } catch (error) {
       console.error('Error signing transaction:', error);
       throw error;
@@ -108,13 +104,12 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Send transaction
   const sendTransaction = async (transaction: VersionedTransaction): Promise<string> => {
-    if (!connected || !publicKey || !adapterSendTransaction || !connection) {
-      throw new Error('Wallet not connected or connection not available');
+    if (!connected || !publicKey) {
+      throw new Error('Wallet not connected');
     }
 
     try {
-      // Use a non-null assertion to tell TypeScript we checked connection is available
-      return await adapterSendTransaction(transaction, connection!);
+      return await adapterSendTransaction(transaction, connection);
     } catch (error) {
       console.error('Error sending transaction:', error);
       throw error;

@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSolana } from '@/context/SolanaContext';
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useOpenWalletModal } from "@/hooks/use-wallet-modal";
 import { useTokenData } from '@/context/TokenDataContext';
 import { useReferral } from '@/context/ReferralContext';
 import { formatNumber } from '@/lib/utils';
@@ -16,7 +15,7 @@ interface BuyWidgetProps {
 
 const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
   const { connected, balance } = useSolana();
-  const openWalletModal = useOpenWalletModal();
+  const { select } = useWallet();
   const { tokenPrice } = useTokenData();
   const { toast } = useToast();
   const { referralCode: refFromContext, referralFromLink } = useReferral();
@@ -36,9 +35,9 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
         setIsFlashing(false);
       }, 1500);
     } else {
-      openWalletModal(); // This opens the wallet selection modal
+      select(null); // This opens the wallet selection modal
     }
-  }, [connected, openWalletModal]);
+  }, [connected, select]);
 
   // Expose the flash function via ref
   useEffect(() => {
@@ -52,8 +51,6 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
   useEffect(() => {
     if (connected) {
       setShowReferralInput(true);
-    } else {
-      setShowReferralInput(false);
     }
   }, [connected]);
 
@@ -146,7 +143,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
 
   const handleBuy = async () => {
     if (!connected) {
-      openWalletModal(); // Open wallet selection modal
+      connectWallet();
       return;
     }
 

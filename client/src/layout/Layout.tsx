@@ -1,7 +1,7 @@
 import React from 'react';
 import Header from './Header';
 import Footer from './Footer';
-import GlobalErrorHandler from '@/components/ErrorBoundary';
+import { WalletModal } from '@/components/ui/wallet-modal';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,16 +9,14 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
-    <GlobalErrorHandler>
-      <div className="min-h-screen flex flex-col grid-pattern">
-        <Header />
-        <main className="flex-grow">
-          {children}
-        </main>
-        <Footer />
-        {/* Wallet modal is handled by the adapter itself */}
-      </div>
-    </GlobalErrorHandler>
+    <div className="min-h-screen flex flex-col grid-pattern">
+      <Header />
+      <main className="flex-grow">
+        {children}
+      </main>
+      <Footer />
+      <WalletModal />
+    </div>
   );
 };
 

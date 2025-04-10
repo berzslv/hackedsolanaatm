@@ -61,9 +61,8 @@ const Header = () => {
         </div>
         
         <div className="flex items-center gap-3 z-10">
-          {/* Use the wallet adapter button */}
+          {/* Use the new Solana wallet adapter button */}
           <SolanaWalletButton />
-          
           <button 
             className="lg:hidden text-foreground/80 hover:text-primary" 
             onClick={toggleMenu}
@@ -89,7 +88,6 @@ const Header = () => {
             <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
             <NavigationLink href="/#faq">FAQ</NavigationLink>
             <button onClick={() => setShowWhitepaper(true)} className="text-foreground/80 hover:text-primary py-2 transition-colors z-10 text-left w-full">Whitepaper</button>
-            {/* We already have the whitepaper dialog in the desktop menu */}
             {/* Mobile wallet button */}
             <div className="sm:hidden w-full z-10">
               <SolanaWalletButton />

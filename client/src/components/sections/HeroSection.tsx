@@ -5,13 +5,12 @@ import BuyWidget from "@/components/BuyWidget";
 import { Link } from "wouter";
 import { useSolana } from "@/context/SolanaContext";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useOpenWalletModal } from "@/hooks/use-wallet-modal";
 import React, { useRef, useState } from "react";
 import WhitepaperDialog from '@/components/WhitepaperDialog';
 
 const HeroSection = () => {
   const { connected } = useSolana();
-  const openWalletModal = useOpenWalletModal();
+  const { select } = useWallet();
   const buyWidgetFlashRef = useRef<() => void>(null);
   const [showWhitepaper, setShowWhitepaper] = useState(false);
 
@@ -24,18 +23,7 @@ const HeroSection = () => {
       }
     } else {
       // If not connected, open wallet selector
-      try {
-        openWalletModal(); // This opens the wallet selection modal
-      } catch (error) {
-        console.error("Error opening wallet modal from HeroSection:", error);
-        // Alternative approach using direct DOM interaction with the wallet button
-        const walletButton = document.querySelector('.wallet-adapter-button-trigger');
-        if (walletButton && walletButton instanceof HTMLElement) {
-          walletButton.click();
-        } else {
-          console.warn("Could not find wallet button to click");
-        }
-      }
+      select(null); // This opens the wallet selection modal
     }
   };
 

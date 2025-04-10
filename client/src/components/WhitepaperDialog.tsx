@@ -1,8 +1,7 @@
 
-import { DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { GradientText } from "@/components/ui/gradient-text";
-import { WalletSafeDialog } from "@/components/ui/wallet-safe-dialog";
 
 interface WhitepaperDialogProps {
   open: boolean;
@@ -11,7 +10,7 @@ interface WhitepaperDialogProps {
 
 const WhitepaperDialog = ({ open, onOpenChange }: WhitepaperDialogProps) => {
   return (
-    <WalletSafeDialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl h-[90vh]">
         <ScrollArea className="h-full pr-4">
           <h1 className="text-4xl md:text-5xl font-display mb-6 text-foreground">
@@ -237,7 +236,7 @@ const WhitepaperDialog = ({ open, onOpenChange }: WhitepaperDialogProps) => {
           </div>
         </ScrollArea>
       </DialogContent>
-    </WalletSafeDialog>
+    </Dialog>
   );
 };
 
