@@ -203,6 +203,7 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
       window.removeEventListener('message', handleWalletConnect);
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       window.onerror = originalOnError;
+      // We're no longer using originalUnhandledRejection since we use addEventListener
     };
   }, []);
 

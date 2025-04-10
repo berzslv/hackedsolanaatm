@@ -113,9 +113,8 @@ export const GlobalErrorHandler: React.FC<{ children: React.ReactNode }> = ({ ch
       return false;
     };
     
-    // Also handle unhandled promise rejections
-    const originalUnhandledRejection = window.onunhandledrejection;
-    window.onunhandledrejection = function(this: Window, event: PromiseRejectionEvent) {
+    // Handle unhandled promise rejections with addEventListener instead of the property
+    function handleErrorBoundaryRejection(event: PromiseRejectionEvent) {
       // Check if this is a wallet-related error
       if (event && event.reason) {
         const reasonStr = String(event.reason);
@@ -143,12 +142,11 @@ export const GlobalErrorHandler: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       }
       
-      // Call original handler for non-wallet errors
-      if (typeof originalUnhandledRejection === 'function') {
-        return originalUnhandledRejection.call(window, event);
-      }
       return false;
-    };
+    }
+    
+    // Add the event listener
+    window.addEventListener('unhandledrejection', handleErrorBoundaryRejection);
     
     // Check if we need to reattach referral code
     const checkForReferralCode = () => {
@@ -201,7 +199,7 @@ export const GlobalErrorHandler: React.FC<{ children: React.ReactNode }> = ({ ch
     // Return cleanup function
     return () => {
       window.onerror = originalOnError;
-      window.onunhandledrejection = originalUnhandledRejection;
+      window.removeEventListener('unhandledrejection', handleErrorBoundaryRejection);
       clearInterval(intervalId);
     };
   }, []);
