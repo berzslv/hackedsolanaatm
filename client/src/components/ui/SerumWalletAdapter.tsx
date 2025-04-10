@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Connection } from '@solana/web3.js';
 import { useIsMobile } from '@/hooks/use-mobile';
+import QRCode from 'qrcode';
 
 // Network connection
 const network = "https://api.mainnet-beta.solana.com";
@@ -32,15 +33,21 @@ declare global {
   }
 }
 
-// Wallet providers with detection functions
+// Wallet providers configuration with connection methods for different environments
 const WALLET_PROVIDERS = [
   { 
     name: 'Phantom', 
     icon: 'ri-ghost-line',
+    description: 'Connect to Phantom Wallet',
     url: 'https://phantom.app',
     installUrl: 'https://phantom.app',
-    mobileUrl: 'https://phantom.app/ul/browse/',
+    // Direct deep links for mobile app
+    mobileLink: 'phantom://browse', 
+    // Universal links format for supported browsers
+    universalLink: 'https://phantom.app/ul/browse',
+    // For desktop detection
     isInstalled: () => !!window.phantom?.solana?.isPhantom,
+    // For desktop connection
     connect: async () => {
       if (!window.phantom?.solana) {
         throw new Error('Phantom wallet not installed');
@@ -48,6 +55,7 @@ const WALLET_PROVIDERS = [
       const resp = await window.phantom.solana.connect();
       return resp.publicKey.toString();
     },
+    // For desktop disconnection
     disconnect: async () => {
       if (window.phantom?.solana) {
         await window.phantom.solana.disconnect();
@@ -57,18 +65,24 @@ const WALLET_PROVIDERS = [
   { 
     name: 'Solflare', 
     icon: 'ri-sun-line',
+    description: 'Connect to Solflare Wallet',
     url: 'https://solflare.com',
     installUrl: 'https://solflare.com',
-    mobileUrl: 'https://solflare.com/ul/browse/',
+    // Direct deep links for mobile app
+    mobileLink: 'solflare://browse',
+    // Universal links format for supported browsers
+    universalLink: 'https://solflare.com/ul/browse',
+    // For desktop detection
     isInstalled: () => !!window.solflare,
+    // For desktop connection
     connect: async () => {
       if (!window.solflare) {
         throw new Error('Solflare wallet not installed');
       }
       await window.solflare.connect();
-      // This assumes solflare returns a publicKey property after connection
       return window.solflare.publicKey?.toString() || 'unknown';
     },
+    // For desktop disconnection
     disconnect: async () => {
       if (window.solflare) {
         await window.solflare.disconnect();
@@ -83,6 +97,8 @@ export function SerumWalletAdapter() {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
+  const [qrCode, setQrCode] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
   
@@ -93,11 +109,30 @@ export function SerumWalletAdapter() {
   
   // Check if any wallets are already installed
   const hasInstalledWallets = getInstalledWallets().length > 0;
+  
+  // Generate QR code for wallet connection
+  const generateQRCode = useCallback(async (data: string) => {
+    try {
+      const qrCodeDataUrl = await QRCode.toDataURL(data, {
+        color: {
+          dark: '#1a1a1a',
+          light: '#ffffff',
+        },
+        width: 200,
+        margin: 1,
+      });
+      return qrCodeDataUrl;
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      return null;
+    }
+  }, []);
 
   // Connect to a wallet
   const connectWallet = useCallback(async (providerName: string) => {
     try {
       setConnecting(true);
+      setSelectedWallet(providerName);
       
       // Find provider
       const provider = WALLET_PROVIDERS.find(p => p.name === providerName);
@@ -120,16 +155,24 @@ export function SerumWalletAdapter() {
         // Handle case where wallet is not installed
         if (isMobile) {
           // On mobile, try to open wallet app using deep linking
-          window.location.href = provider.mobileUrl;
+          const mobileDeepLink = provider.mobileLink || `${provider.name.toLowerCase()}://`;
+          // Attempt to open the wallet app
+          window.location.href = mobileDeepLink;
           toast({
             description: `Opening ${providerName} app...`,
           });
         } else {
-          // On desktop, open installation page in new tab
-          window.open(provider.installUrl, '_blank');
-          toast({
-            description: `Please install ${providerName} to continue`,
-          });
+          // For desktop without extension, show QR code for mobile scanning
+          const qrCodeUrl = await generateQRCode(provider.universalLink);
+          if (qrCodeUrl) {
+            setQrCode(qrCodeUrl);
+          } else {
+            // Fallback to opening installation page in new tab
+            window.open(provider.installUrl, '_blank');
+            toast({
+              description: `Please install ${providerName} to continue`,
+            });
+          }
         }
       }
     } catch (error) {
@@ -142,7 +185,7 @@ export function SerumWalletAdapter() {
     } finally {
       setConnecting(false);
     }
-  }, [toast, isMobile]);
+  }, [toast, isMobile, generateQRCode]);
 
   // Disconnect from the wallet
   const disconnectWallet = useCallback(async () => {
@@ -181,6 +224,14 @@ export function SerumWalletAdapter() {
     // the user explicitly connect by clicking the button
   }, [getInstalledWallets]);
 
+  // Reset QR code and selected wallet when dialog closes
+  useEffect(() => {
+    if (!showDialog) {
+      setQrCode(null);
+      setSelectedWallet(null);
+    }
+  }, [showDialog]);
+
   return (
     <>
       {connected ? (
@@ -205,32 +256,76 @@ export function SerumWalletAdapter() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Connect Wallet</DialogTitle>
+            <DialogDescription>
+              {qrCode ? "Scan with your mobile wallet" : "Choose your wallet"}
+            </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-4 py-4">
-            {WALLET_PROVIDERS.map((provider) => {
-              const isInstalled = provider.isInstalled();
-              return (
-                <Button
-                  key={provider.name}
-                  onClick={() => connectWallet(provider.name)}
-                  disabled={connecting}
-                  className="flex justify-start items-center gap-3 h-12"
-                  variant="outline"
-                >
-                  <i className={`${provider.icon} text-xl`}></i>
-                  <span className="flex-1 text-left">{provider.name}</span>
-                  {isInstalled ? (
-                    <span className="text-xs text-green-500 ml-auto">Detected</span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      {isMobile ? 'Open App' : 'Install'}
-                    </span>
-                  )}
-                  {connecting && <span className="ml-2 animate-spin">⟳</span>}
-                </Button>
-              );
-            })}
-          </div>
+          
+          {qrCode ? (
+            // QR Code view - shown when a wallet is selected but not installed
+            <div className="flex flex-col items-center justify-center gap-4 py-4">
+              <div className="relative rounded-lg overflow-hidden border border-border p-2 bg-white">
+                <img src={qrCode} alt="QR Code" width={200} height={200} />
+              </div>
+              <div className="text-sm text-center text-muted-foreground">
+                Scan this QR code with your {selectedWallet} wallet app
+              </div>
+              <Button 
+                onClick={() => setQrCode(null)} 
+                variant="outline"
+                className="mt-2"
+              >
+                Back to wallet selection
+              </Button>
+            </div>
+          ) : (
+            // Wallet selection view
+            <div className="flex flex-col gap-4 py-4">
+              {WALLET_PROVIDERS.map((provider) => {
+                const isInstalled = provider.isInstalled();
+                return (
+                  <Button
+                    key={provider.name}
+                    onClick={() => connectWallet(provider.name)}
+                    disabled={connecting}
+                    className="flex justify-start items-center gap-3 h-12"
+                    variant="outline"
+                  >
+                    <i className={`${provider.icon} text-xl`}></i>
+                    <span className="flex-1 text-left">{provider.name}</span>
+                    {isInstalled ? (
+                      <span className="text-xs text-green-500 ml-auto">Detected</span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {isMobile ? 'Open App' : 'Scan QR'}
+                      </span>
+                    )}
+                    {connecting && selectedWallet === provider.name && (
+                      <span className="ml-2 animate-spin">⟳</span>
+                    )}
+                  </Button>
+                );
+              })}
+              
+              {/* Explainer text for mobile users */}
+              {isMobile && (
+                <div className="text-xs text-muted-foreground mt-2 p-2 border border-border rounded-md bg-background/50">
+                  <p className="font-medium mb-1">Having trouble?</p>
+                  <p>Make sure you have the wallet app installed. When you click a wallet, 
+                  it will attempt to open the app. You may need to approve connection requests.</p>
+                </div>
+              )}
+              
+              {/* Explainer text for desktop users */}
+              {!isMobile && !hasInstalledWallets && (
+                <div className="text-xs text-muted-foreground mt-2 p-2 border border-border rounded-md bg-background/50">
+                  <p className="font-medium mb-1">No wallet extensions detected</p>
+                  <p>Select a wallet to see a QR code you can scan with your mobile device, 
+                  or install a browser extension.</p>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
