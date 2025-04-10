@@ -1,4 +1,4 @@
-import React, { FC, ReactNode } from 'react';
+import React, { FC, ReactNode, useEffect } from 'react';
 import { SolanaWalletProvider } from './wallet-adapter';
 import { useReferral } from '@/context/ReferralContext';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
@@ -19,38 +19,63 @@ const isMobile = () => {
 export const ReferralAwareSolanaProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { referralCode, getReferralUrl } = useReferral();
   
-  // Set to 'mainnet-beta' for production, 'devnet' for development
-  const network = 'mainnet-beta';
+  // Use a hardcoded Solana mainnet-beta endpoint to avoid type issues
+  const endpoint = useMemo(() => 'https://api.mainnet-beta.solana.com', []);
   
-  // Get connection endpoint for the network
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
-  
-  // Get the referral URL to use for deep linking
-  const referralUrl = getReferralUrl();
-  
-  // Initialize wallet adapters with the correct configuration and referral URL
+  // Initialize wallet adapters with the correct configuration
   const wallets = useMemo(
     () => [
       new PhantomWalletAdapter({
-        // Enable deep linking for better mobile experience with referral URL
-        appIdentity: { name: "Hacked ATM" },
-        // Add deep link customization for referral preservation
-        deepLinks: [
-          {
-            // Use the referral URL for redirects after connecting
-            route: "/",
-            url: referralUrl
-          }
-        ]
+        // Enable deep linking for better mobile experience
+        appIdentity: { name: "Hacked ATM" }
       }),
-      new SolflareWalletAdapter({ 
-        network,
-        // Set the base URL to include referral code
-        baseUrl: referralUrl
-      }),
+      new SolflareWalletAdapter(),
     ],
-    [network, referralUrl]
+    []
   );
+  
+  // Setup a global error handler to suppress wallet-related errors
+  useEffect(() => {
+    const originalOnError = window.onerror;
+    
+    window.onerror = function(message, source, lineno, colno, error) {
+      // Check if it's a known wallet connection error
+      if (message && 
+          (message.toString().includes('startsWith') || 
+           message.toString().includes('readonly property'))) {
+        console.warn('Suppressing known wallet connection error:', message);
+        return true; // Prevent the error from bubbling up
+      }
+      
+      // Otherwise, call the original handler
+      if (typeof originalOnError === 'function') {
+        return originalOnError.apply(this, arguments as any);
+      }
+      return false;
+    };
+    
+    // Detect if we are inside a wallet's in-app browser
+    const isInWalletBrowser = 
+      window.navigator.userAgent.includes('SolflareWallet') || 
+      window.navigator.userAgent.includes('PhantomWallet') ||
+      document.referrer.includes('phantom') ||
+      document.referrer.includes('solflare');
+    
+    // If we are, and we don't already have the ref param but there's a stored referral code
+    if (isInWalletBrowser) {
+      const currentUrl = new URL(window.location.href);
+      if (!currentUrl.searchParams.has('ref') && referralCode) {
+        // Add the referral code to the URL and navigate to it
+        currentUrl.searchParams.set('ref', referralCode);
+        window.history.replaceState({}, '', currentUrl.toString());
+        console.log('Added stored referral code to URL in wallet browser:', referralCode);
+      }
+    }
+    
+    return () => {
+      window.onerror = originalOnError;
+    };
+  }, [referralCode]);
 
   return (
     <ConnectionProvider endpoint={endpoint}>

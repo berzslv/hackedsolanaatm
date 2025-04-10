@@ -39,46 +39,68 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
     [network]
   );
 
-  // Add listener for mobile wallet connections
+  // Add error handling and message listening for wallet connections
   useEffect(() => {
-    // Only apply on mobile devices
+    console.log("Setting up wallet connection error handlers");
+    
+    // Add a global error handler to catch and suppress wallet-related errors
+    const originalOnError = window.onerror;
+    window.onerror = function(message, source, lineno, colno, error) {
+      // Check if it's a known wallet connection error
+      if (message && 
+          (message.toString().includes('startsWith') || 
+           message.toString().includes('readonly property'))) {
+        console.warn('Suppressing known wallet connection error:', message);
+        return true; // Prevent the error from bubbling up
+      }
+      // Otherwise, call the original handler
+      if (typeof originalOnError === 'function') {
+        return originalOnError.apply(this, arguments as any);
+      }
+      return false;
+    };
+    
+    // Listen for wallet connection events from wallet apps
+    const handleWalletConnect = (event: MessageEvent) => {
+      // Handle potential wallet connection messages
+      if (event.data && typeof event.data === 'object') {
+        // Check various wallet message patterns
+        if (event.data.type === 'wallet-connect' || 
+            (typeof event.data.name === 'string' && event.data.name.includes('wallet')) ||
+            event.data.method === 'connect') {
+          console.log("Received wallet connect event:", 
+            event.data.type || event.data.name || event.data.method);
+            
+          // If we're in a wallet browser, check URL parameters
+          const storedReferralCode = localStorage.getItem('walletReferralCode') ||
+                                   sessionStorage.getItem('referralCode');
+                                   
+          if (storedReferralCode) {
+            // Add referral code to URL if not present
+            const currentUrl = new URL(window.location.href);
+            if (!currentUrl.searchParams.has('ref')) {
+              currentUrl.searchParams.set('ref', storedReferralCode);
+              window.history.replaceState({}, '', currentUrl.toString());
+              console.log('Added referral code to URL after wallet connection:', storedReferralCode);
+            }
+          }
+        }
+      }
+    };
+    
+    window.addEventListener('message', handleWalletConnect);
+    
+    // Add mobile-specific enhancements
     if (isMobile()) {
-      console.log("Mobile device detected, enhancing wallet connections");
+      console.log("Mobile device detected, adding extra wallet connection support");
       
-      // Add a global error handler to catch and suppress Solflare-related errors
-      const originalOnError = window.onerror;
-      window.onerror = function(message, source, lineno, colno, error) {
-        // Check if it's the known Solflare error
-        if (message && 
-            (message.toString().includes('startsWith') || 
-             message.toString().includes('readonly property'))) {
-          console.warn('Suppressing known wallet connection error:', message);
-          return true; // Prevent the error from bubbling up
-        }
-        // Otherwise, call the original handler
-        if (typeof originalOnError === 'function') {
-          return originalOnError.apply(this, arguments as any);
-        }
-        return false;
-      };
-      
-      // Listen for wallet connection events from mobile wallet app
-      const handleWalletConnect = (event: MessageEvent) => {
-        // Handle potential wallet connection messages
-        if (event.data && typeof event.data === 'object' && 
-            (event.data.type === 'wallet-connect' || 
-             (event.data.name && event.data.name.includes('wallet')))) {
-          console.log("Received wallet connect event from mobile wallet");
-        }
-      };
-      
-      window.addEventListener('message', handleWalletConnect);
-      return () => {
-        window.removeEventListener('message', handleWalletConnect);
-        // Restore original error handler when component unmounts
-        window.onerror = originalOnError;
-      };
+      // Add any mobile-specific code here if needed
     }
+    
+    return () => {
+      window.removeEventListener('message', handleWalletConnect);
+      window.onerror = originalOnError;
+    };
   }, []);
 
   return (
