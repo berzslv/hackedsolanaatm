@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSolana } from '@/context/SolanaContext';
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useOpenWalletModal } from "@/components/ui/wallet-adapter";
+import { useOpenWalletModal } from "@/hooks/use-wallet-modal";
 import { useTokenData } from '@/context/TokenDataContext';
 import { useReferral } from '@/context/ReferralContext';
 import { formatNumber } from '@/lib/utils';

@@ -5,7 +5,7 @@ import BuyWidget from "@/components/BuyWidget";
 import { Link } from "wouter";
 import { useSolana } from "@/context/SolanaContext";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useOpenWalletModal } from "@/components/ui/wallet-adapter";
+import { useOpenWalletModal } from "@/hooks/use-wallet-modal";
 import React, { useRef, useState } from "react";
 import WhitepaperDialog from '@/components/WhitepaperDialog';
 

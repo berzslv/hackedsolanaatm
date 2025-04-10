@@ -45,20 +45,22 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
     if (isMobile()) {
       console.log("Mobile device detected, enhancing wallet connections");
       
-      // Modify the window object to handle Solflare's URL validation issue
-      // This fixes the 'startsWith' error in Solflare's in-app browser
-      if (window.location && window.location.origin) {
-        // Ensure there's a non-null value for URL properties that might be used by wallets
-        const originalToString = window.location.toString;
-        window.location.toString = function() {
-          try {
-            return originalToString.call(this);
-          } catch (e) {
-            console.warn('Fixed toString error for wallet adapter');
-            return window.location.href || window.location.origin || 'https://';
-          }
-        };
-      }
+      // Add a global error handler to catch and suppress Solflare-related errors
+      const originalOnError = window.onerror;
+      window.onerror = function(message, source, lineno, colno, error) {
+        // Check if it's the known Solflare error
+        if (message && 
+            (message.toString().includes('startsWith') || 
+             message.toString().includes('readonly property'))) {
+          console.warn('Suppressing known wallet connection error:', message);
+          return true; // Prevent the error from bubbling up
+        }
+        // Otherwise, call the original handler
+        if (typeof originalOnError === 'function') {
+          return originalOnError.apply(this, arguments as any);
+        }
+        return false;
+      };
       
       // Listen for wallet connection events from mobile wallet app
       const handleWalletConnect = (event: MessageEvent) => {
@@ -71,7 +73,11 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
       };
       
       window.addEventListener('message', handleWalletConnect);
-      return () => window.removeEventListener('message', handleWalletConnect);
+      return () => {
+        window.removeEventListener('message', handleWalletConnect);
+        // Restore original error handler when component unmounts
+        window.onerror = originalOnError;
+      };
     }
   }, []);
 
@@ -86,11 +92,8 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
   );
 };
 
-// Export a helper function to directly open the wallet modal
-export function useOpenWalletModal() {
-  const { setVisible } = useWalletModal();
-  return () => setVisible(true);
-}
+// No longer exporting useOpenWalletModal from here
+// Use the dedicated hook from hooks/use-wallet-modal.ts instead
 
 export const SolanaWalletButton: FC = () => {
   return (
