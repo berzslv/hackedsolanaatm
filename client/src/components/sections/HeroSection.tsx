@@ -6,11 +6,18 @@ import { Link } from "wouter";
 import { useSolana } from "@/context/SolanaContext";
 import React, { useRef, useState } from "react";
 import WhitepaperDialog from '@/components/WhitepaperDialog';
+import { useWallet } from '@/components/ui/simplified-wallet-adapter';
 
 const HeroSection = () => {
-  const { connectWallet, connected } = useSolana();
+  const { connected } = useSolana();
+  const { setShowDialog } = useWallet();
   const buyWidgetFlashRef = useRef<() => void>(null);
   const [showWhitepaper, setShowWhitepaper] = useState(false);
+  
+  // Function to trigger wallet dialog
+  const connectWallet = () => {
+    document.getElementById('connect-wallet-button')?.click();
+  };
 
   // Handler for the Buy $HATM button
   const handleBuyClick = () => {
