@@ -1,71 +1,113 @@
-import React, { useMemo } from 'react';
+import React, { FC, useMemo } from 'react';
+import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
+import { clusterApiUrl } from '@solana/web3.js';
+import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { 
-  WalletDisconnectButton, 
+  WalletModalProvider, 
   WalletMultiButton 
 } from '@solana/wallet-adapter-react-ui';
-import { 
-  ConnectionProvider,
-  WalletProvider,
-  useWallet 
-} from '@solana/wallet-adapter-react';
-import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
 import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
-import { BackpackWalletAdapter } from '@solana/wallet-adapter-backpack';
-import { ExodusWalletAdapter } from '@solana/wallet-adapter-exodus';
-import { clusterApiUrl } from '@solana/web3.js';
-import { Button } from '@/components/ui/button';
-import { useIsMobile } from '@/hooks/use-mobile';
 
-// Default styles that can be overridden
+// Import CSS files for wallet adapter UI (required)
 import '@solana/wallet-adapter-react-ui/styles.css';
 
-// Wallet provider for the application
-export const SolanaWalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // The network can be set to 'devnet', 'testnet', or 'mainnet-beta'
-  const network = WalletAdapterNetwork.Mainnet;
+export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Set to 'mainnet-beta' for production, 'devnet' for development
+  const network = 'mainnet-beta' as WalletAdapterNetwork;
   
-  // You can also provide a custom RPC endpoint
+  // Get connection endpoint for the network
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
   
-  // @solana/wallet-adapter-wallets imports all the adapters but supports tree shaking
-  // so only the wallets you configure here will be compiled into your application
+  // Initialize wallet adapters
   const wallets = useMemo(
     () => [
       new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
-      new BackpackWalletAdapter(),
-      new ExodusWalletAdapter(),
+      new SolflareWalletAdapter({ network }),
     ],
     [network]
   );
-  
+
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
-        {children}
+        <WalletModalProvider>
+          {children}
+        </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
   );
 };
 
-// Custom button that works with Solana wallet adapter
-export function SolanaWalletButton() {
-  const { connected } = useWallet();
-  const isMobile = useIsMobile();
-  
-  // Simple styling wrapper around the wallet adapter button
-  if (connected) {
-    return (
-      <div className="wallet-adapter-wrapper">
-        <WalletDisconnectButton className="wallet-adapter-button bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600" />
-      </div>
-    );
-  }
+export const SolanaWalletButton: FC = () => {
+  // For simplicity, let's just use dark theme styling
+  const theme = 'dark';
   
   return (
-    <div className="wallet-adapter-wrapper">
-      <WalletMultiButton className="wallet-adapter-button bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600" />
+    <div className="wallet-adapter-container">
+      <WalletMultiButton className="wallet-adapter-button" />
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .wallet-adapter-button {
+            background: linear-gradient(to right, #6366f1, #8b5cf6) !important;
+            border-radius: 0.5rem !important;
+            color: white !important;
+            font-family: inherit !important;
+            height: 2.5rem !important;
+            padding: 0 1rem !important;
+            font-size: 0.875rem !important;
+            font-weight: 500 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+            transition: all 0.2s ease !important;
+          }
+          
+          .wallet-adapter-button:hover {
+            background: linear-gradient(to right, #4f46e5, #7c3aed) !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+            transform: translateY(-1px) !important;
+          }
+          
+          .wallet-adapter-button-trigger {
+            background: linear-gradient(to right, #6366f1, #8b5cf6) !important;
+          }
+          
+          .wallet-adapter-modal-wrapper {
+            background-color: #1f1f23 !important;
+            border-radius: 1rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+          }
+          
+          .wallet-adapter-modal-title {
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            font-size: 1.5rem !important;
+          }
+          
+          .wallet-adapter-modal-content {
+            color: #d4d4d8 !important;
+          }
+          
+          .wallet-adapter-modal-list .wallet-adapter-button {
+            background-color: #27272a !important;
+            color: #ffffff !important;
+            border-radius: 0.5rem !important;
+            transition: all 0.2s ease !important;
+          }
+          
+          .wallet-adapter-modal-list .wallet-adapter-button:hover {
+            background-color: #3f3f46 !important;
+            transform: translateY(-1px) !important;
+          }
+          
+          .wallet-adapter-modal-list-more {
+            color: #8b5cf6 !important;
+          }
+          
+          .wallet-adapter-modal-list-more:hover {
+            color: #6366f1 !important;
+          }
+        `
+      }} />
     </div>
   );
-}
+};

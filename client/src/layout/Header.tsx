@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useSolana } from '@/context/SolanaContext';
 import WhitepaperDialog from '@/components/WhitepaperDialog';
-import { SerumWalletAdapter } from '@/components/ui/SerumWalletAdapter';
+import { SolanaWalletButton } from '@/components/ui/wallet-adapter';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -61,8 +61,8 @@ const Header = () => {
         </div>
         
         <div className="flex items-center gap-3 z-10">
-          {/* Use our Serum wallet adapter */}
-          <SerumWalletAdapter />
+          {/* Use the new Solana wallet adapter button */}
+          <SolanaWalletButton />
           <button 
             className="lg:hidden text-foreground/80 hover:text-primary" 
             onClick={toggleMenu}
@@ -90,7 +90,7 @@ const Header = () => {
             <button onClick={() => setShowWhitepaper(true)} className="text-foreground/80 hover:text-primary py-2 transition-colors z-10 text-left w-full">Whitepaper</button>
             {/* Mobile wallet button */}
             <div className="sm:hidden w-full z-10">
-              <SerumWalletAdapter />
+              <SolanaWalletButton />
             </div>
           </div>
         </div>

@@ -7,23 +7,16 @@ import { useTokenData } from '@/context/TokenDataContext';
 import { useReferral } from '@/context/ReferralContext';
 import { formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { useWallet } from '@/components/ui/simplified-wallet-adapter';
 
 interface BuyWidgetProps {
   flashRef?: React.RefObject<() => void>;
 }
 
 const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
-  const { connected, balance } = useSolana();
-  const { setShowDialog } = useWallet();
+  const { connected, connectWallet, balance } = useSolana();
   const { tokenPrice } = useTokenData();
   const { toast } = useToast();
   const { referralCode: refFromContext, referralFromLink } = useReferral();
-  
-  // Function to trigger wallet dialog
-  const connectWallet = () => {
-    document.getElementById('connect-wallet-button')?.click();
-  };
   const [solAmount, setSolAmount] = useState<string>('');
   const [hatchAmount, setHatchAmount] = useState<string>('');
   const [referralCode, setReferralCode] = useState<string>('');
