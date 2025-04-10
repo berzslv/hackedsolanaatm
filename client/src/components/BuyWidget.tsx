@@ -8,6 +8,7 @@ import { useTokenData } from '@/context/TokenDataContext';
 import { useReferral } from '@/context/ReferralContext';
 import { formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import AirdropButton from './AirdropButton';
 
 interface BuyWidgetProps {
   flashRef?: React.RefObject<() => void>;
@@ -255,6 +256,11 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
             <span className="text-foreground/70">Staking APY:</span>
             <span className="text-primary">{formatNumber(125, { suffix: '%' })}</span>
           </div>
+          {connected && (
+            <div className="flex justify-center mt-2 border-t border-border/30 pt-2">
+              <AirdropButton />
+            </div>
+          )}
         </div>
 
         <div className="bg-card rounded-lg p-4 mb-6 border border-border/50">
