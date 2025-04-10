@@ -14,7 +14,8 @@ const Header = () => {
     const [location] = useLocation();
     const isHome = location === '/';
     
-    if (!isHome && href.startsWith('/#')) {
+    // Add a null check for href to prevent "startsWith" errors
+    if (!isHome && href && href.startsWith('/#')) {
       return (
         <Link href={href} className="text-foreground/80 hover:text-primary transition-colors">
           {children}
@@ -22,7 +23,7 @@ const Header = () => {
       );
     }
     return (
-      <a href={href.replace('/#', '#')} className="text-foreground/80 hover:text-primary transition-colors">
+      <a href={href ? href.replace('/#', '#') : '#'} className="text-foreground/80 hover:text-primary transition-colors">
         {children}
       </a>
     );

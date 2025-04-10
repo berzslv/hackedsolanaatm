@@ -54,7 +54,9 @@ const ReferralDashboard = () => {
           <div className="flex justify-between items-center mb-4">
             <h4 className="text-foreground">Your Referral Link</h4>
             <div className="px-3 py-1 bg-background/50 rounded-full text-sm text-foreground/70">
-              {connected && publicKey ? shortenAddress(publicKey.toString()) : 'Wallet Not Connected'}
+              {connected && publicKey && typeof publicKey.toString === 'function' 
+                ? shortenAddress(publicKey.toString()) 
+                : 'Wallet Not Connected'}
             </div>
           </div>
           

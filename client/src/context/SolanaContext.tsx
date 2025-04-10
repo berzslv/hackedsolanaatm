@@ -48,12 +48,14 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Fetch balance when connected
   useEffect(() => {
-    if (connection && publicKey) {
+    if (connection && publicKey && publicKey.toBase58) {
       fetchBalance(connection, publicKey);
 
       // Setup balance refresh interval
       const intervalId = setInterval(() => {
-        fetchBalance(connection, publicKey);
+        if (connection && publicKey && publicKey.toBase58) {
+          fetchBalance(connection, publicKey);
+        }
       }, 30000); // every 30 seconds
 
       return () => clearInterval(intervalId);
@@ -76,7 +78,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Sign message
   const signMessage = async (message: Uint8Array): Promise<Uint8Array> => {
-    if (!connected || !publicKey) {
+    if (!connected || !publicKey || !publicKey.toBase58) {
       throw new Error('Wallet not connected');
     }
 
@@ -90,7 +92,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Sign transaction
   const signTransaction = async (transaction: VersionedTransaction): Promise<VersionedTransaction> => {
-    if (!connected || !publicKey) {
+    if (!connected || !publicKey || !publicKey.toBase58) {
       throw new Error('Wallet not connected');
     }
 
@@ -104,7 +106,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Send transaction
   const sendTransaction = async (transaction: VersionedTransaction): Promise<string> => {
-    if (!connected || !publicKey) {
+    if (!connected || !publicKey || !publicKey.toBase58) {
       throw new Error('Wallet not connected');
     }
 
