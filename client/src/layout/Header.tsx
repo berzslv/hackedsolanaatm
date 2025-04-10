@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useSolana } from '@/context/SolanaContext';
-import WhitepaperDialog from '@/components/WhitepaperDialog';
+import WalletWhitepaperDialog from '@/components/WalletWhitepaperDialog';
 import { SolanaWalletButton } from '@/components/ui/wallet-adapter';
+import { DirectWalletConnectButton } from '@/components/ui/direct-wallet-connect';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -57,12 +58,16 @@ const Header = () => {
           <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
           <NavigationLink href="/#faq">FAQ</NavigationLink>
           <button onClick={() => setShowWhitepaper(true)} className="text-foreground/80 hover:text-primary transition-colors">Whitepaper</button>
-          <WhitepaperDialog open={showWhitepaper} onOpenChange={setShowWhitepaper} />
+          <WalletWhitepaperDialog open={showWhitepaper} onOpenChange={setShowWhitepaper} />
         </div>
         
         <div className="flex items-center gap-3 z-10">
-          {/* Use the new Solana wallet adapter button */}
+          {/* Use the normal wallet button for desktop browsers */}
           <SolanaWalletButton />
+          
+          {/* Use the direct wallet button for wallet browsers */}
+          <DirectWalletConnectButton />
+          
           <button 
             className="lg:hidden text-foreground/80 hover:text-primary" 
             onClick={toggleMenu}
@@ -88,6 +93,7 @@ const Header = () => {
             <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
             <NavigationLink href="/#faq">FAQ</NavigationLink>
             <button onClick={() => setShowWhitepaper(true)} className="text-foreground/80 hover:text-primary py-2 transition-colors z-10 text-left w-full">Whitepaper</button>
+            {/* We already have the whitepaper dialog in the desktop menu */}
             {/* Mobile wallet button */}
             <div className="sm:hidden w-full z-10">
               <SolanaWalletButton />
