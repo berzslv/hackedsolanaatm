@@ -125,8 +125,11 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [location]);
   
   const validateReferralCode = async (code: string): Promise<boolean> => {
+    if (!code) return false;
+    
     try {
-      const response = await fetch(`/api/referrals/validate?code=${code}`);
+      // Fixed endpoint URL to match the one being used in the rest of the code
+      const response = await fetch(`/api/validate-referral/${code}`);
       
       if (response.ok) {
         const data = await response.json();
