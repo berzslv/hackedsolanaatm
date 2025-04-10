@@ -8,6 +8,8 @@ export type ReferralContextType = {
   referralFromLink: boolean;
   setReferralFromLink: (fromLink: boolean) => void;
   validateReferralCode: (code: string) => Promise<boolean>;
+  // Add a new function to get a URL with the referral code appended
+  getReferralUrl: () => string;
 };
 
 export const ReferralContext = createContext<ReferralContextType>({
@@ -16,6 +18,7 @@ export const ReferralContext = createContext<ReferralContextType>({
   referralFromLink: false,
   setReferralFromLink: () => {},
   validateReferralCode: async () => false,
+  getReferralUrl: () => window.location.origin,
 });
 
 export const useReferral = () => useContext(ReferralContext);
@@ -81,6 +84,20 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
   
+  // Function to get a URL with the current referral code appended
+  const getReferralUrl = (): string => {
+    // Get the base URL (protocol + hostname + port)
+    const baseUrl = window.location.origin;
+    
+    // If we have a referral code, append it to the URL
+    if (referralCode) {
+      return `${baseUrl}/?ref=${referralCode}`;
+    }
+    
+    // Otherwise just return the base URL
+    return baseUrl;
+  };
+  
   return (
     <ReferralContext.Provider 
       value={{ 
@@ -88,7 +105,8 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setReferralCode, 
         referralFromLink, 
         setReferralFromLink,
-        validateReferralCode
+        validateReferralCode,
+        getReferralUrl
       }}
     >
       {children}
