@@ -45,15 +45,28 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
     if (isMobile()) {
       console.log("Mobile device detected, enhancing wallet connections");
       
+      // Modify the window object to handle Solflare's URL validation issue
+      // This fixes the 'startsWith' error in Solflare's in-app browser
+      if (window.location && window.location.origin) {
+        // Ensure there's a non-null value for URL properties that might be used by wallets
+        const originalToString = window.location.toString;
+        window.location.toString = function() {
+          try {
+            return originalToString.call(this);
+          } catch (e) {
+            console.warn('Fixed toString error for wallet adapter');
+            return window.location.href || window.location.origin || 'https://';
+          }
+        };
+      }
+      
       // Listen for wallet connection events from mobile wallet app
       const handleWalletConnect = (event: MessageEvent) => {
         // Handle potential wallet connection messages
-        if (event.data && event.data.type === 'wallet-connect') {
+        if (event.data && typeof event.data === 'object' && 
+            (event.data.type === 'wallet-connect' || 
+             (event.data.name && event.data.name.includes('wallet')))) {
           console.log("Received wallet connect event from mobile wallet");
-          // Refresh the page to reconnect properly - only needed in certain cases
-          if (window.location.pathname !== '/') {
-            window.location.href = '/';
-          }
         }
       };
       

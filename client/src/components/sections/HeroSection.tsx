@@ -24,7 +24,18 @@ const HeroSection = () => {
       }
     } else {
       // If not connected, open wallet selector
-      openWalletModal(); // This opens the wallet selection modal
+      try {
+        openWalletModal(); // This opens the wallet selection modal
+      } catch (error) {
+        console.error("Error opening wallet modal from HeroSection:", error);
+        // Alternative approach using direct DOM interaction with the wallet button
+        const walletButton = document.querySelector('.wallet-adapter-button-trigger');
+        if (walletButton && walletButton instanceof HTMLElement) {
+          walletButton.click();
+        } else {
+          console.warn("Could not find wallet button to click");
+        }
+      }
     }
   };
 
