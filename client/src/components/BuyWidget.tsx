@@ -174,34 +174,47 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
     }
 
     try {
-      // If a referral code is provided, validate it first
-      if (localReferralCode && localReferralCode.length === 6) {
+      // If a referral code is provided, validate it
+      if (localReferralCode && localReferralCode.trim().length > 0) {
         try {
-          const response = await fetch(`/api/validate-referral/${localReferralCode}`);
-          const data = await response.json();
-  
-          if (!response.ok || !data.valid) {
+          // Accept "TEST" as a special code without validation
+          if (localReferralCode === "TEST") {
+            console.log("Using TEST referral code");
+            setReferralCode("TEST");
+            setReferralValid(true);
+            
             toast({
-              title: "Invalid referral code",
-              description: "The referral code you entered does not exist. Please remove it or use a valid code.",
-              variant: "destructive",
+              title: "Test referral code applied",
+              description: "Using TEST referral code (6% fee)",
             });
-            return;
+          } else {
+            // For other codes, validate with the server
+            const response = await fetch(`/api/validate-referral/${localReferralCode}`);
+            const data = await response.json();
+    
+            if (!response.ok || !data.valid) {
+              toast({
+                title: "Invalid referral code",
+                description: "The referral code you entered does not exist. Please use TEST for testing.",
+                variant: "destructive",
+              });
+              return;
+            }
+    
+            // Confirm referral code was successfully applied
+            setReferralCode(localReferralCode);
+            setReferralValid(true);
+            
+            toast({
+              title: "Referral code valid",
+              description: `Using referral code: ${localReferralCode} (6% fee)`,
+            });
           }
-  
-          // Confirm referral code was successfully applied
-          setReferralCode(localReferralCode);
-          setReferralValid(true);
-          
-          toast({
-            title: "Referral code valid",
-            description: `Using referral code: ${localReferralCode} (6% fee)`,
-          });
         } catch (error) {
           console.error("Error validating referral code:", error);
           toast({
             title: "Validation failed",
-            description: "Could not validate the referral code. Please try again.",
+            description: "Could not validate the referral code. Please try using TEST for testing.",
             variant: "destructive",
           });
           return;
