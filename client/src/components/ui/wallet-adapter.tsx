@@ -9,6 +9,8 @@ import {
 } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
 import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
+import { BackpackWalletAdapter } from '@solana/wallet-adapter-backpack';
+import { TorusWalletAdapter } from '@solana/wallet-adapter-torus';
 
 // Import CSS files for wallet adapter UI (required)
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -25,6 +27,8 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
     () => [
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter({ network }),
+      new BackpackWalletAdapter(),
+      new TorusWalletAdapter({ params: { network } }),
     ],
     [network]
   );
