@@ -29,7 +29,7 @@ export function WalletSafeDialog({
 
   // Apply special styles for wallet browsers
   useEffect(() => {
-    if (isWalletBrowser && open) {
+    if (open) {
       // Add a style tag to ensure our dialog is visible
       const styleId = 'wallet-safe-dialog-styles';
       if (!document.getElementById(styleId)) {
@@ -81,9 +81,13 @@ export function WalletSafeDialog({
       // Run immediately and after a delay to catch any timing issues
       forceVisibility();
       const timer = setTimeout(forceVisibility, 100);
-      return () => clearTimeout(timer);
+      const timer2 = setTimeout(forceVisibility, 500);
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(timer2);
+      };
     }
-  }, [isWalletBrowser, open]);
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} {...props}>

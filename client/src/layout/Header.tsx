@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useSolana } from '@/context/SolanaContext';
-import WalletWhitepaperDialog from '@/components/WalletWhitepaperDialog';
+import WhitepaperDialog from '@/components/WhitepaperDialog';
 import { SolanaWalletButton } from '@/components/ui/wallet-adapter';
-import { DirectWalletConnectButton } from '@/components/ui/direct-wallet-connect';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -58,15 +57,12 @@ const Header = () => {
           <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
           <NavigationLink href="/#faq">FAQ</NavigationLink>
           <button onClick={() => setShowWhitepaper(true)} className="text-foreground/80 hover:text-primary transition-colors">Whitepaper</button>
-          <WalletWhitepaperDialog open={showWhitepaper} onOpenChange={setShowWhitepaper} />
+          <WhitepaperDialog open={showWhitepaper} onOpenChange={setShowWhitepaper} />
         </div>
         
         <div className="flex items-center gap-3 z-10">
-          {/* Use the normal wallet button for desktop browsers */}
+          {/* Use the wallet adapter button */}
           <SolanaWalletButton />
-          
-          {/* Use the direct wallet button for wallet browsers */}
-          <DirectWalletConnectButton />
           
           <button 
             className="lg:hidden text-foreground/80 hover:text-primary" 
