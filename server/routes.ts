@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { insertUserSchema, insertStakingSchema, insertReferralSchema } from "@shared/schema";
+import { storage, MemStorage } from "./storage";
+import { insertUserSchema, insertStakingSchema, insertReferralSchema, type Staking } from "@shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -813,20 +813,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // This will create a token transaction to mint the rewards
         const rewardSignature = await simpleToken.mintTokens(walletAddress, stakingInfo.pendingRewards);
         
-        // Reset pending rewards to zero in staking record (simplified, in a real app you'd use a transaction)
-        // For now, we'll retrieve and update the actual staking entry
-        const stakingEntry = Array.from((storage as MemStorage).stakingData.values()).find(
-          (stake) => stake.walletAddress === walletAddress
-        );
+        // We've already minted the tokens to the user's wallet
+        // Now we need to "reset" their pending rewards
+        // In a real application, we would have a more robust API for this
+        // For now, we'll use a workaround by "unstaking" 0 tokens, which updates the staking record
         
-        if (stakingEntry) {
-          const updatedStaking: Staking = {
-            ...stakingEntry,
-            pendingRewards: 0,
-            lastCompoundAt: new Date()
-          };
-          
-          (storage as MemStorage).stakingData.set(String(stakingEntry.id), updatedStaking);
+        try {
+          // This is a bit of a hack, but it will force the staking record to update
+          // In a real application, we would have a proper API for claiming rewards
+          const dummyUnstake = await storage.unstakeTokens(walletAddress, 0);
+          console.log("Reset pending rewards via dummy unstake:", dummyUnstake);
+        } catch (error) {
+          // If this fails, we'll log it but continue - the tokens were already minted
+          console.warn("Failed to reset pending rewards, but tokens were minted:", error);
         }
         
         // Get updated staking info
