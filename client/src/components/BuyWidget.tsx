@@ -10,6 +10,8 @@ import { formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import AirdropButton from './AirdropButton';
 import { Loader2, AlertCircle } from "lucide-react";
+import { Transaction, VersionedTransaction, PublicKey } from '@solana/web3.js';
+import { Buffer } from 'buffer';
 
 interface BuyWidgetProps {
   flashRef?: React.RefObject<() => void>;
@@ -268,8 +270,8 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
         description: `Buying HATM tokens with ${inputAmount} SOL...`,
       });
 
-      // Call our buy endpoint
-      const response = await fetch('/api/buy-token', {
+      // STEP 1: Get the SOL transfer transaction from server
+      const buyResponse = await fetch('/api/buy-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -281,30 +283,105 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
         }),
       });
 
-      const data = await response.json();
+      const buyData = await buyResponse.json();
 
-      if (response.ok && data.success) {
-        // In a real production environment, we would charge real SOL,
-        // but for this demo, we're just minting tokens directly without
-        // charging SOL. In a production deployment, we would use a proper
-        // Solana program to handle token exchange.
-        
-        // Success notifications for development testing
-        toast({
-          title: "Purchase processed for testing",
-          description: `This would normally deduct ${parseFloat(solAmount).toFixed(4)} SOL (demo mode)`
-        });
+      if (buyResponse.ok && buyData.success) {
+        try {
+          // STEP 2: Process the SOL transfer transaction
+          if (buyData.solTransferTransaction && publicKey) {
+            // Show detailed toast
+            toast({
+              title: "Sign SOL transfer",
+              description: "Please confirm the transaction in your wallet to transfer SOL",
+            });
+            
+            // Decode the serialized transaction
+            const buffer = Buffer.from(buyData.solTransferTransaction, 'base64');
+            
+            try {
+              // Create a transaction from the buffer
+              const transaction = Transaction.from(buffer);
+              
+              // Set the current user as fee payer (important!)
+              transaction.feePayer = publicKey;
+              
+              // Serialize it to versioned transaction format
+              const message = transaction.compileMessage();
+              const versionedTransaction = new VersionedTransaction(message);
+              
+              // Send the transaction using the wallet adapter
+              const solTransferSignature = await sendTransaction(versionedTransaction);
+              
+              toast({
+                title: "SOL transfer successful!",
+                description: `${parseFloat(solAmount).toFixed(4)} SOL has been sent. Now finalizing purchase...`
+              });
+              
+              // STEP 3: Complete the purchase by calling the completion endpoint
+              const completePurchaseResponse = await fetch('/api/complete-purchase', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  walletAddress: publicKey.toString(),
+                  solAmount: inputAmount,
+                  tokenAmount: buyData.tokenAmount,
+                  solTransferSignature: solTransferSignature,
+                  referralCode: referralValid ? localReferralCode : undefined
+                }),
+              });
+              
+              const completePurchaseData = await completePurchaseResponse.json();
+              
+              if (completePurchaseResponse.ok && completePurchaseData.success) {
+                // Success! Token purchase is complete.
+                toast({
+                  title: "SOL transfer verified",
+                  description: `${parseFloat(solAmount).toFixed(4)} SOL has been deducted from your wallet`
+                });
+                
+                // Update data for display
+                buyData.message = completePurchaseData.message;
+                buyData.explorerUrl = completePurchaseData.explorerUrl;
+                buyData.currentBalance = completePurchaseData.currentBalance;
+              } else {
+                throw new Error(completePurchaseData.error || "Failed to complete purchase after SOL transfer");
+              }
+            } catch (error) {
+              console.error("Error processing SOL transfer:", error);
+              toast({
+                title: "SOL transfer failed",
+                description: "There was an error processing the SOL transfer. Transaction cancelled.",
+                variant: "destructive"
+              });
+              setIsProcessing(false);
+              return;
+            }
+          } else {
+            throw new Error("Missing transaction data from server");
+          }
+        } catch (error) {
+          console.error("Error in purchase process:", error);
+          toast({
+            title: "Purchase process failed",
+            description: "There was an error completing the token purchase",
+            variant: "destructive"
+          });
+          setIsProcessing(false);
+          return;
+        }
         
         toast({
           title: "Purchase successful!",
           description: (
             <div className="flex flex-col gap-1">
-              <p>{data.message}</p>
-              <p className="text-xs">Fee: {data.feePercentage}%</p>
-              {data.referralApplied && <p className="text-xs text-primary">Referral code applied</p>}
-              {data.explorerUrl && (
+              <p>{buyData.message}</p>
+              <p className="text-xs">Fee: {buyData.feePercentage}%</p>
+              {buyData.referralApplied && <p className="text-xs text-primary">Referral code applied</p>}
+              {buyData.explorerUrl && (
                 <a 
-                  href={data.explorerUrl} 
+                  href={buyData.explorerUrl} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-primary underline text-xs"
@@ -321,7 +398,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
         setSolAmount('');
         setHatchAmount('');
       } else {
-        throw new Error(data.error || "Failed to purchase tokens");
+        throw new Error(buyData.error || "Failed to purchase tokens");
       }
     } catch (error) {
       console.error("Error processing purchase:", error);
