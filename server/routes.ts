@@ -713,10 +713,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const stakingVaultAddress = authorityKeypair.publicKey.toString();
         
         // Transfer tokens from user to staking vault
+        // The third parameter (walletAddress) indicates we are taking tokens FROM the user wallet
         const transferSignature = await tokenTransferModule.authorityTransferTokens(
-          stakingVaultAddress, // destination
-          parsedAmount,        // amount
-          walletAddress        // source
+          stakingVaultAddress, // destination (staking vault)
+          parsedAmount,        // amount of tokens to transfer
+          walletAddress        // source wallet address (we're taking tokens from this wallet)
         );
         
         console.log(`Transferred ${parsedAmount} tokens from ${walletAddress} to staking vault: ${transferSignature}`);
@@ -772,8 +773,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Processing unstaking request for wallet: ${walletAddress}, amount: ${parsedAmount}`);
       
       try {
-        // Process unstaking with potential fees
+        // First, process unstaking with potential fees in our database
         const unstakeResult = await storage.unstakeTokens(walletAddress, parsedAmount);
+        
+        // Now, transfer the tokens back to the user's wallet from the staking vault
+        const simpleTokenModule = await import('./simple-token');
+        const tokenTransferModule = await import('./token-transfer');
+        const { keypair: authorityKeypair } = simpleTokenModule.getMintAuthority();
+        
+        // The net amount after fees
+        const netAmount = unstakeResult.netAmount;
+        
+        // Transfer the net amount back to the user
+        const transferSignature = await tokenTransferModule.authorityTransferTokens(
+          walletAddress,  // destination (user wallet)
+          netAmount       // amount after fees
+        );
+        
+        console.log(`Unstaked and transferred ${netAmount} tokens to ${walletAddress}: ${transferSignature}`);
         
         // Get updated staking info
         const stakingInfo = await storage.getStakingInfo(walletAddress);
@@ -781,9 +798,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Prepare response with details
         return res.json({
           success: true,
-          message: `${parsedAmount} HATM tokens have been unstaked`,
+          message: `${parsedAmount} HATM tokens have been unstaked (${netAmount} after fees)`,
           stakingInfo,
-          unstakeResult
+          unstakeResult,
+          transactionSignature: transferSignature,
+          explorerUrl: `https://explorer.solana.com/tx/${transferSignature}?cluster=devnet`
         });
       } catch (error) {
         console.error("Error in unstaking process:", error);

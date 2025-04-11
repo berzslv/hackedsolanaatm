@@ -100,15 +100,23 @@ export async function transferTokens(
 /**
  * Transfer tokens from the authority to another wallet
  * This is useful for testing and can be used to transfer tokens without needing the sender's private key
+ * @param recipientWalletAddress The wallet address to receive tokens
+ * @param amount The amount of tokens to transfer
+ * @param sourceWalletAddress Optional source wallet address. If not provided, tokens will be sent from the mint authority
  */
 export async function authorityTransferTokens(
   recipientWalletAddress: string,
-  amount: number
+  amount: number,
+  sourceWalletAddress?: string
 ): Promise<string> {
   try {
     const connection = getConnection();
     const { keypair: mintAuthority, mintPublicKey } = getMintAuthority();
     const recipientPublicKey = new PublicKey(recipientWalletAddress);
+    
+    // If source wallet is provided, we'll transfer from that wallet to the recipient using the authority
+    // This is useful for staking operations where we take tokens from the user
+    const isTransferFromSpecificSource = !!sourceWalletAddress;
     
     // Get the authority's token account
     const authorityTokenAccount = await getAssociatedTokenAddress(
@@ -174,13 +182,63 @@ export async function authorityTransferTokens(
       throw error;
     }
     
-    // Now transfer from authority to recipient
-    return await transferTokens(
-      mintAuthority.publicKey.toString(),
-      recipientWalletAddress,
-      amount,
-      mintAuthority
-    );
+    // Now transfer tokens
+    if (isTransferFromSpecificSource) {
+      // For staking: we're taking tokens from the user (source) and sending to the authority (recipient)
+      const sourcePublicKey = new PublicKey(sourceWalletAddress!);
+      
+      // Get source token account
+      const sourceTokenAccount = await getAssociatedTokenAddress(
+        mintPublicKey,
+        sourcePublicKey,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      
+      try {
+        await getAccount(connection, sourceTokenAccount);
+      } catch (error) {
+        console.error("Source account doesn't exist or has no tokens:", error);
+        throw new Error(`Source wallet ${sourceWalletAddress} has no token account or insufficient balance`);
+      }
+      
+      // Get or create recipient token account (which is the authority in case of staking)
+      const recipientTokenAccount = authorityTokenAccount;
+      
+      // Calculate token amount with decimals
+      const decimals = 9;
+      const adjustedAmount = BigInt(amount * Math.pow(10, decimals));
+      
+      // Create transfer instruction - we're using the authority to move tokens from the source to the vault
+      const transferInstruction = createTransferInstruction(
+        sourceTokenAccount,       // from
+        recipientTokenAccount,    // to (authority wallet in case of staking)
+        sourcePublicKey,          // owner of source account
+        adjustedAmount,           // amount to transfer
+        [],                       // multiSigners (we're not using these)
+        TOKEN_PROGRAM_ID
+      );
+      
+      // Create and send transaction
+      const transaction = new Transaction().add(transferInstruction);
+      const signature = await sendAndConfirmTransaction(
+        connection,
+        transaction,
+        [mintAuthority] // The authority is the signer
+      );
+      
+      console.log(`Transfer from ${sourceWalletAddress} to ${recipientWalletAddress} successful! Signature: ${signature}`);
+      return signature;
+    } else {
+      // Standard case: transfer from authority to recipient
+      return await transferTokens(
+        mintAuthority.publicKey.toString(),
+        recipientWalletAddress,
+        amount,
+        mintAuthority
+      );
+    }
   } catch (error) {
     console.error("Error in authorityTransferTokens:", error);
     throw error;

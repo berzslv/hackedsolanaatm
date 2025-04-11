@@ -199,17 +199,46 @@ const StakingWidget = () => {
       
       if (response.ok && data.success) {
         // Show success message with fee details if applicable
-        const { unstakeResult } = data;
+        const { unstakeResult, explorerUrl } = data;
         if (unstakeResult.fee > 0) {
           toast({
             title: "Unstaking successful with fees",
-            description: `Unstaked ${unstakeResult.amountUnstaked} tokens. Early withdrawal fee: ${unstakeResult.fee} HATM (${unstakeResult.burnAmount} burned, ${unstakeResult.marketingAmount} to marketing)`,
+            description: (
+              <div className="flex flex-col gap-1">
+                <p>{`Unstaked ${unstakeResult.amountUnstaked} tokens. Early withdrawal fee: ${unstakeResult.fee} HATM (${unstakeResult.burnAmount} burned, ${unstakeResult.marketingAmount} to marketing)`}</p>
+                {explorerUrl && (
+                  <a 
+                    href={explorerUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary underline text-xs"
+                  >
+                    View transaction on Solana Explorer
+                  </a>
+                )}
+              </div>
+            ),
             duration: 6000
           });
         } else {
           toast({
             title: "Unstaking successful",
-            description: `Unstaked ${unstakeResult.amountUnstaked} tokens with no fees`,
+            description: (
+              <div className="flex flex-col gap-1">
+                <p>{`Unstaked ${unstakeResult.amountUnstaked} tokens with no fees`}</p>
+                {explorerUrl && (
+                  <a 
+                    href={explorerUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary underline text-xs"
+                  >
+                    View transaction on Solana Explorer
+                  </a>
+                )}
+              </div>
+            ),
+            duration: 6000
           });
         }
         
