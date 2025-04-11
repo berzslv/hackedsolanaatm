@@ -712,32 +712,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { keypair: authorityKeypair } = simpleTokenModule.getMintAuthority();
         const stakingVaultAddress = authorityKeypair.publicKey.toString();
         
-        // Transfer tokens from user to staking vault
-        // The third parameter (walletAddress) indicates we are taking tokens FROM the user wallet
-        const transferSignature = await tokenTransferModule.authorityTransferTokens(
+        // Create a transaction for the user to sign that will transfer tokens to the staking vault
+        const serializedTransaction = await tokenTransferModule.createTokenStakingTransaction(
+          walletAddress,       // source (user wallet)
           stakingVaultAddress, // destination (staking vault)
-          parsedAmount,        // amount of tokens to transfer
-          walletAddress        // source wallet address (we're taking tokens from this wallet)
+          parsedAmount         // amount of tokens to transfer
         );
         
-        console.log(`Transferred ${parsedAmount} tokens from ${walletAddress} to staking vault: ${transferSignature}`);
-        
-        // Create staking entry
-        const stakingEntry = await storage.stakeTokens({
-          walletAddress,
-          amountStaked: parsedAmount
-        });
-        
-        // Get updated staking info
-        const stakingInfo = await storage.getStakingInfo(walletAddress);
-        
+        // We'll return this transaction to the client to be signed
         return res.json({
           success: true,
-          message: `${parsedAmount} HATM tokens have been staked successfully`,
-          stakingInfo,
-          stakingEntry,
-          transactionSignature: transferSignature,
-          explorerUrl: `https://explorer.solana.com/tx/${transferSignature}?cluster=devnet`
+          message: `Transaction created to stake ${parsedAmount} HATM tokens`,
+          transaction: serializedTransaction,
+          stakingAmount: parsedAmount,
+          stakingVaultAddress: stakingVaultAddress
         });
       } catch (error) {
         console.error("Error in staking process:", error);

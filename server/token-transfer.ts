@@ -102,21 +102,17 @@ export async function transferTokens(
  * This is useful for testing and can be used to transfer tokens without needing the sender's private key
  * @param recipientWalletAddress The wallet address to receive tokens
  * @param amount The amount of tokens to transfer
- * @param sourceWalletAddress Optional source wallet address. If not provided, tokens will be sent from the mint authority
  */
 export async function authorityTransferTokens(
   recipientWalletAddress: string,
-  amount: number,
-  sourceWalletAddress?: string
+  amount: number
 ): Promise<string> {
   try {
     const connection = getConnection();
     const { keypair: mintAuthority, mintPublicKey } = getMintAuthority();
     const recipientPublicKey = new PublicKey(recipientWalletAddress);
     
-    // If source wallet is provided, we'll transfer from that wallet to the recipient using the authority
-    // This is useful for staking operations where we take tokens from the user
-    const isTransferFromSpecificSource = !!sourceWalletAddress;
+    // Transferring tokens from the authority to the recipient
     
     // Get the authority's token account
     const authorityTokenAccount = await getAssociatedTokenAddress(
@@ -182,63 +178,13 @@ export async function authorityTransferTokens(
       throw error;
     }
     
-    // Now transfer tokens
-    if (isTransferFromSpecificSource) {
-      // For staking: we're taking tokens from the user (source) and sending to the authority (recipient)
-      const sourcePublicKey = new PublicKey(sourceWalletAddress!);
-      
-      // Get source token account
-      const sourceTokenAccount = await getAssociatedTokenAddress(
-        mintPublicKey,
-        sourcePublicKey,
-        false,
-        TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
-      );
-      
-      try {
-        await getAccount(connection, sourceTokenAccount);
-      } catch (error) {
-        console.error("Source account doesn't exist or has no tokens:", error);
-        throw new Error(`Source wallet ${sourceWalletAddress} has no token account or insufficient balance`);
-      }
-      
-      // Get or create recipient token account (which is the authority in case of staking)
-      const recipientTokenAccount = authorityTokenAccount;
-      
-      // Calculate token amount with decimals
-      const decimals = 9;
-      const adjustedAmount = BigInt(amount * Math.pow(10, decimals));
-      
-      // Create transfer instruction - we're using the authority to move tokens from the source to the vault
-      const transferInstruction = createTransferInstruction(
-        sourceTokenAccount,       // from
-        recipientTokenAccount,    // to (authority wallet in case of staking)
-        sourcePublicKey,          // owner of source account
-        adjustedAmount,           // amount to transfer
-        [],                       // multiSigners (we're not using these)
-        TOKEN_PROGRAM_ID
-      );
-      
-      // Create and send transaction
-      const transaction = new Transaction().add(transferInstruction);
-      const signature = await sendAndConfirmTransaction(
-        connection,
-        transaction,
-        [mintAuthority] // The authority is the signer
-      );
-      
-      console.log(`Transfer from ${sourceWalletAddress} to ${recipientWalletAddress} successful! Signature: ${signature}`);
-      return signature;
-    } else {
-      // Standard case: transfer from authority to recipient
-      return await transferTokens(
-        mintAuthority.publicKey.toString(),
-        recipientWalletAddress,
-        amount,
-        mintAuthority
-      );
-    }
+        // Standard case: transfer from authority to recipient
+    return await transferTokens(
+      mintAuthority.publicKey.toString(),
+      recipientWalletAddress,
+      amount,
+      mintAuthority
+    );
   } catch (error) {
     console.error("Error in authorityTransferTokens:", error);
     throw error;
@@ -248,6 +194,114 @@ export async function authorityTransferTokens(
 // Import here to avoid circular dependency
 import { createMintToInstruction } from '@solana/spl-token';
 import { SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+
+/**
+ * Create a transaction for staking tokens (transferring tokens from a user to the staking vault)
+ * This transaction will need to be sent to the client for signing
+ * @param userWalletAddress The user's wallet address (source)
+ * @param destinationWalletAddress The staking vault address (destination)
+ * @param amount The amount of tokens to stake
+ * @returns The serialized transaction as base64 string
+ */
+export async function createTokenStakingTransaction(
+  userWalletAddress: string,
+  destinationWalletAddress: string,
+  amount: number
+): Promise<string> {
+  try {
+    const connection = getConnection();
+    const { mintPublicKey } = getMintAuthority();
+    
+    const userPublicKey = new PublicKey(userWalletAddress);
+    const destinationPublicKey = new PublicKey(destinationWalletAddress);
+    
+    // Get source token account (user's token account)
+    const userTokenAccount = await getAssociatedTokenAddress(
+      mintPublicKey,
+      userPublicKey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    
+    // Get destination token account (authority/staking vault token account)
+    const destinationTokenAccount = await getAssociatedTokenAddress(
+      mintPublicKey,
+      destinationPublicKey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    
+    // Ensure the destination account exists - if not, create it
+    try {
+      await getAccount(connection, destinationTokenAccount);
+      console.log("Destination token account exists");
+    } catch (error) {
+      if (error instanceof TokenAccountNotFoundError) {
+        console.log("Destination token account doesn't exist, it will be created as part of the transaction");
+        
+        // We'll need to create this account as part of the user's transaction
+        // This will require SOL from the user's wallet
+        const createAtaInstruction = createAssociatedTokenAccountInstruction(
+          userPublicKey,                 // payer
+          destinationTokenAccount,       // associated token account to create
+          destinationPublicKey,          // owner of the token account
+          mintPublicKey,                 // token mint
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+        
+        const transaction = new Transaction().add(createAtaInstruction);
+        const { blockhash } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = userPublicKey;
+        
+        // Return the serialized transaction - this might be executed separately
+        // before continuing with the actual token transfer
+        return transaction.serialize({
+          requireAllSignatures: false,
+          verifySignatures: false
+        }).toString('base64');
+      }
+      throw error;
+    }
+    
+    // Calculate token amount with decimals
+    const decimals = 9;
+    const adjustedAmount = BigInt(amount * Math.pow(10, decimals));
+    
+    // Create transfer instruction
+    const transferInstruction = createTransferInstruction(
+      userTokenAccount,          // source
+      destinationTokenAccount,   // destination
+      userPublicKey,             // owner of source account
+      adjustedAmount,            // amount with decimals
+      [],                        // multiSigners (not needed in this case)
+      TOKEN_PROGRAM_ID
+    );
+    
+    // Create transaction
+    const transaction = new Transaction().add(transferInstruction);
+    
+    // Get the latest blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = userPublicKey;
+    
+    // Serialize the transaction
+    const serializedTransaction = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false
+    }).toString('base64');
+    
+    console.log(`Token staking transaction created for ${amount} tokens`);
+    return serializedTransaction;
+  } catch (error) {
+    console.error("Error creating token staking transaction:", error);
+    throw error;
+  }
+}
 
 /**
  * Create a transaction for transferring SOL from a user wallet to a destination
