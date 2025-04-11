@@ -9,7 +9,7 @@ import { useReferral } from '@/context/ReferralContext';
 import { formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import AirdropButton from './AirdropButton';
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 
 interface BuyWidgetProps {
   flashRef?: React.RefObject<() => void>;
@@ -25,6 +25,8 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
   const [hatchAmount, setHatchAmount] = useState<string>('');
   const [referralValid, setReferralValid] = useState<boolean>(false);
   const [localReferralCode, setLocalReferralCode] = useState<string>('');
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [isValidatingReferral, setIsValidatingReferral] = useState<boolean>(false);
   
   // Initialize localReferralCode from context referralCode
   useEffect(() => {
@@ -70,8 +72,14 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
     }
   }, [localReferralCode]);
   
+  // Helper function to validate number inputs (only allow numbers with up to 4 decimal places)
+  const isValidNumberInput = (val: string) => /^(\d+(\.\d{0,4})?)?$/.test(val);
+
   const handleSolInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    // Validate input format
+    if (!isValidNumberInput(value)) return;
+    
     setSolAmount(value);
 
     // Calculate HATM amount based on SOL input
@@ -85,6 +93,9 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
 
   const handleHatmInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    // Validate input format
+    if (!isValidNumberInput(value)) return;
+    
     setHatchAmount(value);
 
     // Calculate SOL amount based on HATM input
