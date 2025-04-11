@@ -10,7 +10,9 @@ import {
   createAssociatedTokenAccountInstruction,
   createTransferInstruction,
   getAccount,
-  TokenAccountNotFoundError
+  TokenAccountNotFoundError,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID
 } from '@solana/spl-token';
 import { getConnection, getMintAuthority, getOrCreateTokenAccount } from './simple-token';
 
@@ -44,7 +46,10 @@ export async function transferTokens(
     // Get or create token accounts for sender and recipient
     const senderTokenAccount = await getAssociatedTokenAddress(
       mintPublicKey,
-      senderPublicKey
+      senderPublicKey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
     
     // Make sure the sender's token account exists
@@ -70,7 +75,8 @@ export async function transferTokens(
       senderTokenAccount,        // source
       recipientTokenAccount,     // destination
       senderPublicKey,           // owner of source account
-      BigInt(adjustedAmount)     // amount with decimals
+      BigInt(adjustedAmount),    // amount with decimals
+      TOKEN_PROGRAM_ID
     );
     
     // Create and send transaction
@@ -107,7 +113,10 @@ export async function authorityTransferTokens(
     // Get the authority's token account
     const authorityTokenAccount = await getAssociatedTokenAddress(
       mintPublicKey,
-      mintAuthority.publicKey
+      mintAuthority.publicKey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
     
     // Make sure the authority's token account exists
@@ -122,7 +131,9 @@ export async function authorityTransferTokens(
             mintAuthority.publicKey,
             authorityTokenAccount,
             mintAuthority.publicKey,
-            mintPublicKey
+            mintPublicKey,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
           )
         );
         
@@ -150,7 +161,8 @@ export async function authorityTransferTokens(
           mintPublicKey,
           authorityTokenAccount,
           mintAuthority.publicKey,
-          BigInt((amount - tokenBalance + 100) * Math.pow(10, decimals))
+          BigInt((amount - tokenBalance + 100) * Math.pow(10, decimals)),
+          TOKEN_PROGRAM_ID
         );
         
         const transaction = new Transaction().add(mintInstruction);
