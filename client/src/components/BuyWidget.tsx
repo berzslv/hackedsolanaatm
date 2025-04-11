@@ -123,6 +123,10 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       return;
     }
 
+    // Prevent multiple submits
+    if (isValidatingReferral) return;
+    setIsValidatingReferral(true);
+
     try {
       // Validate the referral code with the API
       const response = await fetch(`/api/validate-referral/${localReferralCode}`);
@@ -151,6 +155,8 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
         description: "Could not validate the referral code. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsValidatingReferral(false);
     }
   };
 
@@ -159,6 +165,10 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       openWalletModal(); // Open wallet selector modal
       return;
     }
+
+    // Prevent multiple submission
+    if (isProcessing) return;
+    setIsProcessing(true);
 
     // Flash the widget to highlight where to buy
     setIsFlashing(true);
@@ -172,6 +182,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
         description: "Please enter a valid SOL amount greater than 0.",
         variant: "destructive",
       });
+      setIsProcessing(false);
       return;
     }
 
@@ -182,6 +193,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
         description: `You don't have enough SOL. Your balance: ${formatNumber(balance, {decimals: 4})} SOL`,
         variant: "destructive",
       });
+      setIsProcessing(false);
       return;
     }
 
@@ -222,6 +234,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
                 description: "The referral code you entered does not exist. Try AKIPB0 or 123456.",
                 variant: "destructive",
               });
+              setIsProcessing(false);
               return;
             }
     
@@ -241,6 +254,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
             description: "Could not validate the referral code. Try AKIPB0 or 123456.",
             variant: "destructive",
           });
+          setIsProcessing(false);
           return;
         }
       }
@@ -302,6 +316,8 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
         description: "Failed to complete the token purchase. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -428,8 +444,14 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
                   variant="outline" 
                   size="sm"
                   onClick={applyReferralCode}
+                  disabled={isValidatingReferral}
                 >
-                  Apply
+                  {isValidatingReferral ? (
+                    <div className="flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Validating...</span>
+                    </div>
+                  ) : "Apply"}
                 </Button>
               </div>
             </div>
@@ -438,9 +460,25 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
           <Button 
             className="w-full py-3 gradient-button"
             onClick={handleBuy}
+            disabled={isProcessing}
           >
-            {connected ? 'Buy $HATM' : 'Connect Wallet to Buy'}
+            {isProcessing ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Processing...</span>
+              </div>
+            ) : (
+              connected ? 'Buy $HATM' : 'Connect Wallet to Buy'
+            )}
           </Button>
+          
+          {/* Network fee info */}
+          {connected && (
+            <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+              <AlertCircle className="h-3 w-3" />
+              <span>Estimated network fee: ~0.000005 SOL (paid to Solana network)</span>
+            </div>
+          )}
         </div>
 
         <div className="text-xs text-foreground/70 bg-muted p-2 rounded-lg">
