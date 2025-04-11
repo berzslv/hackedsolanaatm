@@ -694,18 +694,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Processing staking request for wallet: ${walletAddress}, amount: ${parsedAmount}`);
       
+      // Check token balance first
+      const simpleTokenModule = await import('./simple-token');
+      const tokenBalance = await simpleTokenModule.getTokenBalance(walletAddress);
+      
+      if (tokenBalance < parsedAmount) {
+        return res.status(400).json({ 
+          error: "Insufficient token balance", 
+          tokenBalance, 
+          requestedAmount: parsedAmount 
+        });
+      }
+      
       try {
-        // Check token balance first
-        const simpleToken = await import('./simple-token');
-        const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
+        // Transfer tokens to staking vault (the mint authority for simplicity)
+        const tokenTransferModule = await import('./token-transfer');
+        const { keypair: authorityKeypair } = simpleTokenModule.getMintAuthority();
+        const stakingVaultAddress = authorityKeypair.publicKey.toString();
         
-        if (tokenBalance < parsedAmount) {
-          return res.status(400).json({ 
-            error: "Insufficient token balance", 
-            tokenBalance, 
-            requestedAmount: parsedAmount 
-          });
-        }
+        // Transfer tokens from user to staking vault
+        const transferSignature = await tokenTransferModule.authorityTransferTokens(
+          stakingVaultAddress, // destination
+          parsedAmount,        // amount
+          walletAddress        // source
+        );
+        
+        console.log(`Transferred ${parsedAmount} tokens from ${walletAddress} to staking vault: ${transferSignature}`);
         
         // Create staking entry
         const stakingEntry = await storage.stakeTokens({
@@ -720,7 +734,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: true,
           message: `${parsedAmount} HATM tokens have been staked successfully`,
           stakingInfo,
-          stakingEntry
+          stakingEntry,
+          transactionSignature: transferSignature,
+          explorerUrl: `https://explorer.solana.com/tx/${transferSignature}?cluster=devnet`
         });
       } catch (error) {
         console.error("Error in staking process:", error);
