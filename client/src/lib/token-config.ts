@@ -1,17 +1,20 @@
 // Solana token configuration
 export const TOKEN_CONFIG = {
   // HackATM Token on Devnet
-  mint: "12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5",
+  mint: "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk",
   authority: "2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap",
   name: "Hacked ATM Token",
   symbol: "HATM",
   decimals: 9,
   logo: "/hatm-logo.png", // Will need to create this logo asset
-  network: "devnet"
+  network: "devnet",
 };
 
 // Helper functions
-export function getExplorerUrl(address: string, cluster = TOKEN_CONFIG.network): string {
+export function getExplorerUrl(
+  address: string,
+  cluster = TOKEN_CONFIG.network,
+): string {
   return `https://explorer.solana.com/address/${address}?cluster=${cluster}`;
 }
 
