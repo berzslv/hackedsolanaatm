@@ -7,6 +7,7 @@ interface SolanaContextType {
   connected: boolean;
   publicKey: PublicKey | null;
   balance: number;
+  refreshBalance: () => Promise<void>;
   disconnectWallet: () => void;
   signMessage: (message: Uint8Array) => Promise<Uint8Array>;
   signTransaction: (transaction: VersionedTransaction) => Promise<VersionedTransaction>;
@@ -18,6 +19,7 @@ const SolanaContext = createContext<SolanaContextType>({
   connected: false,
   publicKey: null,
   balance: 0,
+  refreshBalance: async () => {},
   disconnectWallet: () => {},
   signMessage: async () => new Uint8Array(),
   signTransaction: async (tx) => tx,
@@ -68,6 +70,16 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setBalance(balance / 1_000_000_000); // Convert lamports to SOL
     } catch (error) {
       console.error('Error fetching balance:', error);
+    }
+  };
+  
+  // Function to manually refresh balance when needed
+  const refreshBalance = async (): Promise<void> => {
+    if (connection && publicKey && typeof publicKey.toBase58 === 'function') {
+      console.log("Manually refreshing SOL balance...");
+      await fetchBalance(connection, publicKey);
+    } else {
+      console.warn("Cannot refresh balance: connection or publicKey not available");
     }
   };
 
@@ -129,6 +141,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         connected,
         publicKey,
         balance,
+        refreshBalance,
         disconnectWallet,
         signMessage,
         signTransaction,

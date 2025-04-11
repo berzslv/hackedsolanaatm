@@ -18,7 +18,7 @@ interface BuyWidgetProps {
 }
 
 const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
-  const { connected, balance, publicKey, sendTransaction } = useSolana();
+  const { connected, balance, publicKey, sendTransaction, refreshBalance } = useSolana();
   const { openWalletModal } = useWalletModalOpener();
   const { tokenPrice } = useTokenData();
   const { toast } = useToast();
@@ -340,6 +340,9 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
                   title: "SOL transfer verified",
                   description: `${parseFloat(solAmount).toFixed(4)} SOL has been deducted from your wallet`
                 });
+                
+                // Refresh SOL balance to show updated amount
+                await refreshBalance();
                 
                 // Update data for display
                 buyData.message = completePurchaseData.message;
