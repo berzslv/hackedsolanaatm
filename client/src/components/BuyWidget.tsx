@@ -346,7 +346,57 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
                 buyData.explorerUrl = completePurchaseData.explorerUrl;
                 buyData.currentBalance = completePurchaseData.currentBalance;
               } else {
-                throw new Error(completePurchaseData.error || "Failed to complete purchase after SOL transfer");
+                // If we get an error but SOL was transferred, show a more helpful message
+                console.log("Purchase completion error:", completePurchaseData);
+                
+                if (completePurchaseData.error && completePurchaseData.error.includes("still processing")) {
+                  // Transaction is still being processed
+                  toast({
+                    title: "Transaction still processing",
+                    description: "Your SOL transfer is still being confirmed on the blockchain. Please try again in a moment.",
+                    variant: "default",
+                    duration: 8000
+                  });
+                  setIsProcessing(false);
+                  return;
+                } else if (solTransferSignature) {
+                  // SOL transaction was successful, but token minting failed
+                  toast({
+                    title: "SOL transfer successful",
+                    description: "Your SOL was transferred successfully, but there was an issue minting tokens. Please contact support with your transaction ID.",
+                    variant: "default",
+                    duration: 8000
+                  });
+                  
+                  toast({
+                    title: "Transaction ID",
+                    description: (
+                      <div className="flex flex-col gap-1">
+                        <p className="text-xs break-all">{solTransferSignature}</p>
+                        <a 
+                          href={`https://explorer.solana.com/tx/${solTransferSignature}?cluster=devnet`}
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary underline text-xs"
+                        >
+                          View SOL transaction on Solana Explorer
+                        </a>
+                      </div>
+                    ),
+                    duration: 10000
+                  });
+                  
+                  // Since we have the SOL transaction, update with partial success data
+                  buyData.message = "SOL transfer was successful. Your tokens will be credited shortly.";
+                  buyData.solTransferSignature = solTransferSignature;
+                  buyData.explorerUrl = `https://explorer.solana.com/tx/${solTransferSignature}?cluster=devnet`;
+                  
+                  // Don't throw since we have a partial success
+                  setIsProcessing(false);
+                  return;
+                } else {
+                  throw new Error(completePurchaseData.error || "Failed to complete purchase after SOL transfer");
+                }
               }
             } catch (error) {
               console.error("Error processing SOL transfer:", error);

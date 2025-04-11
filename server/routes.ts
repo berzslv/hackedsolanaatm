@@ -445,10 +445,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Complete token purchase after SOL transfer
   app.post("/api/complete-purchase", async (req, res) => {
     try {
-      const { walletAddress, tokenAmount, solAmount, solTransferSignature, referralCode } = req.body;
+      console.log("Received complete-purchase request:", req.body);
+      const { walletAddress, tokenAmount: rawTokenAmount, solAmount, solTransferSignature, referralCode } = req.body;
       
-      if (!walletAddress || !tokenAmount || !solTransferSignature) {
-        return res.status(400).json({ error: "Wallet address, token amount, and transaction signature are required" });
+      // Parse the token amount as a number
+      const tokenAmount = parseInt(rawTokenAmount, 10);
+      
+      if (!walletAddress || isNaN(tokenAmount) || !solTransferSignature) {
+        console.log("Missing or invalid required parameters:", { 
+          hasWalletAddress: !!walletAddress, 
+          rawTokenAmount,
+          tokenAmount,
+          hasTokenAmount: !isNaN(tokenAmount), 
+          hasSolTransferSignature: !!solTransferSignature 
+        });
+        return res.status(400).json({ error: "Wallet address, valid token amount, and transaction signature are required" });
       }
       
       // Verify the SOL transfer transaction was successful
@@ -456,15 +467,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
       
       try {
-        // Check the transaction status
-        const { value: status } = await connection.getSignatureStatus(solTransferSignature, {
-          searchTransactionHistory: true,
-        });
+        console.log(`Checking transaction status for: ${solTransferSignature}`);
+        // Check the transaction status with retry for pending transactions
+        let status;
+        let retries = 0;
+        const maxRetries = 5;
         
-        if (!status || status.err) {
+        while (retries < maxRetries) {
+          try {
+            const statusResponse = await connection.getSignatureStatus(solTransferSignature, {
+              searchTransactionHistory: true,
+            });
+            status = statusResponse.value;
+            console.log(`Transaction status (attempt ${retries + 1}):`, status);
+            
+            // If we have a status and no error, break the loop
+            if (status && !status.err) {
+              break;
+            }
+            
+            // If status is null (transaction not found yet) or in a pending state, wait and retry
+            if (!status || 
+                status.confirmationStatus === 'processed' || 
+                !status.confirmationStatus || 
+                status.confirmationStatus === undefined) {
+              console.log(`Transaction still processing, waiting to retry...`);
+              await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retrying
+              retries++;
+              continue;
+            }
+            
+            // If we have an error, break the loop to handle it
+            if (status && status.err) {
+              console.error(`Transaction error detected:`, status.err);
+              break;
+            }
+          } catch (error) {
+            console.error(`Error checking transaction status:`, error);
+            retries++;
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retrying
+          }
+        }
+        
+        // After retries, check if we have a valid transaction
+        if (!status) {
           return res.status(400).json({ 
-            error: "SOL transfer transaction failed or not found", 
-            details: status ? status.err : "Transaction not found" 
+            error: "SOL transfer transaction not found after multiple attempts", 
+            details: "Transaction may still be processing - please try again in a moment" 
+          });
+        }
+        
+        if (status.err) {
+          return res.status(400).json({ 
+            error: "SOL transfer transaction failed", 
+            details: status.err 
           });
         }
         
