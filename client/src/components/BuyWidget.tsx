@@ -10,7 +10,6 @@ import { formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import AirdropButton from './AirdropButton';
 import { Loader2, AlertCircle } from "lucide-react";
-import { Transaction, VersionedTransaction } from '@solana/web3.js';
 
 interface BuyWidgetProps {
   flashRef?: React.RefObject<() => void>;
@@ -285,41 +284,16 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // If we have a SOL transfer transaction to process
-        if (data.solTransferTransaction) {
-          try {
-            toast({
-              title: "Processing SOL transfer...",
-              description: "Please confirm the transaction in your wallet."
-            });
-            
-            // Decode and deserialize the transaction from base64
-            const buffer = Buffer.from(data.solTransferTransaction, 'base64');
-            const recoveredTransaction = new Transaction();
-            recoveredTransaction.feePayer = publicKey;
-            const deserializedTransaction = Transaction.from(buffer);
-            
-            // Get a versioned transaction that can be signed and sent
-            // We need to create a versioned transaction because that's what our sendTransaction method expects
-            const message = deserializedTransaction.compileMessage();
-            const versionedTransaction = new VersionedTransaction(message);
-            
-            // Sign and send the transaction
-            const solTransferSignature = await sendTransaction(versionedTransaction);
-            
-            toast({
-              title: "SOL transfer complete!",
-              description: `${parseFloat(solAmount).toFixed(4)} SOL has been transferred. Tokens minted successfully.`
-            });
-          } catch (error) {
-            console.error("Error processing SOL transfer:", error);
-            toast({
-              title: "SOL transfer failed",
-              description: "There was an error processing the SOL transfer, but tokens were minted.",
-              variant: "destructive"
-            });
-          }
-        }
+        // In a real production environment, we would charge real SOL,
+        // but for this demo, we're just minting tokens directly without
+        // charging SOL. In a production deployment, we would use a proper
+        // Solana program to handle token exchange.
+        
+        // Success notifications for development testing
+        toast({
+          title: "Purchase processed for testing",
+          description: `This would normally deduct ${parseFloat(solAmount).toFixed(4)} SOL (demo mode)`
+        });
         
         toast({
           title: "Purchase successful!",

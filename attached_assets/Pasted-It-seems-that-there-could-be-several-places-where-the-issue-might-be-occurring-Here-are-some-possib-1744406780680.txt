@@ -1,0 +1,49 @@
+It seems that there could be several places where the issue might be occurring. Here are some possible reasons why Solana might not be getting deducted when purchasing your token:
+
+1. Transaction Creation Issue:
+Ensure that the Solana transaction is being created and signed correctly. You are using a VersionedTransaction, but it’s important to verify that the transaction is being created with the correct feePayer and includes the correct token transfer logic.
+
+Check if the transaction is correctly constructed: Ensure that you are properly serializing the transaction and adding the appropriate instructions to it. You should have a transfer instruction to move SOL from the buyer’s wallet to the contract (or another wallet).
+
+Here’s a quick check of transaction construction:
+
+typescript
+Copy
+Edit
+const transaction = new Transaction();
+transaction.add(
+  SystemProgram.transfer({
+    fromPubkey: publicKey,
+    toPubkey: recipientAddress,
+    lamports: amount * LAMPORTS_PER_SOL, // Convert SOL to lamports
+  })
+);
+Transaction sending: The sendTransaction method should be called after the transaction is properly signed and serialized. The transaction should also include the buyer's wallet as the feePayer.
+
+Double-check that you're correctly handling the sendTransaction logic:
+
+typescript
+Copy
+Edit
+const signedTransaction = await sendTransaction(transaction);
+2. Balance Check:
+You are checking if the buyer has enough balance with:
+
+javascript
+Copy
+Edit
+if (inputAmount > balance) {
+  toast({
+    title: "Insufficient balance",
+    description: `You don't have enough SOL. Your balance: ${formatNumber(balance, {decimals: 4})} SOL`,
+    variant: "destructive",
+  });
+  setIsProcessing(false);
+  return;
+}
+Ensure that the balance is being correctly fetched from the useSolana hook and contains the accurate value. If the balance isn't updated correctly after a transaction, the amount might appear as sufficient even though it’s not.
+
+3. Transaction Confirmation & Fee Calculation:
+Fee Issue: You calculate the fee based on the referral code (referralCode ? 0.06 : 0.08). Make sure that when calculating the final amount of SOL to be deducted, you are applying the fee and deducting the correct amount.
+
+SOL Amount Calculation: Ensure that when you calculate the effectiveSolAmount after applying the fee, you are correctly passing that value into the transaction.
