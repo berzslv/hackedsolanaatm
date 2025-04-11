@@ -9,6 +9,7 @@ import { useReferral } from '@/context/ReferralContext';
 import { formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import AirdropButton from './AirdropButton';
+import { Loader2 } from "lucide-react";
 
 interface BuyWidgetProps {
   flashRef?: React.RefObject<() => void>;
