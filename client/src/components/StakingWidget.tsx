@@ -400,7 +400,7 @@ const StakingWidget = () => {
             <Button 
               variant="outline"
               className="py-3 border-primary/30 text-primary hover:bg-card/80 transition-colors flex items-center justify-center gap-2"
-              disabled={isUnstaking || (!connected || !(stakingInfo?.amountStaked > 0))}
+              disabled={isUnstaking || !connected || !stakingInfo || !(stakingInfo.amountStaked > 0)}
               onClick={handleUnstake}
             >
               {isUnstaking ? (
@@ -418,7 +418,7 @@ const StakingWidget = () => {
             <Button 
               variant="outline"
               className="py-3 border-primary/30 text-primary hover:bg-card/80 transition-colors flex items-center justify-center gap-2"
-              disabled={isClaiming || (!connected || !(stakingInfo?.pendingRewards > 0))}
+              disabled={isClaiming || !connected || !stakingInfo || !(stakingInfo.pendingRewards > 0)}
               onClick={handleClaimRewards}
             >
               {isClaiming ? (
