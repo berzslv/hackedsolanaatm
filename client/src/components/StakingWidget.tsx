@@ -7,7 +7,7 @@ import { useWalletModalOpener } from '@/components/ui/wallet-adapter';
 import { shortenAddress, formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { Transaction, clusterApiUrl, Connection } from '@solana/web3.js';
+import { Transaction, VersionedTransaction, clusterApiUrl, Connection, TransactionMessage, PublicKey as SolanaPublicKey } from '@solana/web3.js';
 
 // Define types for staking info
 interface StakingInfo {
@@ -117,15 +117,37 @@ const StakingWidget = () => {
             description: "Please approve the transaction in your wallet",
           });
           
-          // Step 2: Decode the transaction
-          const transactionBuffer = Buffer.from(data.transaction, 'base64');
+          // Step 2: Set up connection and decode the transaction
           const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
           
-          // Parse the transaction
-          const transaction = Transaction.from(transactionBuffer);
+          // Convert base64 string to Uint8Array (browser-compatible approach)
+          const binaryString = window.atob(data.transaction);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          
+          // Parse the transaction (legacy transaction format from server)
+          const transaction = Transaction.from(bytes);
+          
+          // Convert legacy transaction to VersionedTransaction
+          const { blockhash } = await connection.getLatestBlockhash();
+          
+          // Extract all the instructions from the transaction
+          const instructions = transaction.instructions;
+          
+          // Create a new TransactionMessage
+          const messageV0 = new TransactionMessage({
+            payerKey: publicKey,
+            recentBlockhash: blockhash,
+            instructions
+          }).compileToV0Message();
+          
+          // Create a VersionedTransaction from the message
+          const versionedTransaction = new VersionedTransaction(messageV0);
           
           // Step 3: Sign and send the transaction with the user's wallet
-          const signature = await sendTransaction(transaction);
+          const signature = await sendTransaction(versionedTransaction);
           console.log("Transaction sent with signature:", signature);
           
           toast({
