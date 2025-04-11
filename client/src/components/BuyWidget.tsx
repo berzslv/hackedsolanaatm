@@ -17,7 +17,7 @@ interface BuyWidgetProps {
 }
 
 const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
-  const { connected, balance, publicKey } = useSolana();
+  const { connected, balance, publicKey, sendTransaction } = useSolana();
   const { openWalletModal } = useWalletModalOpener();
   const { tokenPrice } = useTokenData();
   const { toast } = useToast();
@@ -288,19 +288,24 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
         // If we have a SOL transfer transaction to process
         if (data.solTransferTransaction) {
           try {
-            const { sendTransaction } = useSolana();
             toast({
               title: "Processing SOL transfer...",
               description: "Please confirm the transaction in your wallet."
             });
             
-            // Decode the transaction
-            const transferTransaction = Transaction.from(
-              Buffer.from(data.solTransferTransaction, 'base64')
-            );
+            // Decode and deserialize the transaction from base64
+            const buffer = Buffer.from(data.solTransferTransaction, 'base64');
+            const recoveredTransaction = new Transaction();
+            recoveredTransaction.feePayer = publicKey;
+            const deserializedTransaction = Transaction.from(buffer);
+            
+            // Get a versioned transaction that can be signed and sent
+            // We need to create a versioned transaction because that's what our sendTransaction method expects
+            const message = deserializedTransaction.compileMessage();
+            const versionedTransaction = new VersionedTransaction(message);
             
             // Sign and send the transaction
-            const solTransferSignature = await sendTransaction(transferTransaction);
+            const solTransferSignature = await sendTransaction(versionedTransaction);
             
             toast({
               title: "SOL transfer complete!",
