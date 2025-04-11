@@ -121,6 +121,25 @@ const StakingWidget = () => {
         
         // Reset input
         setStakeAmount('');
+        
+        // Refresh token balance
+        // This would normally be handled by reacting to blockchain events
+        // For now, we'll use a manual refresh approach
+        // Wait a short time to ensure the backend has updated
+        setTimeout(async () => {
+          try {
+            // Get token balance from the API
+            const balanceResponse = await fetch(`/api/token-balance/${publicKey?.toString()}`);
+            const balanceData = await balanceResponse.json();
+            
+            console.log("Updated token balance after staking:", balanceData);
+            
+            // Re-fetch staking info
+            await fetchStakingInfo();
+          } catch (error) {
+            console.error("Error refreshing data after staking:", error);
+          }
+        }, 1000);
       } else {
         // Show error message
         toast({
@@ -196,6 +215,22 @@ const StakingWidget = () => {
         
         // Update staking info
         setStakingInfo(data.stakingInfo);
+        
+        // Refresh token balance
+        setTimeout(async () => {
+          try {
+            // Get token balance from the API
+            const balanceResponse = await fetch(`/api/token-balance/${publicKey?.toString()}`);
+            const balanceData = await balanceResponse.json();
+            
+            console.log("Updated token balance after unstaking:", balanceData);
+            
+            // Re-fetch staking info
+            await fetchStakingInfo();
+          } catch (error) {
+            console.error("Error refreshing data after unstaking:", error);
+          }
+        }, 1000);
       } else {
         // Show error message
         toast({

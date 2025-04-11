@@ -100,7 +100,7 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     stakersLeaderboard: mockStakersLeaderboard
   });
   
-  // Generate a persistent referral code when wallet is connected
+  // Fetch real token balance and staking info when wallet connected
   useEffect(() => {
     if (connected && publicKey) {
       // First check if we already have a referral code stored for this wallet address
@@ -122,39 +122,65 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       setReferralCode(walletReferralCode);
       
-      // Simulate user data being loaded when connected
-      setTokenData(prev => ({
-        ...prev,
-        referralCode: walletReferralCode,
-        userTokenBalance: 1000,
-        userStakedBalance: 500,
-        userPendingRewards: 25,
-        referralStats: {
-          totalReferrals: 12,
-          totalEarnings: 250,
-          weeklyRank: 8,
-          recentActivity: [
-            {
-              date: '2023-06-01',
-              transaction: '5XkZHNqRstA1cLaBVY8FvDuKCJ2tLKWx1jQKbCYMFQY3',
-              amount: 1000,
-              reward: 30
-            },
-            {
-              date: '2023-05-28',
-              transaction: '2vKr8YPvR4FNYRqUwj5vkFdkB5v1AuVmfBKN3XxLwbGz',
-              amount: 2500,
-              reward: 75
-            },
-            {
-              date: '2023-05-25',
-              transaction: '3bC7gCJ86E8KFHtVCm5eH5E32k7vHyZ1xKr3UeGQMTLe',
-              amount: 4800,
-              reward: 144
-            }
-          ]
+      // Fetch real token balance from API
+      const fetchTokenBalance = async () => {
+        try {
+          // Get token balance from the API
+          const balanceResponse = await fetch(`/api/token-balance/${walletAddress}`);
+          const balanceData = await balanceResponse.json();
+          
+          if (balanceResponse.ok && balanceData.success) {
+            console.log("Fetched token balance:", balanceData.balance);
+            
+            // Get staking info to update staked balance and pending rewards
+            const stakingResponse = await fetch(`/api/staking-info/${walletAddress}`);
+            const stakingData = await stakingResponse.json();
+            
+            console.log("Fetched staking info:", stakingData);
+            
+            // Update token data with real values
+            setTokenData(prev => ({
+              ...prev,
+              referralCode: walletReferralCode,
+              userTokenBalance: balanceData.balance || 0,
+              userStakedBalance: stakingData.success && stakingData.stakingInfo ? 
+                stakingData.stakingInfo.amountStaked : 0,
+              userPendingRewards: stakingData.success && stakingData.stakingInfo ? 
+                stakingData.stakingInfo.pendingRewards : 0,
+              referralStats: {
+                totalReferrals: 12,
+                totalEarnings: 250,
+                weeklyRank: 8,
+                recentActivity: [
+                  {
+                    date: '2023-06-01',
+                    transaction: '5XkZHNqRstA1cLaBVY8FvDuKCJ2tLKWx1jQKbCYMFQY3',
+                    amount: 1000,
+                    reward: 30
+                  },
+                  {
+                    date: '2023-05-28',
+                    transaction: '2vKr8YPvR4FNYRqUwj5vkFdkB5v1AuVmfBKN3XxLwbGz',
+                    amount: 2500,
+                    reward: 75
+                  },
+                  {
+                    date: '2023-05-25',
+                    transaction: '3bC7gCJ86E8KFHtVCm5eH5E32k7vHyZ1xKr3UeGQMTLe',
+                    amount: 4800,
+                    reward: 144
+                  }
+                ]
+              }
+            }));
+          }
+        } catch (error) {
+          console.error('Error fetching token data:', error);
         }
-      }));
+      };
+      
+      // Call the fetch function
+      fetchTokenBalance();
     } else {
       // Reset user data when disconnected
       setTokenData(prev => ({
