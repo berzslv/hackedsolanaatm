@@ -27,7 +27,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
   const [localReferralCode, setLocalReferralCode] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isValidatingReferral, setIsValidatingReferral] = useState<boolean>(false);
-  
+
   // Initialize localReferralCode from context referralCode
   useEffect(() => {
     if (referralCode) {
@@ -71,7 +71,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       setReferralValid(false);
     }
   }, [localReferralCode]);
-  
+
   // Helper function to validate number inputs (only allow numbers with up to 4 decimal places)
   const isValidNumberInput = (val: string) => /^(\d+(\.\d{0,4})?)?$/.test(val);
 
@@ -79,13 +79,16 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
     const value = e.target.value;
     // Validate input format
     if (!isValidNumberInput(value)) return;
-    
+
     setSolAmount(value);
 
     // Calculate HATM amount based on SOL input
     if (value && !isNaN(parseFloat(value))) {
-      const hatmAmount = parseFloat(value) / tokenPrice;
-      setHatchAmount(hatmAmount.toFixed(2));
+      // Calculate estimated HATM tokens (1 HATM = 0.01 SOL)
+      const feePercentage = referralCode ? 0.06 : 0.08;
+      const effectiveSolAmount = parseFloat(value) * (1 - feePercentage);
+      const estimatedTokens = Math.floor(effectiveSolAmount / 0.01); // 0.01 SOL per HATM
+      setHatchAmount(estimatedTokens.toString());
     } else {
       setHatchAmount('');
     }
@@ -95,7 +98,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
     const value = e.target.value;
     // Validate input format
     if (!isValidNumberInput(value)) return;
-    
+
     setHatchAmount(value);
 
     // Calculate SOL amount based on HATM input
@@ -206,7 +209,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
             console.log("Using TEST referral code");
             setReferralCode("TEST");
             setReferralValid(true);
-            
+
             toast({
               title: "Test referral code applied",
               description: "Using TEST referral code (6% fee)",
@@ -217,7 +220,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
             console.log(`Using predefined code: ${localReferralCode}`);
             setReferralCode(localReferralCode);
             setReferralValid(true);
-            
+
             toast({
               title: "Referral code valid",
               description: `Using referral code: ${localReferralCode} (6% fee)`,
@@ -227,7 +230,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
             // For other codes, validate with the server
             const response = await fetch(`/api/validate-referral/${localReferralCode}`);
             const data = await response.json();
-    
+
             if (!response.ok || !data.valid) {
               toast({
                 title: "Invalid referral code",
@@ -237,11 +240,11 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
               setIsProcessing(false);
               return;
             }
-    
+
             // Confirm referral code was successfully applied
             setReferralCode(localReferralCode);
             setReferralValid(true);
-            
+
             toast({
               title: "Referral code valid",
               description: `Using referral code: ${localReferralCode} (6% fee)`,
@@ -258,13 +261,13 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
           return;
         }
       }
-      
+
       // Show purchasing toast
       toast({
         title: "Processing purchase",
         description: `Buying HATM tokens with ${inputAmount} SOL...`,
       });
-      
+
       // Call our buy endpoint
       const response = await fetch('/api/buy-token', {
         method: 'POST',
@@ -277,9 +280,9 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
           referralCode: referralValid ? localReferralCode : undefined
         }),
       });
-      
+
       const data = await response.json();
-      
+
       if (response.ok && data.success) {
         toast({
           title: "Purchase successful!",
@@ -302,7 +305,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
           ),
           duration: 10000, // Show for 10 seconds so user can click the link
         });
-        
+
         // Clear input fields
         setSolAmount('');
         setHatchAmount('');
@@ -394,8 +397,10 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
                     const maxAmount = Math.max(0, balance - 0.01).toFixed(4);
                     setSolAmount(maxAmount);
                     // Also update HATM amount
-                    const hatmAmount = parseFloat(maxAmount) / tokenPrice;
-                    setHatchAmount(hatmAmount.toFixed(2));
+                    const feePercentage = referralCode ? 0.06 : 0.08;
+                    const effectiveSolAmount = parseFloat(maxAmount) * (1 - feePercentage);
+                    const estimatedTokens = Math.floor(effectiveSolAmount / 0.01); // 0.01 SOL per HATM
+                    setHatchAmount(estimatedTokens.toString());
                   }}
                 >
                   MAX
@@ -471,7 +476,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
               connected ? 'Buy $HATM' : 'Connect Wallet to Buy'
             )}
           </Button>
-          
+
           {/* Network fee info */}
           {connected && (
             <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
@@ -487,7 +492,7 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
             {localReferralCode ? (
               <>6% fee with referral code: <span className="font-mono text-primary">{localReferralCode}</span></>
             ) : (
-              <>6% referral fee | 8% without referral</>
+              <>8% fee without referral</>
             )}
           </p>
         </div>
