@@ -189,3 +189,55 @@ export async function authorityTransferTokens(
 
 // Import here to avoid circular dependency
 import { createMintToInstruction } from '@solana/spl-token';
+import { SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+
+/**
+ * Create a transaction for transferring SOL from a user wallet to a destination
+ * This transaction will need to be sent to the client for signing
+ * @param senderWalletAddress The wallet address to transfer SOL from
+ * @param destinationWalletAddress The wallet address to transfer SOL to
+ * @param solAmount The amount of SOL to transfer
+ * @returns The serialized transaction as base64 string
+ */
+export async function createSolTransferTransaction(
+  senderWalletAddress: string,
+  destinationWalletAddress: string,
+  solAmount: number
+): Promise<string> {
+  try {
+    const connection = getConnection();
+    const senderPublicKey = new PublicKey(senderWalletAddress);
+    const destinationPublicKey = new PublicKey(destinationWalletAddress);
+    
+    // Convert SOL to lamports
+    const lamports = Math.floor(solAmount * LAMPORTS_PER_SOL);
+    console.log(`Creating SOL transfer transaction: ${solAmount} SOL (${lamports} lamports)`);
+    
+    // Create the transfer instruction
+    const transferInstruction = SystemProgram.transfer({
+      fromPubkey: senderPublicKey,
+      toPubkey: destinationPublicKey,
+      lamports: lamports
+    });
+    
+    // Create transaction and add the transfer instruction
+    const transaction = new Transaction().add(transferInstruction);
+    
+    // Get the latest blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = senderPublicKey;
+    
+    // Serialize the transaction
+    const serializedTransaction = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false
+    }).toString('base64');
+    
+    console.log(`SOL transfer transaction created for ${solAmount} SOL`);
+    return serializedTransaction;
+  } catch (error) {
+    console.error("Error creating SOL transfer transaction:", error);
+    throw error;
+  }
+}

@@ -1,0 +1,169 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { insertUserSchema, insertStakingSchema, insertReferralSchema } from "@shared/schema";
+import { z } from "zod";
+import { ZodError } from "zod";
+import { fromZodError } from "zod-validation-error";
+
+// Solana imports for airdrop functionality
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  Transaction,
+  clusterApiUrl,
+  sendAndConfirmTransaction,
+  SystemProgram,
+  LAMPORTS_PER_SOL
+} from "@solana/web3.js";
+import {
+  createAssociatedTokenAccountInstruction,
+  getAssociatedTokenAddress,
+  createMintToInstruction,
+  getAccount,
+  getMint,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TokenAccountNotFoundError
+} from "@solana/spl-token";
+
+// For debugging
+console.log("TOKEN_PROGRAM_ID:", TOKEN_PROGRAM_ID.toString());
+console.log("ASSOCIATED_TOKEN_PROGRAM_ID:", ASSOCIATED_TOKEN_PROGRAM_ID.toString());
+import fs from "fs";
+import path from "path";
+
+// These functions are now moved to token-utils.ts
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // API routes
+  
+  // Add a route to get token balance
+  app.get("/api/token-balance/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      
+      if (!walletAddress) {
+        return res.status(400).json({ error: "Wallet address is required" });
+      }
+      
+      // Import the token utility
+      const simpleToken = await import('./simple-token');
+      
+      // Get the token balance
+      const balance = await simpleToken.getTokenBalance(walletAddress);
+      
+      // Return the balance
+      return res.json({
+        success: true,
+        walletAddress,
+        balance
+      });
+    } catch (error) {
+      console.error("Error getting token balance:", error);
+      return res.status(500).json({
+        error: "Failed to get token balance",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // Token buy route
+  app.post("/api/buy-token", async (req, res) => {
+    try {
+      const { walletAddress, solAmount, referralCode } = req.body;
+      
+      if (!walletAddress || !solAmount) {
+        return res.status(400).json({ error: "Wallet address and SOL amount are required" });
+      }
+      
+      // Parse SOL amount
+      const parsedSolAmount = parseFloat(solAmount);
+      if (isNaN(parsedSolAmount) || parsedSolAmount <= 0) {
+        return res.status(400).json({ error: "Invalid SOL amount" });
+      }
+      
+      console.log(`Processing buy request for wallet: ${walletAddress}, SOL amount: ${parsedSolAmount}`);
+      
+      // Calculate fee based on referral code
+      let feePercentage = 0.08; // 8% default fee
+      
+      if (referralCode) {
+        // Check if referral code is valid
+        const isValid = await storage.validateReferralCode(referralCode);
+        if (isValid) {
+          feePercentage = 0.06; // 6% fee with valid referral
+          
+          // Record the referral
+          try {
+            // Create a referral record
+            const referralData = {
+              referrerAddress: "simulated-referrer-address", // Placeholder for demo
+              buyerAddress: walletAddress,
+              transactionHash: "devnet-" + Date.now(),
+              amount: parsedSolAmount,
+              reward: parsedSolAmount * 0.02 // 2% reward for referrer
+            };
+            
+            await storage.createReferral(referralData);
+            console.log(`Referral recorded for code: ${referralCode}`);
+          } catch (error) {
+            console.error("Error creating referral:", error);
+            // Continue with the purchase even if referral recording fails
+          }
+        }
+      }
+      
+      // Import the token utilities
+      const simpleToken = await import('./simple-token');
+      
+      // Calculate token amount with fees applied
+      const tokenPrice = 0.01; // 1 HATM = 0.01 SOL
+      const effectiveSolAmount = parsedSolAmount * (1 - feePercentage);
+      const tokenAmount = Math.floor(effectiveSolAmount / tokenPrice);
+      
+      try {
+        // For now, we'll just mint tokens directly without requiring a SOL transfer
+        // In a production environment, we would use an on-chain program to handle
+        // the token exchange, but for this demo we're just minting tokens directly
+        
+        console.log(`Processing token purchase directly, amount: ${tokenAmount} tokens`);
+        
+        // Use SPL token program to mint tokens for the user
+        const signature = await simpleToken.mintTokens(walletAddress, tokenAmount);
+        
+        // Get the updated token balance
+        const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
+        
+        console.log(`Buy transaction successful! Signature: ${signature}`);
+        
+        return res.json({
+          success: true,
+          message: `${tokenAmount} tokens successfully purchased for ${parsedSolAmount} SOL.`,
+          walletAddress,
+          solAmount: parsedSolAmount,
+          tokenAmount,
+          signature,
+          currentBalance: tokenBalance,
+          explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=devnet`
+        });
+      } catch (error) {
+        console.error("Error processing token purchase:", error);
+        return res.status(500).json({
+          error: "Failed to purchase tokens",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } catch (error) {
+      console.error("Error processing buy-token request:", error);
+      return res.status(500).json({
+        error: "Failed to process token purchase",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // Additional routes for managing users, staking, and referrals
+  // ... other routes (register, transfer, etc.)
+}

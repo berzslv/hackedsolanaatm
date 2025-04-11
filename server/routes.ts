@@ -38,22 +38,22 @@ import path from "path";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes
-  
+
   // Add a route to get token balance
   app.get("/api/token-balance/:walletAddress", async (req, res) => {
     try {
       const { walletAddress } = req.params;
-      
+
       if (!walletAddress) {
         return res.status(400).json({ error: "Wallet address is required" });
       }
-      
+
       // Import the token utility
       const simpleToken = await import('./simple-token');
-      
+
       // Get the token balance
       const balance = await simpleToken.getTokenBalance(walletAddress);
-      
+
       // Return the balance
       return res.json({
         success: true,
@@ -68,29 +68,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-  
+
   // Add a route to transfer tokens between wallets
   app.post("/api/transfer-token", async (req, res) => {
     try {
       const { senderWalletAddress, recipientWalletAddress, amount } = req.body;
-      
+
       if (!senderWalletAddress || !recipientWalletAddress || !amount) {
         return res.status(400).json({ 
           error: "Sender wallet, recipient wallet, and amount are required" 
         });
       }
-      
+
       // Parse amount
       const parsedAmount = parseFloat(amount);
       if (isNaN(parsedAmount) || parsedAmount <= 0) {
         return res.status(400).json({ error: "Invalid amount" });
       }
-      
+
       console.log(`Processing transfer: ${parsedAmount} tokens from ${senderWalletAddress} to ${recipientWalletAddress}`);
-      
+
       // Import the token transfer utility
       const tokenTransfer = await import('./token-transfer');
-      
+
       try {
         // For demonstration, we're using the authority to transfer the tokens
         // In a real application, the sender would sign this transaction from their wallet
@@ -98,9 +98,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           recipientWalletAddress,
           parsedAmount
         );
-        
+
         console.log(`Transfer successful! Signature: ${signature}`);
-        
+
         // Return success with the transaction signature
         return res.json({
           success: true,
@@ -126,7 +126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-  
+
   // Get token stats
   app.get("/api/token-stats", async (req, res) => {
     try {
@@ -157,11 +157,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { walletAddress } = req.params;
       const user = await storage.getUserByWalletAddress(walletAddress);
-      
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       res.json(user);
     } catch (error) {
       res.status(500).json({ message: "Failed to get user" });
@@ -178,20 +178,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to get referral stats" });
     }
   });
-  
+
   // RESTful endpoint for validating referral codes
   app.get("/api/validate-referral/:code", async (req, res) => {
     try {
       const { code } = req.params;
-      
+
       if (!code) {
         return res.status(400).json({ valid: false, message: "Referral code is required" });
       }
-      
+
       // Find a user with this referral code
       const isValid = await storage.validateReferralCode(code);
       console.log("Validating referral code:", code, "Result:", isValid);
-      
+
       // Always return JSON with consistent format, don't use 404 status
       return res.json({ 
         valid: isValid, 
@@ -207,15 +207,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/referrals/validate", async (req, res) => {
     try {
       const code = req.query.code as string;
-      
+
       if (!code) {
         return res.status(400).json({ valid: false, message: "Referral code is required" });
       }
-      
+
       console.log("Received referral code validation request for:", code);
       const isValid = await storage.validateReferralCode(code);
       console.log("Database validation result for code", code, ":", isValid);
-      
+
       return res.json({ 
         valid: isValid, 
         message: isValid ? "Valid referral code" : "Invalid referral code" 
@@ -282,43 +282,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/leaderboard/:type/:period", async (req, res) => {
     try {
       const { type, period } = req.params;
-      
+
       // Validate type and period
       const validTypes = ['referrers', 'stakers'];
       const validPeriods = ['weekly', 'monthly'];
-      
+
       if (!validTypes.includes(type) || !validPeriods.includes(period)) {
         return res.status(400).json({ message: "Invalid leaderboard type or period" });
       }
-      
+
       const leaderboard = await storage.getLeaderboard(type, period);
       res.json(leaderboard);
     } catch (error) {
       res.status(500).json({ message: "Failed to get leaderboard" });
     }
   });
-  
+
   // Token airdrop endpoint - for devnet testing only
   app.post("/api/airdrop-token", async (req, res) => {
     try {
       const { walletAddress } = req.body;
-      
+
       if (!walletAddress) {
         return res.status(400).json({ error: "Wallet address is required" });
       }
-      
+
       console.log(`Processing airdrop request for wallet: ${walletAddress}`);
-      
+
       try {
         // Import the token utilities
         const simpleToken = await import('./simple-token');
-        
+
         // Mint tokens using SPL token program
         const signature = await simpleToken.mintTokens(walletAddress, 1000);
-        
+
         // Get the updated token balance
         const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
-        
+
         // Return success with the transaction signature
         return res.json({
           success: true,
@@ -343,33 +343,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-  
+
   // Buy tokens endpoint
   app.post("/api/buy-token", async (req, res) => {
     try {
       const { walletAddress, solAmount, referralCode } = req.body;
-      
+
       if (!walletAddress || !solAmount) {
         return res.status(400).json({ error: "Wallet address and SOL amount are required" });
       }
-      
+
       // Parse SOL amount
       const parsedSolAmount = parseFloat(solAmount);
       if (isNaN(parsedSolAmount) || parsedSolAmount <= 0) {
         return res.status(400).json({ error: "Invalid SOL amount" });
       }
-      
+
       console.log(`Processing buy request for wallet: ${walletAddress}, SOL amount: ${parsedSolAmount}`);
-      
+
       // Calculate fee based on referral code
       let feePercentage = 0.08; // 8% default fee
-      
+
       if (referralCode) {
         // Check if referral code is valid
         const isValid = await storage.validateReferralCode(referralCode);
         if (isValid) {
           feePercentage = 0.06; // 6% fee with valid referral
-          
+
           // Record the referral
           try {
             // Create a referral record
@@ -380,7 +380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               amount: parsedSolAmount,
               reward: parsedSolAmount * 0.02 // 2% reward for referrer
             };
-            
+
             await storage.createReferral(referralData);
             console.log(`Referral recorded for code: ${referralCode}`);
           } catch (error) {
@@ -389,56 +389,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       // Import the token utilities
       const simpleToken = await import('./simple-token');
-      
+
       // Calculate token amount with fees applied
       const tokenPrice = 0.01; // 1 HATM = 0.01 SOL
       const effectiveSolAmount = parsedSolAmount * (1 - feePercentage);
       const tokenAmount = Math.floor(effectiveSolAmount / tokenPrice);
-      
+
       try {
-        // For now, we'll just mint tokens directly without requiring a SOL transfer
-        // In a production environment, we would use an on-chain program to handle
-        // the token exchange, but for this demo we're just minting tokens directly
+        // Load the token transfer module
+        const tokenTransfer = await import('./token-transfer');
         
-        console.log(`Processing token purchase directly, amount: ${tokenAmount} tokens`);
+        // Get the mint authority to use as the treasury wallet
+        const { keypair: authorityKeypair } = simpleToken.getMintAuthority();
+        const treasuryWallet = authorityKeypair.publicKey.toString();
         
-        // Use SPL token program to mint tokens for the user
-        const signature = await simpleToken.mintTokens(walletAddress, tokenAmount);
+        // Create a SOL transfer transaction that the client will need to sign
+        const serializedTransaction = await tokenTransfer.createSolTransferTransaction(
+          walletAddress,
+          treasuryWallet,
+          parsedSolAmount
+        );
         
-        // Get the updated token balance
-        const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
+        console.log(`SOL transfer transaction prepared for ${parsedSolAmount} SOL`);
         
-        console.log(`Buy transaction successful! Signature: ${signature}`);
-        
-        // Update token stats in storage (if needed)
-        try {
-          const tokenStats = await storage.getTokenStats();
-          await storage.updateTokenStats({
-            totalSupply: tokenStats.totalSupply + tokenAmount,
-            circulatingSupply: tokenStats.circulatingSupply + tokenAmount,
-            // We're using the treasury wallet as a mock staker for demo purposes
-            totalStaked: tokenStats.totalStaked + Math.floor(tokenAmount * 0.1), // pretend 10% gets staked
-            stakersCount: tokenStats.stakersCount + (Math.random() > 0.7 ? 1 : 0), // occasionally increase stakers
-          });
-        } catch (error) {
-          console.error("Error updating token stats:", error);
-          // Continue with the purchase even if stats update fails
-        }
-        
-        // Return success with transaction details
+        // Return the transaction details to the client for signing
         return res.json({
           success: true,
-          message: `${tokenAmount} HATM tokens have been purchased successfully`,
+          message: `Transaction ready to complete token purchase`,
           solAmount: parsedSolAmount,
           tokenAmount,
-          currentBalance: tokenBalance,
           feePercentage: feePercentage * 100,
           referralApplied: feePercentage === 0.06,
-          signature,
-          explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=devnet`
+          solTransferTransaction: serializedTransaction,
+          treasuryWallet
         });
       } catch (error) {
         console.error("Error in buy transaction:", error);
@@ -455,35 +441,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Complete token purchase after SOL transfer
+  app.post("/api/complete-purchase", async (req, res) => {
+    try {
+      const { walletAddress, tokenAmount, solAmount, solTransferSignature, referralCode } = req.body;
+      
+      if (!walletAddress || !tokenAmount || !solTransferSignature) {
+        return res.status(400).json({ error: "Wallet address, token amount, and transaction signature are required" });
+      }
+      
+      // Verify the SOL transfer transaction was successful
+      const web3 = await import('@solana/web3.js');
+      const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
+      
+      try {
+        // Check the transaction status
+        const { value: status } = await connection.getSignatureStatus(solTransferSignature, {
+          searchTransactionHistory: true,
+        });
+        
+        if (!status || status.err) {
+          return res.status(400).json({ 
+            error: "SOL transfer transaction failed or not found", 
+            details: status ? status.err : "Transaction not found" 
+          });
+        }
+        
+        console.log(`SOL transfer verified: ${solTransferSignature}`);
+        
+        // Now proceed with token minting since SOL transfer is confirmed
+        const simpleToken = await import('./simple-token');
+        
+        // Mint tokens to the user's wallet
+        const mintSignature = await simpleToken.mintTokens(walletAddress, tokenAmount);
+        
+        // Get updated token balance
+        const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
+        
+        console.log(`Tokens minted successfully! Signature: ${mintSignature}`);
+        
+        // Update token stats
+        try {
+          const tokenStats = await storage.getTokenStats();
+          await storage.updateTokenStats({
+            totalSupply: tokenStats.totalSupply + tokenAmount,
+            circulatingSupply: tokenStats.circulatingSupply + tokenAmount,
+            totalStaked: tokenStats.totalStaked + Math.floor(tokenAmount * 0.1), // 10% goes to staking
+            stakersCount: tokenStats.stakersCount + (Math.random() > 0.7 ? 1 : 0), // occasionally add stakers
+          });
+        } catch (error) {
+          console.error("Error updating token stats:", error);
+          // Continue even if stats update fails
+        }
+        
+        // Return success response
+        return res.json({
+          success: true,
+          message: `${tokenAmount} HATM tokens have been purchased successfully`,
+          solAmount: parseFloat(solAmount),
+          tokenAmount,
+          currentBalance: tokenBalance,
+          solTransferSignature,
+          mintSignature,
+          explorerUrl: `https://explorer.solana.com/tx/${mintSignature}?cluster=devnet`
+        });
+      } catch (error) {
+        console.error("Error verifying SOL transfer transaction:", error);
+        return res.status(500).json({
+          error: "Failed to verify SOL transfer",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } catch (error) {
+      console.error("Error completing purchase:", error);
+      return res.status(500).json({
+        error: "Failed to complete token purchase",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
   
-  // Transfer SOL endpoint - handles direct SOL transfers
   app.post("/api/transfer-sol", async (req, res) => {
     try {
       const { walletAddress, solAmount, destinationWallet } = req.body;
-      
+
       if (!walletAddress || !solAmount) {
         return res.status(400).json({ error: "Wallet address and SOL amount are required" });
       }
-      
+
       // Parse SOL amount
       const parsedSolAmount = parseFloat(solAmount);
       if (isNaN(parsedSolAmount) || parsedSolAmount <= 0) {
         return res.status(400).json({ error: "Invalid SOL amount" });
       }
-      
+
       console.log(`Processing SOL transfer request for wallet: ${walletAddress}, SOL amount: ${parsedSolAmount}`);
-      
+
       try {
         // Import the web3 utilities
         const web3 = await import('@solana/web3.js');
         const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
-        
+
         // Get a destination wallet - using mint authority as treasury
         const { keypair: authorityKeypair } = await (await import('./simple-token')).getMintAuthority();
         const treasuryWallet = destinationWallet ? 
           new web3.PublicKey(destinationWallet) : 
           authorityKeypair.publicKey;
-        
+
         // Create a SOL transfer transaction
         const transferTransaction = new web3.Transaction().add(
           web3.SystemProgram.transfer({
@@ -492,21 +557,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lamports: Math.floor(parsedSolAmount * web3.LAMPORTS_PER_SOL)
           })
         );
-        
+
         // Get the recent blockhash
         const { blockhash } = await connection.getLatestBlockhash();
         transferTransaction.recentBlockhash = blockhash;
         transferTransaction.feePayer = new web3.PublicKey(walletAddress);
-        
+
         // Sign with the authority's keypair (signature will be replaced by user but is needed for serialization)
         transferTransaction.partialSign(authorityKeypair);
-        
+
         // Serialize the transaction for the client to sign
         const serializedTransaction = transferTransaction.serialize({
           requireAllSignatures: false, // We just need a partial signature
           verifySignatures: false
         }).toString('base64');
-        
+
         // Return the serialized transaction for frontend to sign and send
         return res.json({
           success: true,
