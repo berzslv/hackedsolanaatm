@@ -10,6 +10,7 @@ import { formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import AirdropButton from './AirdropButton';
 import { Loader2, AlertCircle } from "lucide-react";
+import { Transaction, VersionedTransaction } from '@solana/web3.js';
 
 interface BuyWidgetProps {
   flashRef?: React.RefObject<() => void>;
@@ -284,6 +285,37 @@ const BuyWidget = ({ flashRef }: BuyWidgetProps) => {
       const data = await response.json();
 
       if (response.ok && data.success) {
+        // If we have a SOL transfer transaction to process
+        if (data.solTransferTransaction) {
+          try {
+            const { sendTransaction } = useSolana();
+            toast({
+              title: "Processing SOL transfer...",
+              description: "Please confirm the transaction in your wallet."
+            });
+            
+            // Decode the transaction
+            const transferTransaction = Transaction.from(
+              Buffer.from(data.solTransferTransaction, 'base64')
+            );
+            
+            // Sign and send the transaction
+            const solTransferSignature = await sendTransaction(transferTransaction);
+            
+            toast({
+              title: "SOL transfer complete!",
+              description: `${parseFloat(solAmount).toFixed(4)} SOL has been transferred. Tokens minted successfully.`
+            });
+          } catch (error) {
+            console.error("Error processing SOL transfer:", error);
+            toast({
+              title: "SOL transfer failed",
+              description: "There was an error processing the SOL transfer, but tokens were minted.",
+              variant: "destructive"
+            });
+          }
+        }
+        
         toast({
           title: "Purchase successful!",
           description: (

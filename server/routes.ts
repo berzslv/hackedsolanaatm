@@ -399,7 +399,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tokenAmount = Math.floor(effectiveSolAmount / tokenPrice);
       
       try {
-        // Use SPL token program to mint tokens
+        // First, process the SOL transfer from user to treasury
+        const web3 = await import('@solana/web3.js');
+        const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
+        const { keypair: authorityKeypair } = simpleToken.getMintAuthority();
+        
+        // Create a treasury wallet (using the mint authority for simplicity)
+        const treasuryWallet = authorityKeypair.publicKey;
+        
+        // Create a SOL transfer transaction
+        const transferTransaction = new web3.Transaction().add(
+          web3.SystemProgram.transfer({
+            fromPubkey: new web3.PublicKey(walletAddress),
+            toPubkey: treasuryWallet,
+            lamports: Math.floor(parsedSolAmount * web3.LAMPORTS_PER_SOL)
+          })
+        );
+        
+        // Get the recent blockhash
+        const { blockhash } = await connection.getLatestBlockhash();
+        transferTransaction.recentBlockhash = blockhash;
+        transferTransaction.feePayer = new web3.PublicKey(walletAddress);
+        
+        // Serialize the transaction and convert to base64 for the frontend to sign
+        const serializedTransaction = transferTransaction.serialize({
+          requireAllSignatures: false,
+          verifySignatures: false
+        }).toString('base64');
+        
+        console.log(`SOL transfer transaction created for ${parsedSolAmount} SOL`);
+        
+        // Use SPL token program to mint tokens after SOL transfer
         const signature = await simpleToken.mintTokens(walletAddress, tokenAmount);
         
         // Get the updated token balance
@@ -417,6 +447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           feePercentage: feePercentage * 100,
           referralApplied: feePercentage === 0.06,
           signature,
+          solTransferTransaction: serializedTransaction,
           explorerUrl: `https://explorer.solana.com/tx/${signature}?cluster=devnet`
         });
       } catch (error) {
