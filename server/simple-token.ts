@@ -165,7 +165,8 @@ export async function mintTokens(walletAddress: string, amount: number = 1000): 
         mintPublicKey, // mint
         destinationAddress, // destination token account
         mintAuthority.publicKey, // mint authority
-        BigInt(adjustedAmount) // amount with decimals as bigint
+        BigInt(adjustedAmount), // amount with decimals as bigint
+        TOKEN_PROGRAM_ID
       )
     );
     
@@ -194,7 +195,10 @@ export async function getTokenBalance(walletAddress: string): Promise<number> {
     // Get the associated token account address
     const associatedTokenAddress = await getAssociatedTokenAddress(
       mintPublicKey,
-      ownerAddress
+      ownerAddress,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
     
     try {

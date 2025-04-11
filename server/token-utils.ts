@@ -12,7 +12,9 @@ import {
   createAssociatedTokenAccountInstruction,
   createMintToInstruction,
   getAccount,
-  TokenAccountNotFoundError
+  TokenAccountNotFoundError,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID
 } from '@solana/spl-token';
 import fs from 'fs';
 import path from 'path';
@@ -96,7 +98,10 @@ export async function getOrCreateAssociatedTokenAccount(
     // Get the associated token account address
     const associatedTokenAddress = await getAssociatedTokenAddress(
       mintAuthority.mintPublicKey,
-      walletAddress
+      walletAddress,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
     
     console.log(`Associated token address: ${associatedTokenAddress.toString()}`);
@@ -115,7 +120,9 @@ export async function getOrCreateAssociatedTokenAccount(
             mintAuthority.keypair.publicKey, // payer
             associatedTokenAddress, // associated token account
             walletAddress, // owner
-            mintAuthority.mintPublicKey // mint
+            mintAuthority.mintPublicKey, // mint
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
           )
         );
         
@@ -170,7 +177,8 @@ export async function mintTokens(
         mintAuthority.mintPublicKey, // mint
         associatedTokenAddress, // destination
         mintAuthority.keypair.publicKey, // authority
-        tokenAmount // amount
+        tokenAmount, // amount
+        TOKEN_PROGRAM_ID
       )
     );
     
