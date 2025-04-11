@@ -808,6 +808,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint to confirm staking after successful transaction 
+  app.post("/api/confirm-staking", async (req, res) => {
+    try {
+      const { walletAddress, amount, transactionSignature } = req.body;
+      
+      if (!walletAddress || !amount || !transactionSignature) {
+        return res.status(400).json({ 
+          error: "Wallet address, amount, and transaction signature are required" 
+        });
+      }
+      
+      const parsedAmount = parseInt(amount, 10);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({ error: "Invalid token amount" });
+      }
+      
+      console.log(`Recording staking after successful transaction for wallet: ${walletAddress}, amount: ${parsedAmount}, tx: ${transactionSignature}`);
+      
+      try {
+        // Create staking entry
+        const stakingEntry = await storage.stakeTokens({
+          walletAddress,
+          amountStaked: parsedAmount
+        });
+        
+        // Get updated staking info
+        const stakingInfo = await storage.getStakingInfo(walletAddress);
+        
+        return res.json({
+          success: true,
+          message: `${parsedAmount} HATM tokens have been staked successfully`,
+          stakingInfo,
+          stakingEntry,
+          transactionSignature
+        });
+      } catch (error) {
+        console.error("Error in staking record process:", error);
+        return res.status(500).json({
+          error: "Failed to record staking",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } catch (error) {
+      console.error("Error processing staking confirmation request:", error);
+      return res.status(500).json({
+        error: "Failed to process staking confirmation",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Endpoint to claim staking rewards
   app.post("/api/claim-rewards", async (req, res) => {
     try {

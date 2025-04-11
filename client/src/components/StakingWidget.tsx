@@ -7,6 +7,7 @@ import { useWalletModalOpener } from '@/components/ui/wallet-adapter';
 import { shortenAddress, formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { Transaction, clusterApiUrl, Connection } from '@solana/web3.js';
 
 // Define types for staking info
 interface StakingInfo {
@@ -19,7 +20,7 @@ interface StakingInfo {
 }
 
 const StakingWidget = () => {
-  const { connected, publicKey } = useSolana();
+  const { connected, publicKey, signTransaction, sendTransaction } = useSolana();
   const { openWalletModal } = useWalletModalOpener();
   const { userStakedBalance, userPendingRewards, userTokenBalance } = useTokenData();
   const { toast } = useToast();
@@ -63,7 +64,7 @@ const StakingWidget = () => {
   };
   
   const handleStake = async () => {
-    if (!connected) {
+    if (!connected || !publicKey || !sendTransaction) {
       openWalletModal();
       return;
     }
@@ -91,60 +92,154 @@ const StakingWidget = () => {
       // Show staking in progress
       setIsStaking(true);
       toast({
-        title: "Staking in progress",
-        description: `Staking ${amountToStake} HATM tokens...`,
+        title: "Preparing transaction",
+        description: `Getting ready to stake ${amountToStake} HATM tokens...`,
       });
       
-      // Call API to stake tokens
+      // Step 1: Call API to get a serialized transaction for staking tokens
       const response = await fetch('/api/stake-tokens', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          walletAddress: publicKey?.toString(),
+          walletAddress: publicKey.toString(),
           amount: amountToStake
         }),
       });
       
       const data = await response.json();
       
-      if (response.ok && data.success) {
-        // Show success message
-        toast({
-          title: "Staking successful",
-          description: data.message,
-        });
-        
-        // Update staking info
-        setStakingInfo(data.stakingInfo);
-        
-        // Reset input
-        setStakeAmount('');
-        
-        // Refresh token balance
-        // This would normally be handled by reacting to blockchain events
-        // For now, we'll use a manual refresh approach
-        // Wait a short time to ensure the backend has updated
-        setTimeout(async () => {
-          try {
-            // Get token balance from the API
-            const balanceResponse = await fetch(`/api/token-balance/${publicKey?.toString()}`);
-            const balanceData = await balanceResponse.json();
-            
-            console.log("Updated token balance after staking:", balanceData);
-            
-            // Re-fetch staking info
-            await fetchStakingInfo();
-          } catch (error) {
-            console.error("Error refreshing data after staking:", error);
+      if (response.ok && data.success && data.transaction) {
+        try {
+          toast({
+            title: "Transaction ready",
+            description: "Please approve the transaction in your wallet",
+          });
+          
+          // Step 2: Decode the transaction
+          const transactionBuffer = Buffer.from(data.transaction, 'base64');
+          const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+          
+          // Parse the transaction
+          const transaction = Transaction.from(transactionBuffer);
+          
+          // Step 3: Sign and send the transaction with the user's wallet
+          const signature = await sendTransaction(transaction);
+          console.log("Transaction sent with signature:", signature);
+          
+          toast({
+            title: "Transaction sent",
+            description: "Waiting for blockchain confirmation...",
+          });
+          
+          // Step 4: Wait for confirmation
+          const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+          console.log("Transaction confirmed:", confirmation);
+          
+          if (confirmation.value.err) {
+            throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
           }
-        }, 1000);
+          
+          // Step 5: Notify server about successful transaction
+          const confirmResponse = await fetch('/api/confirm-staking', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              walletAddress: publicKey.toString(),
+              amount: amountToStake,
+              transactionSignature: signature,
+            }),
+          });
+          
+          const confirmData = await confirmResponse.json();
+          
+          if (confirmResponse.ok && confirmData.success) {
+            // Show success message
+            toast({
+              title: "Staking successful",
+              description: (
+                <div className="flex flex-col gap-1">
+                  <p>{`${amountToStake} HATM tokens staked successfully`}</p>
+                  <a 
+                    href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary underline text-xs"
+                  >
+                    View transaction on Solana Explorer
+                  </a>
+                </div>
+              ),
+              duration: 8000
+            });
+            
+            // Update staking info if returned
+            if (confirmData.stakingInfo) {
+              setStakingInfo(confirmData.stakingInfo);
+            } else {
+              // Manually fetch updated staking info
+              await fetchStakingInfo();
+            }
+            
+            // Reset input
+            setStakeAmount('');
+          } else {
+            // Transaction went through but server failed to update records
+            console.error("Failed to confirm staking:", confirmData);
+            toast({
+              title: "Partial success",
+              description: "Transaction completed but our records couldn't be updated. Please contact support.",
+              variant: "destructive"
+            });
+            
+            // Provide explorer link anyway
+            toast({
+              title: "Transaction details",
+              description: (
+                <a 
+                  href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary underline"
+                >
+                  View transaction on Solana Explorer
+                </a>
+              ),
+              duration: 10000
+            });
+          }
+          
+          // Refresh token balance
+          setTimeout(async () => {
+            try {
+              // Get token balance from the API
+              const balanceResponse = await fetch(`/api/token-balance/${publicKey.toString()}`);
+              const balanceData = await balanceResponse.json();
+              
+              console.log("Updated token balance after staking:", balanceData);
+              
+              // Re-fetch staking info
+              await fetchStakingInfo();
+            } catch (error) {
+              console.error("Error refreshing data after staking:", error);
+            }
+          }, 1000);
+        } catch (error) {
+          console.error('Transaction signing/sending error:', error);
+          toast({
+            title: "Transaction failed",
+            description: error instanceof Error ? error.message : "Failed to sign or send transaction",
+            variant: "destructive"
+          });
+        }
       } else {
-        // Show error message
+        // Failed to get transaction from server
         toast({
-          title: "Staking failed",
-          description: data.error || "Failed to stake tokens",
+          title: "Staking preparation failed",
+          description: data.error || "Failed to prepare staking transaction",
           variant: "destructive"
         });
       }
