@@ -43,6 +43,7 @@ interface TokenDataContextType {
   referralStats: ReferralStats;
   referrersLeaderboard: Leaderboard;
   stakersLeaderboard: Leaderboard;
+  refreshTokenBalance: () => Promise<void>;
 }
 
 const TokenDataContext = createContext<TokenDataContextType | undefined>(undefined);
@@ -78,6 +79,42 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { connected, publicKey } = useSolana();
   const [referralCode, setReferralCode] = useState<string>("");
   
+  // Create a refresh function that will be added to the state
+  const refreshTokenBalanceFunc = async () => {
+    if (!connected || !publicKey) return;
+    
+    try {
+      const walletAddress = publicKey.toString();
+      console.log("Refreshing token balance for:", walletAddress);
+      
+      // Get token balance from the API
+      const balanceResponse = await fetch(`/api/token-balance/${walletAddress}`);
+      const balanceData = await balanceResponse.json();
+      
+      if (balanceResponse.ok && balanceData.success) {
+        console.log("Refreshed token balance:", balanceData.balance);
+        
+        // Get staking info to update staked balance and pending rewards
+        const stakingResponse = await fetch(`/api/staking-info/${walletAddress}`);
+        const stakingData = await stakingResponse.json();
+        
+        console.log("Refreshed staking info:", stakingData);
+        
+        // Update token data with real values (keep referral stats the same)
+        setTokenData(prev => ({
+          ...prev,
+          userTokenBalance: balanceData.balance || 0,
+          userStakedBalance: stakingData.success && stakingData.stakingInfo ? 
+            stakingData.stakingInfo.amountStaked : 0,
+          userPendingRewards: stakingData.success && stakingData.stakingInfo ? 
+            stakingData.stakingInfo.pendingRewards : 0,
+        }));
+      }
+    } catch (error) {
+      console.error('Error refreshing token data:', error);
+    }
+  };
+  
   // Initialize with default values
   const [tokenData, setTokenData] = useState<TokenDataContextType>({
     tokenPrice: 0.0025,
@@ -97,8 +134,53 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       recentActivity: []
     },
     referrersLeaderboard: mockReferrersLeaderboard,
-    stakersLeaderboard: mockStakersLeaderboard
+    stakersLeaderboard: mockStakersLeaderboard,
+    refreshTokenBalance: refreshTokenBalanceFunc
   });
+  
+  // Function to refresh token balance and staking info
+  const refreshTokenBalance = async () => {
+    if (!connected || !publicKey) return;
+    
+    try {
+      const walletAddress = publicKey.toString();
+      console.log("Refreshing token balance for:", walletAddress);
+      
+      // Get token balance from the API
+      const balanceResponse = await fetch(`/api/token-balance/${walletAddress}`);
+      const balanceData = await balanceResponse.json();
+      
+      if (balanceResponse.ok && balanceData.success) {
+        console.log("Refreshed token balance:", balanceData.balance);
+        
+        // Get staking info to update staked balance and pending rewards
+        const stakingResponse = await fetch(`/api/staking-info/${walletAddress}`);
+        const stakingData = await stakingResponse.json();
+        
+        console.log("Refreshed staking info:", stakingData);
+        
+        // Update token data with real values (keep referral stats the same)
+        setTokenData(prev => ({
+          ...prev,
+          userTokenBalance: balanceData.balance || 0,
+          userStakedBalance: stakingData.success && stakingData.stakingInfo ? 
+            stakingData.stakingInfo.amountStaked : 0,
+          userPendingRewards: stakingData.success && stakingData.stakingInfo ? 
+            stakingData.stakingInfo.pendingRewards : 0,
+        }));
+      }
+    } catch (error) {
+      console.error('Error refreshing token data:', error);
+    }
+  };
+  
+  // Initialize with refreshTokenBalance function
+  useEffect(() => {
+    setTokenData(prev => ({
+      ...prev,
+      refreshTokenBalance
+    }));
+  }, [connected, publicKey]);
   
   // Fetch real token balance and staking info when wallet connected
   useEffect(() => {
@@ -147,6 +229,7 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 stakingData.stakingInfo.amountStaked : 0,
               userPendingRewards: stakingData.success && stakingData.stakingInfo ? 
                 stakingData.stakingInfo.pendingRewards : 0,
+              refreshTokenBalance, // Make sure it's included
               referralStats: {
                 totalReferrals: 12,
                 totalEarnings: 250,
@@ -189,6 +272,7 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         userTokenBalance: 0,
         userStakedBalance: 0,
         userPendingRewards: 0,
+        refreshTokenBalance, // Make sure it's included
         referralStats: {
           totalReferrals: 0,
           totalEarnings: 0,
