@@ -22,7 +22,7 @@ interface StakingInfo {
 const StakingWidget = () => {
   const { connected, publicKey, signTransaction, sendTransaction } = useSolana();
   const { openWalletModal } = useWalletModalOpener();
-  const { userStakedBalance, userPendingRewards, userTokenBalance } = useTokenData();
+  const { userStakedBalance, userPendingRewards, userTokenBalance, refreshTokenBalance } = useTokenData();
   const { toast } = useToast();
   
   const [stakeAmount, setStakeAmount] = useState<string>('');
@@ -237,11 +237,9 @@ const StakingWidget = () => {
           // Refresh token balance
           setTimeout(async () => {
             try {
-              // Get token balance from the API
-              const balanceResponse = await fetch(`/api/token-balance/${publicKey.toString()}`);
-              const balanceData = await balanceResponse.json();
-              
-              console.log("Updated token balance after staking:", balanceData);
+              // Use the refreshTokenBalance function from TokenDataContext
+              await refreshTokenBalance();
+              console.log("Token balance refreshed after staking");
               
               // Re-fetch staking info
               await fetchStakingInfo();
@@ -365,11 +363,9 @@ const StakingWidget = () => {
         // Refresh token balance
         setTimeout(async () => {
           try {
-            // Get token balance from the API
-            const balanceResponse = await fetch(`/api/token-balance/${publicKey?.toString()}`);
-            const balanceData = await balanceResponse.json();
-            
-            console.log("Updated token balance after unstaking:", balanceData);
+            // Use the refreshTokenBalance function from TokenDataContext
+            await refreshTokenBalance();
+            console.log("Token balance refreshed after unstaking");
             
             // Re-fetch staking info
             await fetchStakingInfo();
@@ -457,6 +453,17 @@ const StakingWidget = () => {
         
         // Update staking info
         setStakingInfo(data.stakingInfo);
+        
+        // Refresh token balance
+        setTimeout(async () => {
+          try {
+            // Use the refreshTokenBalance function from TokenDataContext
+            await refreshTokenBalance();
+            console.log("Token balance refreshed after claiming rewards");
+          } catch (error) {
+            console.error("Error refreshing data after claiming rewards:", error);
+          }
+        }, 1000);
       } else {
         // Show error message
         toast({
