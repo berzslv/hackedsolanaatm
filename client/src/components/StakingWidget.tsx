@@ -1,17 +1,62 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSolana } from '@/context/SolanaContext';
 import { useTokenData } from '@/context/TokenDataContext';
 import { useWalletModalOpener } from '@/components/ui/wallet-adapter';
-import { shortenAddress } from '@/lib/utils';
+import { shortenAddress, formatNumber } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+
+// Define types for staking info
+interface StakingInfo {
+  amountStaked: number;
+  pendingRewards: number;
+  stakedAt: string;
+  lastCompoundAt: string;
+  estimatedAPY: number;
+  timeUntilUnlock: number | null;
+}
 
 const StakingWidget = () => {
   const { connected, publicKey } = useSolana();
   const { openWalletModal } = useWalletModalOpener();
   const { userStakedBalance, userPendingRewards, userTokenBalance } = useTokenData();
+  const { toast } = useToast();
   
   const [stakeAmount, setStakeAmount] = useState<string>('');
+  const [isStaking, setIsStaking] = useState(false);
+  const [isUnstaking, setIsUnstaking] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [stakingInfo, setStakingInfo] = useState<StakingInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Fetch staking info when connected
+  useEffect(() => {
+    if (connected && publicKey) {
+      fetchStakingInfo();
+    }
+  }, [connected, publicKey]);
+  
+  const fetchStakingInfo = async () => {
+    if (!connected || !publicKey) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/staking-info/${publicKey.toString()}`);
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setStakingInfo(data.stakingInfo);
+      } else {
+        console.error('Error fetching staking info:', data.error);
+      }
+    } catch (error) {
+      console.error('Failed to fetch staking info:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   const handleMaxClick = () => {
     setStakeAmount(userTokenBalance.toString());
@@ -24,19 +69,75 @@ const StakingWidget = () => {
     }
     
     try {
-      const amountToStake = parseFloat(stakeAmount);
+      const amountToStake = parseInt(stakeAmount, 10);
       if (isNaN(amountToStake) || amountToStake <= 0) {
-        console.error('Invalid stake amount');
+        toast({
+          title: "Invalid amount",
+          description: "Please enter a valid amount to stake",
+          variant: "destructive"
+        });
         return;
       }
       
-      // TODO: Call Solana smart contract for staking
-      console.log(`Staking ${amountToStake} HATM tokens`);
+      if (amountToStake > userTokenBalance) {
+        toast({
+          title: "Insufficient balance",
+          description: `You only have ${userTokenBalance} HATM tokens available`,
+          variant: "destructive"
+        });
+        return;
+      }
       
-      // Reset input after successful staking
-      setStakeAmount('');
+      // Show staking in progress
+      setIsStaking(true);
+      toast({
+        title: "Staking in progress",
+        description: `Staking ${amountToStake} HATM tokens...`,
+      });
+      
+      // Call API to stake tokens
+      const response = await fetch('/api/stake-tokens', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: publicKey?.toString(),
+          amount: amountToStake
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        // Show success message
+        toast({
+          title: "Staking successful",
+          description: data.message,
+        });
+        
+        // Update staking info
+        setStakingInfo(data.stakingInfo);
+        
+        // Reset input
+        setStakeAmount('');
+      } else {
+        // Show error message
+        toast({
+          title: "Staking failed",
+          description: data.error || "Failed to stake tokens",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error('Staking error:', error);
+      toast({
+        title: "Staking error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsStaking(false);
     }
   };
   
@@ -46,11 +147,72 @@ const StakingWidget = () => {
       return;
     }
     
+    if (!stakingInfo || stakingInfo.amountStaked <= 0) {
+      toast({
+        title: "No staked tokens",
+        description: "You don't have any tokens staked",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
-      // TODO: Call Solana smart contract for unstaking
-      console.log('Unstaking tokens');
+      // Show unstaking in progress
+      setIsUnstaking(true);
+      toast({
+        title: "Unstaking in progress",
+        description: `Unstaking tokens...`,
+      });
+      
+      // Call API to unstake tokens
+      const response = await fetch('/api/unstake-tokens', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: publicKey?.toString(),
+          amount: stakingInfo.amountStaked // Unstake all for simplicity
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        // Show success message with fee details if applicable
+        const { unstakeResult } = data;
+        if (unstakeResult.fee > 0) {
+          toast({
+            title: "Unstaking successful with fees",
+            description: `Unstaked ${unstakeResult.amountUnstaked} tokens. Early withdrawal fee: ${unstakeResult.fee} HATM (${unstakeResult.burnAmount} burned, ${unstakeResult.marketingAmount} to marketing)`,
+            duration: 6000
+          });
+        } else {
+          toast({
+            title: "Unstaking successful",
+            description: `Unstaked ${unstakeResult.amountUnstaked} tokens with no fees`,
+          });
+        }
+        
+        // Update staking info
+        setStakingInfo(data.stakingInfo);
+      } else {
+        // Show error message
+        toast({
+          title: "Unstaking failed",
+          description: data.error || "Failed to unstake tokens",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error('Unstaking error:', error);
+      toast({
+        title: "Unstaking error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUnstaking(false);
     }
   };
   
@@ -60,11 +222,77 @@ const StakingWidget = () => {
       return;
     }
     
+    if (!stakingInfo || stakingInfo.pendingRewards <= 0) {
+      toast({
+        title: "No pending rewards",
+        description: "You don't have any rewards to claim",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
-      // TODO: Call Solana smart contract for claiming rewards
-      console.log('Claiming rewards');
+      // Show claiming in progress
+      setIsClaiming(true);
+      toast({
+        title: "Claiming rewards",
+        description: `Claiming ${stakingInfo.pendingRewards} HATM tokens...`,
+      });
+      
+      // Call API to claim rewards
+      const response = await fetch('/api/claim-rewards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: publicKey?.toString()
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        // Show success message
+        toast({
+          title: "Rewards claimed",
+          description: (
+            <div className="flex flex-col gap-1">
+              <p>{data.message}</p>
+              {data.explorerUrl && (
+                <a 
+                  href={data.explorerUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary underline text-xs"
+                >
+                  View transaction on Solana Explorer
+                </a>
+              )}
+            </div>
+          ),
+          duration: 8000
+        });
+        
+        // Update staking info
+        setStakingInfo(data.stakingInfo);
+      } else {
+        // Show error message
+        toast({
+          title: "Claiming failed",
+          description: data.error || "Failed to claim rewards",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error('Claim rewards error:', error);
+      toast({
+        title: "Claiming error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsClaiming(false);
     }
   };
   

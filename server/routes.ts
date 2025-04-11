@@ -652,6 +652,213 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint to get staking info
+  app.get("/api/staking-info/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      
+      if (!walletAddress) {
+        return res.status(400).json({ error: "Wallet address is required" });
+      }
+      
+      // Get staking info from storage
+      const stakingInfo = await storage.getStakingInfo(walletAddress);
+      
+      return res.json({
+        success: true,
+        stakingInfo,
+      });
+    } catch (error) {
+      console.error("Error fetching staking info:", error);
+      return res.status(500).json({
+        error: "Failed to fetch staking information",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // Endpoint to stake tokens
+  app.post("/api/stake-tokens", async (req, res) => {
+    try {
+      const { walletAddress, amount } = req.body;
+      
+      if (!walletAddress || !amount) {
+        return res.status(400).json({ error: "Wallet address and amount are required" });
+      }
+      
+      // Parse token amount
+      const parsedAmount = parseInt(amount, 10);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({ error: "Invalid token amount" });
+      }
+      
+      console.log(`Processing staking request for wallet: ${walletAddress}, amount: ${parsedAmount}`);
+      
+      try {
+        // Check token balance first
+        const simpleToken = await import('./simple-token');
+        const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
+        
+        if (tokenBalance < parsedAmount) {
+          return res.status(400).json({ 
+            error: "Insufficient token balance", 
+            tokenBalance, 
+            requestedAmount: parsedAmount 
+          });
+        }
+        
+        // Create staking entry
+        const stakingEntry = await storage.stakeTokens({
+          walletAddress,
+          amountStaked: parsedAmount
+        });
+        
+        // Get updated staking info
+        const stakingInfo = await storage.getStakingInfo(walletAddress);
+        
+        return res.json({
+          success: true,
+          message: `${parsedAmount} HATM tokens have been staked successfully`,
+          stakingInfo,
+          stakingEntry
+        });
+      } catch (error) {
+        console.error("Error in staking process:", error);
+        return res.status(500).json({
+          error: "Failed to stake tokens",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } catch (error) {
+      console.error("Error processing staking request:", error);
+      return res.status(500).json({
+        error: "Failed to process staking request",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // Endpoint to unstake tokens
+  app.post("/api/unstake-tokens", async (req, res) => {
+    try {
+      const { walletAddress, amount } = req.body;
+      
+      if (!walletAddress || !amount) {
+        return res.status(400).json({ error: "Wallet address and amount are required" });
+      }
+      
+      // Parse token amount
+      const parsedAmount = parseInt(amount, 10);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({ error: "Invalid token amount" });
+      }
+      
+      console.log(`Processing unstaking request for wallet: ${walletAddress}, amount: ${parsedAmount}`);
+      
+      try {
+        // Process unstaking with potential fees
+        const unstakeResult = await storage.unstakeTokens(walletAddress, parsedAmount);
+        
+        // Get updated staking info
+        const stakingInfo = await storage.getStakingInfo(walletAddress);
+        
+        // Prepare response with details
+        return res.json({
+          success: true,
+          message: `${parsedAmount} HATM tokens have been unstaked`,
+          stakingInfo,
+          unstakeResult
+        });
+      } catch (error) {
+        console.error("Error in unstaking process:", error);
+        return res.status(500).json({
+          error: "Failed to unstake tokens",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } catch (error) {
+      console.error("Error processing unstaking request:", error);
+      return res.status(500).json({
+        error: "Failed to process unstaking request",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // Endpoint to claim staking rewards
+  app.post("/api/claim-rewards", async (req, res) => {
+    try {
+      const { walletAddress } = req.body;
+      
+      if (!walletAddress) {
+        return res.status(400).json({ error: "Wallet address is required" });
+      }
+      
+      console.log(`Processing reward claim for wallet: ${walletAddress}`);
+      
+      // Get current staking info to check pending rewards
+      const stakingInfo = await storage.getStakingInfo(walletAddress);
+      
+      if (stakingInfo.pendingRewards <= 0) {
+        return res.status(400).json({ 
+          error: "No pending rewards to claim",
+          pendingRewards: stakingInfo.pendingRewards
+        });
+      }
+      
+      try {
+        // Mint the reward tokens to the user's wallet
+        const simpleToken = await import('./simple-token');
+        
+        // This will create a token transaction to mint the rewards
+        const rewardSignature = await simpleToken.mintTokens(walletAddress, stakingInfo.pendingRewards);
+        
+        // Reset pending rewards to zero in staking record (simplified, in a real app you'd use a transaction)
+        // For now, we'll retrieve and update the actual staking entry
+        const stakingEntry = Array.from((storage as MemStorage).stakingData.values()).find(
+          (stake) => stake.walletAddress === walletAddress
+        );
+        
+        if (stakingEntry) {
+          const updatedStaking: Staking = {
+            ...stakingEntry,
+            pendingRewards: 0,
+            lastCompoundAt: new Date()
+          };
+          
+          (storage as MemStorage).stakingData.set(String(stakingEntry.id), updatedStaking);
+        }
+        
+        // Get updated staking info
+        const updatedStakingInfo = await storage.getStakingInfo(walletAddress);
+        
+        // Get updated token balance
+        const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
+        
+        return res.json({
+          success: true,
+          message: `${stakingInfo.pendingRewards} HATM reward tokens have been claimed`,
+          stakingInfo: updatedStakingInfo,
+          tokenBalance,
+          transactionSignature: rewardSignature,
+          explorerUrl: `https://explorer.solana.com/tx/${rewardSignature}?cluster=devnet`
+        });
+      } catch (error) {
+        console.error("Error in reward claiming process:", error);
+        return res.status(500).json({
+          error: "Failed to claim rewards",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } catch (error) {
+      console.error("Error processing reward claim request:", error);
+      return res.status(500).json({
+        error: "Failed to process reward claim",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
   const httpServer = createServer(app);
   return httpServer;
 }
