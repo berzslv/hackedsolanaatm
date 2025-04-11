@@ -84,7 +84,10 @@ export async function getOrCreateTokenAccount(
     // Get the associated token account address
     const associatedTokenAddress = await getAssociatedTokenAddress(
       mintPublicKey,
-      ownerAddress
+      ownerAddress,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
     
     console.log(`Token account address: ${associatedTokenAddress.toString()}`);
@@ -104,7 +107,9 @@ export async function getOrCreateTokenAccount(
             mintAuthority.publicKey, // payer
             associatedTokenAddress, // associated token account
             ownerAddress, // owner
-            mintPublicKey // mint
+            mintPublicKey, // mint
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
           )
         );
         
