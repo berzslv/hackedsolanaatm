@@ -71,7 +71,8 @@ export const tokenStats = pgTable("token_stats", {
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
-export const insertStakingSchema = createInsertSchema(staking).omit({ id: true, pendingRewards: true, lastCompoundAt: true, stakedAt: true });
+// Include pendingRewards in staking operations to support rewards claiming
+export const insertStakingSchema = createInsertSchema(staking).omit({ id: true, lastCompoundAt: true, stakedAt: true });
 export const insertReferralSchema = createInsertSchema(referrals).omit({ id: true, createdAt: true });
 export const insertLeaderboardSchema = createInsertSchema(leaderboard).omit({ id: true, updatedAt: true });
 export const insertRewardSchema = createInsertSchema(rewards).omit({ id: true, createdAt: true });

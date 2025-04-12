@@ -628,7 +628,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update the staking record - this is temporary until we read directly from chain
         const updatedStakingInfo = await storage.stakeTokens({
           walletAddress,
-          amountStaked: previouslyStaked + parsedTokenAmount
+          amountStaked: previouslyStaked + parsedTokenAmount,
+          pendingRewards: 0 // Start with no pending rewards for the new staked amount
         });
         
         console.log(`On-chain staking: Previously staked: ${previouslyStaked}, New total: ${previouslyStaked + parsedTokenAmount}`);
@@ -797,10 +798,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Automatically stake all purchased tokens (new feature)
         let stakingResult = null;
         try {
-          // Record staking in database
+          // Record staking in database with zero pending rewards
           const staking = await storage.stakeTokens({
             walletAddress,
             amountStaked: tokenAmount,
+            pendingRewards: 0
           });
           
           console.log(`Automatically staked ${tokenAmount} tokens for ${walletAddress}`);
@@ -1241,10 +1243,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Recording staking after successful transaction for wallet: ${walletAddress}, amount: ${parsedAmount}, tx: ${transactionSignature}`);
       
       try {
-        // Create staking entry
+        // Create staking entry with zero pending rewards
         const stakingEntry = await storage.stakeTokens({
           walletAddress,
-          amountStaked: parsedAmount
+          amountStaked: parsedAmount,
+          pendingRewards: 0
         });
         
         // Get updated staking info
