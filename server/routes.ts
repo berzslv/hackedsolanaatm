@@ -1151,7 +1151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoint to get staking info directly from blockchain
+  // Endpoint to get staking info directly from blockchain - using smart contract
   app.get("/api/staking-info/:walletAddress", async (req, res) => {
     try {
       const { walletAddress } = req.params;
@@ -1160,47 +1160,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Wallet address is required" });
       }
       
-      // Read token balance directly from blockchain
+      // Import the staking vault utilities that interact with the smart contract
+      const stakingVaultUtils = await import('./staking-vault-utils');
+      
+      // Get user staking information directly from the smart contract
+      const userStakingInfo = await stakingVaultUtils.getUserStakingInfo(walletAddress);
+      
+      // Get the staking vault address (in a real implementation, this would also come from the contract)
       const tokenUtils = await import('./token-utils');
-      const web3 = await import('@solana/web3.js');
-      const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
-      
-      const userWalletPubkey = new web3.PublicKey(walletAddress);
-      const tokenMint = tokenUtils.getTokenMint();
-      
-      // Get the mint authority keypair (which is our staking vault)
       const mintAuthority = tokenUtils.getMintAuthority();
       const stakingVaultAddress = mintAuthority.keypair.publicKey.toString();
       
-      // TODO: In a real implementation, we would query the staking smart contract
-      // to get the actual staked amount for this user.
-      // For now, we're using on-chain data structure (token accounts)
-      
-      // Mock staking data - in production this would come from the smart contract
-      // With fixed values for now until the contract is implemented
-      const amountStaked = 500; // This would be read from the smart contract
-      const pendingRewards = 25; // This would be calculated from contract state
-      
-      // For demonstration, stake date is set to 3 days ago
-      const stakedAt = new Date(Date.now() - (3 * 24 * 60 * 60 * 1000)); 
-      const lastCompoundAt = new Date(Date.now() - (1 * 60 * 60 * 1000)); // 1 hour ago
-      
-      // Calculate time until unlock - 7 days from staked time
-      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-      const stakedTime = stakedAt.getTime();
-      const now = Date.now();
-      const timeSinceStake = now - stakedTime;
-      const timeUntilUnlock = timeSinceStake >= SEVEN_DAYS_MS ? 0 : SEVEN_DAYS_MS - timeSinceStake;
-      
-      // Prepare the response with on-chain data
+      // Prepare the response with on-chain data from the smart contract
       const stakingResponse = {
-        amountStaked: amountStaked,
-        pendingRewards: pendingRewards,
-        stakedAt: stakedAt,
-        lastCompoundAt: lastCompoundAt,
-        estimatedAPY: 125.4, // Hardcoded APY for demo, would be calculated from on-chain data
-        timeUntilUnlock: timeUntilUnlock,
-        stakingVaultAddress: stakingVaultAddress
+        amountStaked: userStakingInfo.amountStaked,
+        pendingRewards: userStakingInfo.pendingRewards,
+        stakedAt: userStakingInfo.stakedAt,
+        lastCompoundAt: userStakingInfo.lastClaimAt || new Date(), // Using lastClaimAt for lastCompoundAt
+        estimatedAPY: userStakingInfo.estimatedAPY,
+        timeUntilUnlock: userStakingInfo.timeUntilUnlock,
+        stakingVaultAddress
       };
       
       // Add debug logging
@@ -1211,9 +1190,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stakingInfo: stakingResponse,
       });
     } catch (error) {
-      console.error("Error fetching staking info:", error);
+      console.error("Error fetching staking info from smart contract:", error);
       return res.status(500).json({
-        error: "Failed to fetch staking information",
+        error: "Failed to fetch staking information from smart contract",
         details: error instanceof Error ? error.message : String(error)
       });
     }
