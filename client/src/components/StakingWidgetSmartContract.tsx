@@ -172,16 +172,8 @@ const StakingWidgetSmartContract: React.FC = () => {
         const userInfo = await stakingClient.getUserStakingInfo();
         setStakingInfo(userInfo);
         
-        // Refresh token balance
-        try {
-          const response = await fetch(`/api/token-balance/${publicKey.toString()}`);
-          const data = await response.json();
-          if (data.success) {
-            setTokenBalance(data.balance);
-          }
-        } catch (error: any) {
-          console.error("Failed to fetch token balance", error);
-        }
+        // Refresh token balance using context
+        await refreshTokenBalance();
         
         setLoading(false);
       }, 5000);
@@ -232,16 +224,8 @@ const StakingWidgetSmartContract: React.FC = () => {
         const userInfo = await stakingClient.getUserStakingInfo();
         setStakingInfo(userInfo);
         
-        // Refresh token balance
-        try {
-          const response = await fetch(`/api/token-balance/${publicKey.toString()}`);
-          const data = await response.json();
-          if (data.success) {
-            setTokenBalance(data.balance);
-          }
-        } catch (error: any) {
-          console.error("Failed to fetch token balance", error);
-        }
+        // Refresh token balance using context
+        await refreshTokenBalance();
         
         setLoading(false);
       }, 5000);
@@ -275,16 +259,8 @@ const StakingWidgetSmartContract: React.FC = () => {
         const userInfo = await stakingClient.getUserStakingInfo();
         setStakingInfo(userInfo);
         
-        // Refresh token balance
-        try {
-          const response = await fetch(`/api/token-balance/${publicKey.toString()}`);
-          const data = await response.json();
-          if (data.success) {
-            setTokenBalance(data.balance);
-          }
-        } catch (error: any) {
-          console.error("Failed to fetch token balance", error);
-        }
+        // Refresh token balance using context
+        await refreshTokenBalance();
         
         setLoading(false);
       }, 5000);
