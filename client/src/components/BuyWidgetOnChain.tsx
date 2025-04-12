@@ -282,9 +282,29 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
           // Refresh SOL balance
           await refreshBalance();
           
-          // Force refresh of staking data too - reload the page after a delay
-          setTimeout(() => {
-            window.location.reload();
+          // Force refresh of staking data by calling staking client 
+          // This is better than page reload
+          setTimeout(async () => {
+            try {
+              // Initialize staking vault client
+              const { Connection, clusterApiUrl } = await import('@solana/web3.js');
+              const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+              
+              // Initialize StakingVaultClient
+              const { StakingVaultClient } = await import('@/lib/staking-vault-client');
+              const tokenMint = "12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5";
+              
+              if (publicKey) {
+                const stakingClient = new StakingVaultClient(connection, publicKey, tokenMint);
+                await stakingClient.initialize();
+                const userInfo = await stakingClient.getUserStakingInfo();
+                console.log("Updated staking info after purchase:", userInfo);
+              }
+            } catch (e) {
+              console.error("Error updating staking info:", e);
+              // Fallback to page reload if the update fails
+              window.location.reload();
+            }
           }, 2000);
           
           // Show success message with staking details

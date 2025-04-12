@@ -543,20 +543,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
       
       try {
-        // Verify transaction status
-        console.log(`Checking transaction status for: ${solTransferSignature}`);
-        const statusResponse = await connection.getSignatureStatus(solTransferSignature, {
-          searchTransactionHistory: true,
-        });
+        // Function to verify a transaction with retries
+        const verifyTransaction = async (signature: string, maxRetries = 5, delay = 1000) => {
+          let currentRetry = 0;
+          
+          while (currentRetry < maxRetries) {
+            try {
+              console.log(`Checking transaction status for: ${signature} (try ${currentRetry + 1}/${maxRetries})`);
+              const statusResponse = await connection.getSignatureStatus(signature, {
+                searchTransactionHistory: true,
+              });
+              
+              const status = statusResponse.value;
+              
+              // If we have a status and no errors, transaction is good
+              if (status && !status.err) {
+                console.log(`Transaction confirmed on try ${currentRetry + 1}: ${signature}`);
+                return true;
+              }
+              
+              // Transaction found but has an error
+              if (status && status.err) {
+                console.error(`Transaction found but has error: ${JSON.stringify(status.err)}`);
+                throw new Error(`Transaction failed: ${JSON.stringify(status.err)}`);
+              }
+              
+              // No status yet, transaction might still be processing
+              console.log(`Transaction still processing, waiting ${delay}ms before retry...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              currentRetry++;
+              
+              // Increase delay for each retry
+              delay = delay * 1.5;
+            } catch (error) {
+              if (error instanceof Error && error.message.includes("Transaction failed")) {
+                throw error; // Re-throw if it's our explicit error
+              }
+              console.error(`Error checking transaction status on try ${currentRetry + 1}:`, error);
+              currentRetry++;
+              await new Promise(resolve => setTimeout(resolve, delay));
+              delay = delay * 1.5;
+            }
+          }
+          
+          // Max retries reached and no successful confirmation
+          throw new Error(`Transaction verification timed out after ${maxRetries} attempts`);
+        };
         
-        const status = statusResponse.value;
-        if (!status || status.err) {
-          return res.status(400).json({ 
-            error: status ? "SOL transfer failed" : "Transaction not found",
-            details: status?.err || "Transaction may still be processing"
-          });
-        }
-        
+        // Verify transaction status with retries
+        await verifyTransaction(solTransferSignature);
         console.log(`SOL transfer verified: ${solTransferSignature}`);
         
         // Process referral if code is provided
@@ -658,64 +693,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
       
       try {
-        console.log(`Checking transaction status for: ${solTransferSignature}`);
-        // Check the transaction status with retry for pending transactions
-        let status;
-        let retries = 0;
-        const maxRetries = 5;
-        
-        while (retries < maxRetries) {
-          try {
-            const statusResponse = await connection.getSignatureStatus(solTransferSignature, {
-              searchTransactionHistory: true,
-            });
-            status = statusResponse.value;
-            console.log(`Transaction status (attempt ${retries + 1}):`, status);
-            
-            // If we have a status and no error, break the loop
-            if (status && !status.err) {
-              break;
+        // Function to verify a transaction with retries
+        const verifyTransaction = async (signature: string, maxRetries = 5, delay = 1000) => {
+          let currentRetry = 0;
+          
+          while (currentRetry < maxRetries) {
+            try {
+              console.log(`Checking transaction status for: ${signature} (try ${currentRetry + 1}/${maxRetries})`);
+              const statusResponse = await connection.getSignatureStatus(signature, {
+                searchTransactionHistory: true,
+              });
+              
+              const status = statusResponse.value;
+              
+              // If we have a status and no errors, transaction is good
+              if (status && !status.err) {
+                console.log(`Transaction confirmed on try ${currentRetry + 1}: ${signature}`);
+                return true;
+              }
+              
+              // Transaction found but has an error
+              if (status && status.err) {
+                console.error(`Transaction found but has error: ${JSON.stringify(status.err)}`);
+                throw new Error(`Transaction failed: ${JSON.stringify(status.err)}`);
+              }
+              
+              // No status yet, transaction might still be processing
+              console.log(`Transaction still processing, waiting ${delay}ms before retry...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              currentRetry++;
+              
+              // Increase delay for each retry
+              delay = delay * 1.5;
+            } catch (error) {
+              if (error instanceof Error && error.message.includes("Transaction failed")) {
+                throw error; // Re-throw if it's our explicit error
+              }
+              console.error(`Error checking transaction status on try ${currentRetry + 1}:`, error);
+              currentRetry++;
+              await new Promise(resolve => setTimeout(resolve, delay));
+              delay = delay * 1.5;
             }
-            
-            // If status is null (transaction not found yet) or in a pending state, wait and retry
-            if (!status || 
-                status.confirmationStatus === 'processed' || 
-                !status.confirmationStatus || 
-                status.confirmationStatus === undefined) {
-              console.log(`Transaction still processing, waiting to retry...`);
-              await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retrying
-              retries++;
-              continue;
-            }
-            
-            // If we have an error, break the loop to handle it
-            if (status && status.err) {
-              console.error(`Transaction error detected:`, status.err);
-              break;
-            }
-          } catch (error) {
-            console.error(`Error checking transaction status:`, error);
-            retries++;
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retrying
           }
-        }
+          
+          // Max retries reached and no successful confirmation
+          throw new Error(`Transaction verification timed out after ${maxRetries} attempts`);
+        };
         
-        // After retries, check if we have a valid transaction
-        if (!status) {
+        // Verify transaction status with retries
+        try {
+          await verifyTransaction(solTransferSignature);
+          console.log(`SOL transfer verified: ${solTransferSignature}`);
+        } catch (error) {
           return res.status(400).json({ 
-            error: "SOL transfer transaction not found after multiple attempts", 
+            error: error instanceof Error ? error.message : "Transaction verification failed",
             details: "Transaction may still be processing - please try again in a moment" 
           });
         }
-        
-        if (status.err) {
-          return res.status(400).json({ 
-            error: "SOL transfer transaction failed", 
-            details: status.err 
-          });
-        }
-        
-        console.log(`SOL transfer verified: ${solTransferSignature}`);
         
         // Now proceed with token minting since SOL transfer is confirmed
         const simpleToken = await import('./simple-token');
