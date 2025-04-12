@@ -1115,19 +1115,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get referral stats to see if there are rewards to claim
       const stats = await storage.getReferralStats(walletAddress);
       
-      if (!stats.claimable || stats.claimable <= 0) {
+      if (!stats.claimableRewards || stats.claimableRewards <= 0) {
         return res.status(400).json({ error: "No rewards available to claim" });
       }
       
       // In the future, this would be an on-chain transaction
       // For now, mint the tokens directly
       const simpleToken = await import('./simple-token');
-      const signature = await simpleToken.mintTokens(walletAddress, stats.claimable);
+      const signature = await simpleToken.mintTokens(walletAddress, stats.claimableRewards);
       
       return res.json({
         success: true,
-        message: `Claimed ${stats.claimable} HATM tokens`,
-        amount: stats.claimable,
+        message: `Claimed ${stats.claimableRewards} HATM tokens`,
+        amount: stats.claimableRewards,
         signature
       });
     } catch (error) {
