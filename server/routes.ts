@@ -1083,6 +1083,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint to claim rewards from staking
+  app.post("/api/claim-rewards", async (req, res) => {
+    try {
+      const { walletAddress } = req.body;
+      
+      if (!walletAddress) {
+        return res.status(400).json({ error: "Wallet address is required" });
+      }
+      
+      console.log(`Processing claim rewards request for wallet: ${walletAddress}`);
+      
+      // Get user's current staking info to verify pending rewards
+      const stakingInfo = await storage.getStakingInfo(walletAddress);
+      
+      // Get the pending rewards amount
+      const pendingRewards = stakingInfo.pendingRewards || 0;
+      
+      if (pendingRewards <= 0) {
+        return res.status(400).json({ error: "No rewards available to claim" });
+      }
+      
+      // Process the rewards claim (simulating on-chain transaction)
+      try {
+        // Get user's current token balance
+        const simpleToken = await import('./simple-token');
+        const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
+        
+        // Add the rewards to the user's token balance by minting new tokens
+        // In a real implementation, this would transfer from the staking vault
+        const transferSignature = await simpleToken.mintTokens(walletAddress, pendingRewards);
+        
+        // Update the staking record to reset pending rewards
+        // This simulates updating the on-chain staking account
+        const updatedStakingInfo = await storage.stakeTokens({
+          walletAddress,
+          amountStaked: stakingInfo.amountStaked,
+          pendingRewards: 0,  // Reset rewards after claim
+        });
+        
+        // Return success response with details
+        return res.json({
+          success: true,
+          message: `${pendingRewards} HATM tokens claimed as rewards`,
+          stakingInfo: updatedStakingInfo,
+          oldBalance: tokenBalance,
+          newBalance: tokenBalance + pendingRewards,
+          transactionSignature: transferSignature,
+          explorerUrl: `https://explorer.solana.com/tx/${transferSignature}?cluster=devnet`
+        });
+      } catch (error) {
+        console.error("Error claiming rewards:", error);
+        return res.status(500).json({
+          error: "Failed to claim rewards",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } catch (error) {
+      console.error("Error processing claim rewards request:", error);
+      return res.status(500).json({
+        error: "Failed to process claim rewards request",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Endpoint to confirm staking after successful transaction 
   app.post("/api/confirm-staking", async (req, res) => {
     try {
@@ -1134,78 +1199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoint to claim staking rewards
-  app.post("/api/claim-rewards", async (req, res) => {
-    try {
-      const { walletAddress } = req.body;
-      
-      if (!walletAddress) {
-        return res.status(400).json({ error: "Wallet address is required" });
-      }
-      
-      console.log(`Processing reward claim for wallet: ${walletAddress}`);
-      
-      // Get current staking info to check pending rewards
-      const stakingInfo = await storage.getStakingInfo(walletAddress);
-      
-      if (stakingInfo.pendingRewards <= 0) {
-        return res.status(400).json({ 
-          error: "No pending rewards to claim",
-          pendingRewards: stakingInfo.pendingRewards
-        });
-      }
-      
-      try {
-        // Mint the reward tokens to the user's wallet
-        const simpleToken = await import('./simple-token');
-        
-        // This will create a token transaction to mint the rewards
-        const rewardSignature = await simpleToken.mintTokens(walletAddress, stakingInfo.pendingRewards);
-        
-        // We've already minted the tokens to the user's wallet
-        // Now we need to "reset" their pending rewards
-        // In a real application, we would have a more robust API for this
-        // For now, we'll use a workaround by "unstaking" 0 tokens, which updates the staking record
-        
-        try {
-          // This is a bit of a hack, but it will force the staking record to update
-          // In a real application, we would have a proper API for claiming rewards
-          const dummyUnstake = await storage.unstakeTokens(walletAddress, 0);
-          console.log("Reset pending rewards via dummy unstake:", dummyUnstake);
-        } catch (error) {
-          // If this fails, we'll log it but continue - the tokens were already minted
-          console.warn("Failed to reset pending rewards, but tokens were minted:", error);
-        }
-        
-        // Get updated staking info
-        const updatedStakingInfo = await storage.getStakingInfo(walletAddress);
-        
-        // Get updated token balance
-        const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
-        
-        return res.json({
-          success: true,
-          message: `${stakingInfo.pendingRewards} HATM reward tokens have been claimed`,
-          stakingInfo: updatedStakingInfo,
-          tokenBalance,
-          transactionSignature: rewardSignature,
-          explorerUrl: `https://explorer.solana.com/tx/${rewardSignature}?cluster=devnet`
-        });
-      } catch (error) {
-        console.error("Error in reward claiming process:", error);
-        return res.status(500).json({
-          error: "Failed to claim rewards",
-          details: error instanceof Error ? error.message : String(error)
-        });
-      }
-    } catch (error) {
-      console.error("Error processing reward claim request:", error);
-      return res.status(500).json({
-        error: "Failed to process reward claim",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
+
   
   // Referral System Routes
   
