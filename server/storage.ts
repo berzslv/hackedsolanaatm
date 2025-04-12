@@ -23,9 +23,13 @@ import { eq, desc, and, sql, count } from "drizzle-orm";
 
 // Interfaces for referral statistics
 interface ReferralStats {
+  referralCode: string | null;
   totalReferrals: number;
   totalEarnings: number;
   weeklyRank: number | null;
+  referredCount: number;
+  totalReferred: number;
+  claimableRewards: number;
   recentActivity: {
     date: string;
     transaction: string;
@@ -209,10 +213,24 @@ export class MemStorage implements IStorage {
       weeklyRank = userEntry.rank;
     }
     
+    // Find referral code for this user
+    const user = Array.from(this.users.values()).find(u => u.walletAddress === walletAddress);
+    const referralCode = user?.referralCode || null;
+    
+    // Calculate total volume referred
+    const totalReferred = userReferrals.reduce((sum, ref) => sum + ref.amount, 0);
+    
+    // Calculate claimable rewards (assuming 10% is held for claiming)
+    const claimableRewards = Math.floor(totalEarnings * 0.1);
+    
     return {
+      referralCode,
       totalReferrals: userReferrals.length,
       totalEarnings,
       weeklyRank,
+      referredCount: userReferrals.length, // Number of unique referrals
+      totalReferred, // Total volume referred in SOL
+      claimableRewards,
       recentActivity
     };
   }
@@ -544,10 +562,28 @@ export class DatabaseStorage implements IStorage {
     
     const weeklyRank = leaderboardEntry ? leaderboardEntry.rank : null;
     
+    // Find referral code for this user
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.walletAddress, walletAddress));
+    
+    const referralCode = user?.referralCode || null;
+    
+    // Calculate total volume referred
+    const totalReferred = userReferrals.reduce((sum, ref) => sum + ref.amount, 0);
+    
+    // Calculate claimable rewards (assuming 10% is held for claiming)
+    const claimableRewards = Math.floor(totalEarnings * 0.1);
+    
     return {
+      referralCode,
       totalReferrals: userReferrals.length,
       totalEarnings,
       weeklyRank,
+      referredCount: userReferrals.length, // Number of unique referrals
+      totalReferred, // Total volume referred in SOL
+      claimableRewards,
       recentActivity
     };
   }
