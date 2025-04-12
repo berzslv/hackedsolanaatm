@@ -1363,18 +1363,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate the deterministic referral code from the wallet address
       // This is the same algorithm used in ReferralTrackerClient
       const generateReferralCodeFromWallet = (walletAddr: string): string => {
-        // Generate a deterministic code using the first 6 characters of the wallet's hash
-        // This is a simplified approach - in production you'd use a more sophisticated method
-        // and ensure uniqueness through the smart contract
-        const hash = walletAddr.slice(0, 10); // Use first 10 chars of address
+        // Convert the wallet address to a number array for more consistent codes
+        const addressBytes = [];
+        for (let i = 0; i < Math.min(walletAddr.length, 32); i++) {
+          addressBytes.push(walletAddr.charCodeAt(i));
+        }
+        
+        // Create a deterministic hash from the wallet address
+        const hash = addressBytes.reduce((acc, val, idx) => acc + (val * (idx + 1)), 0);
         let code = '';
         
-        // Generate 6 character alphanumeric code
+        // Generate a 6 character alphanumeric code without spaces or ambiguous characters
+        const validChars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // No 0, O, I to avoid confusion
         for (let i = 0; i < 6; i++) {
-          const charIndex = parseInt(hash.charAt(i), 16) % 36; // 0-9, A-Z (36 chars)
-          code += (charIndex < 10) 
-            ? charIndex.toString() 
-            : String.fromCharCode(65 + (charIndex - 10)); // A-Z
+          // Use a different part of the hash for each position
+          const position = (hash * (i + 1)) % validChars.length;
+          code += validChars.charAt(Math.abs(position));
         }
         
         return code;
