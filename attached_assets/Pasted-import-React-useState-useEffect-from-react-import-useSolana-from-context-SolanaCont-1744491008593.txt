@@ -1,0 +1,71 @@
+import React, { useState, useEffect } from 'react';
+import { useSolana } from "@/context/SolanaContext";
+import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+import { Clipboard } from "lucide-react";
+
+const StakedBalance: React.FC = () => {
+  const { connected, publicKey } = useSolana();
+  const [stakedBalance, setStakedBalance] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (connected && publicKey) {
+      fetchStakedBalance(publicKey);
+    }
+  }, [connected, publicKey]);
+
+  // Function to fetch the staked tokens balance
+  const fetchStakedBalance = async (walletAddress: PublicKey) => {
+    try {
+      setLoading(true);
+
+      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+      
+      // Replace with the actual staked token account address
+      const stakedTokenAccount = new PublicKey('YOUR_STAKED_TOKEN_ACCOUNT_ADDRESS');
+      
+      // Get the token balance for the staked token account
+      const tokenAccountBalance = await connection.getTokenAccountBalance(stakedTokenAccount);
+
+      // Convert to the token amount (usually in lamports or the token's decimals)
+      const balance = tokenAccountBalance.value.uiAmount;
+
+      setStakedBalance(balance || 0); // Set the staked balance
+    } catch (error) {
+      console.error("Error fetching staked balance:", error);
+      setStakedBalance(0); // Handle the error case
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card className="w-full">
+      <CardContent className="space-y-4">
+        <h3 className="text-md font-medium">Your Staked Balance</h3>
+
+        {loading ? (
+          <Skeleton className="h-10 w-32" />
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="flex-grow">
+              <p className="text-xl font-bold">{stakedBalance || 0} HATM</p>
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(stakedBalance?.toString() || "0");
+              }}
+              className="p-2 rounded bg-gray-100 hover:bg-gray-200"
+            >
+              <Clipboard className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default StakedBalance;

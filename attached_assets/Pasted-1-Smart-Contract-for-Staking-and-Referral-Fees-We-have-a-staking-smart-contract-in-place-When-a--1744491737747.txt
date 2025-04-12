@@ -1,0 +1,70 @@
+1. Smart Contract for Staking and Referral Fees:
+We have a staking smart contract in place.
+
+When a user buys tokens using a referral code, the transaction will incur a 6% fee:
+
+3% of this fee goes to the referrer, and this is sent directly to their staking vault.
+
+2% goes to a marketing wallet, which is used to distribute tokens to stakers every 30 minutes. The distribution will be based on how many tokens a user has staked (i.e., the more tokens they stake, the higher their share of the distribution).
+
+1% goes to a marketing wallet (not directly related to staking rewards but for promotional purposes).
+
+If no referral code is used, the total 8% fee applies:
+
+2% of the 8% goes to the marketing wallet.
+
+The remaining 6% goes to the wallet that distributes tokens to stakers every 30 minutes (same logic as the referral fee – distribution based on the amount of staked tokens).
+
+2. Dynamic Token Price Based on Referral:
+The price of the token should differ depending on whether a referral code is used or not.
+
+If a referral code is used:
+
+Deduct the 6% fee from the total token price (3% goes to the referrer, 2% to the marketing wallet, and 1% to the marketing wallet as described).
+
+If no referral code is used:
+
+Deduct the 8% fee (2% goes to the marketing wallet, 6% to the wallet distributing tokens to stakers).
+
+3. Staking Tokens Automatically After Purchase:
+When a user buys tokens, after the fee is deducted, the remaining tokens should be automatically staked for 7 days according to the smart contract.
+
+The staking is done via the staking smart contract already in place.
+
+This process should happen automatically after the purchase and fee deduction.
+
+4. Displaying Staked Balance:
+Once the user completes the transaction and the tokens are staked, we need to display the staked balance:
+
+This balance will be fetched directly from the staking smart contract (since that's where the tokens are staked).
+
+The staked tokens should be visible in the user interface after the transaction is complete, showing how many tokens are staked and available for distribution.
+
+The staked balance should update based on the tokens already staked and the user's share of the distribution from the staking rewards.
+
+5. Clarification for the Developer:
+To summarize:
+
+Referral Fee Structure:
+
+With Referral Code:
+
+6% fee (3% to the referrer, 2% to the marketing wallet, 1% to marketing distribution).
+
+Without Referral Code:
+
+8% fee (2% to the marketing wallet, 6% to the staking distribution wallet).
+
+Token Price:
+
+The token price should reflect the deducted fee based on whether the referral code is used.
+
+Staking After Purchase:
+
+The tokens are automatically staked for 7 days after purchase (handled by the smart contract).
+
+Staked balance should be displayed after the transaction is completed and the tokens are staked.
+
+Distributing Rewards:
+
+Every 30 minutes, tokens are distributed from the staking wallet based on how many tokens each user has staked.

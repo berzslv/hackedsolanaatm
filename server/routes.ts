@@ -1031,14 +1031,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 1. We need to simulate some tokens as being staked (not in wallet)
       // 2. For our demo, we'll use a fixed value to represent staked tokens
       
-      // In a real implementation, this would come from the staking contract account
-      // Since we're simulating staking behavior where tokens are sent from wallet to staking contract,
-      // let's use a dynamic amount based on the wallet's historical activity
+      // We need to fetch the actual staked balance from the staking token account
+      // In a real implementation, each user would have a staking position in a vault contract
       
-      // The total tokens issued to this wallet = current balance + staked amount
-      // For this demo, we'll assume total issued tokens is 1.8x the current balance
-      // This gives us: staked = 0.8 * current balance
-      const amountStaked = Math.floor(walletTokenBalance * 0.8); // 80% of current balance as staked
+      // For now, we'll use a simulated staking vault address (in a real app, this would 
+      // be the address of a PDA or token account controlled by a staking contract)
+      // We'll use the mint authority keypair's token account as our simulated staking vault
+      const stakingVaultPubkey = mintAuthority.keypair.publicKey;
+      
+      // Get the staked token balance from the staking vault (this is a placeholder)
+      // In a real implementation, we'd query the staking contract's storage to get this user's staked position
+      
+      // For demo, we're giving a fixed amount that will still update with each request
+      // This simulates an on-chain query that would return the user's actual staked balance
+      // The amount is deterministic based on the wallet address to simulate a real staking contract
+      const stakingVaultSeed = userWalletPubkey.toBuffer().toString('hex').slice(0, 8);
+      const stakingVaultSeedNumber = parseInt(stakingVaultSeed, 16);
+      const amountStaked = 10000 + (stakingVaultSeedNumber % 10000); // Amount between 10,000 and 20,000 tokens
       
       // Calculate pending rewards based on the staked amount
       const pendingRewards = parseFloat((amountStaked * 0.02).toFixed(2));
