@@ -346,13 +346,13 @@ export class StakingVaultClient {
       }
 
       const data = await response.json();
-      if (data.success && data.transaction) {
+      if (data.success && data.solTransferTransaction) {
         // Return the transaction created by the server
         console.log("Using server-created transaction for purchase and stake");
-        const buffer = Uint8Array.from(atob(data.transaction), c => c.charCodeAt(0));
+        const buffer = Uint8Array.from(atob(data.solTransferTransaction), c => c.charCodeAt(0));
         return Transaction.from(buffer);
       } else {
-        throw new Error('Invalid response data from server');
+        throw new Error('Invalid response data from server - missing solTransferTransaction');
       }
     } catch (error) {
       console.error('Failed to create purchase and stake transaction:', error);

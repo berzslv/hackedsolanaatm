@@ -129,8 +129,12 @@ const StakingWidgetSmartContract: React.FC = () => {
       const transaction = await stakingClient.createStakeTransaction(amount);
       console.log("Created stake transaction:", transaction);
       
+      // Convert to VersionedTransaction for wallet
+      const message = transaction.compileMessage();
+      const versionedTransaction = new VersionedTransaction(message);
+      
       // Send the transaction - will automatically be signed by wallet
-      const signature = await sendTransaction(transaction);
+      const signature = await sendTransaction(versionedTransaction);
       console.log("Stake transaction sent:", signature);
 
       // Call the confirm-staking endpoint to update database
@@ -209,8 +213,12 @@ const StakingWidgetSmartContract: React.FC = () => {
       // Create transaction
       const transaction = await stakingClient.createUnstakeTransaction(amount);
       
+      // Convert to VersionedTransaction for wallet
+      const message = transaction.compileMessage();
+      const versionedTransaction = new VersionedTransaction(message);
+      
       // Send transaction
-      const signature = await sendTransaction(transaction);
+      const signature = await sendTransaction(versionedTransaction);
       console.log("Unstake transaction sent:", signature);
       
       // Reset input
@@ -251,8 +259,12 @@ const StakingWidgetSmartContract: React.FC = () => {
       // Create claim rewards transaction
       const transaction = await stakingClient.createClaimRewardsTransaction();
       
+      // Convert to VersionedTransaction for wallet
+      const message = transaction.compileMessage();
+      const versionedTransaction = new VersionedTransaction(message);
+      
       // Send transaction
-      const signature = await sendTransaction(transaction);
+      const signature = await sendTransaction(versionedTransaction);
       console.log("Claim rewards transaction sent:", signature);
       
       // Wait for confirmation and refresh data

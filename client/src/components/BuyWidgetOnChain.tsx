@@ -282,6 +282,11 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
           // Refresh SOL balance
           await refreshBalance();
           
+          // Force refresh of staking data too - reload the page after a delay
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+          
           // Show success message with staking details
           toast({
             title: "Purchase and stake successful!",
