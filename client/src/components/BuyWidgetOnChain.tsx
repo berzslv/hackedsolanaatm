@@ -11,7 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import AirdropButton from './AirdropButton';
 import { Loader2, AlertCircle } from "lucide-react";
 import { Transaction, VersionedTransaction, PublicKey } from '@solana/web3.js';
-import { Buffer } from 'buffer';
 
 export interface BuyWidgetProps {
   flashRef?: React.MutableRefObject<(() => void) | null>;

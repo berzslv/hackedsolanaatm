@@ -174,7 +174,8 @@ export class StakingVaultClient {
         if (data.success && data.transaction) {
           // Use the transaction created by the server
           console.log("Using server-created transaction");
-          return Transaction.from(Buffer.from(data.transaction, 'base64'));
+          const buffer = Uint8Array.from(atob(data.transaction), c => c.charCodeAt(0));
+          return Transaction.from(buffer);
         }
       } catch (err) {
         console.error("Failed to get transaction from server:", err);
@@ -348,7 +349,8 @@ export class StakingVaultClient {
       if (data.success && data.transaction) {
         // Return the transaction created by the server
         console.log("Using server-created transaction for purchase and stake");
-        return Transaction.from(Buffer.from(data.transaction, 'base64'));
+        const buffer = Uint8Array.from(atob(data.transaction), c => c.charCodeAt(0));
+        return Transaction.from(buffer);
       } else {
         throw new Error('Invalid response data from server');
       }
