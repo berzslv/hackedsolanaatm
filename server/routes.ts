@@ -392,8 +392,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         transferTransaction.recentBlockhash = blockhash;
         transferTransaction.feePayer = new web3.PublicKey(walletAddress);
         
-        // Sign with the authority's keypair (signature will be replaced by user but is needed for serialization)
-        transferTransaction.partialSign(authorityKeypair);
+        // Don't sign with the authority - this causes "unknown signer" errors
+        // Removed: transferTransaction.partialSign(authorityKeypair);
         
         // Serialize the transaction for the client to sign
         const serializedTransaction = transferTransaction.serialize({
@@ -857,8 +857,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         transferTransaction.recentBlockhash = blockhash;
         transferTransaction.feePayer = new web3.PublicKey(walletAddress);
 
-        // Sign with the authority's keypair (signature will be replaced by user but is needed for serialization)
-        transferTransaction.partialSign(authorityKeypair);
+        // Don't sign with the authority - this causes "unknown signer" errors
+        // transferTransaction.partialSign(authorityKeypair);
 
         // Serialize the transaction for the client to sign
         const serializedTransaction = transferTransaction.serialize({
