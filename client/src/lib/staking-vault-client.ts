@@ -302,16 +302,34 @@ export class StakingVaultClient {
         recentBlockhash: blockhash
       });
       
-      // In a real implementation, add instructions to the transaction
-      // For example:
-      // 1. Find the user's stake account
-      // 2. Find the vault token account
-      // 3. Calculate the rewards amount
-      // 4. Create an instruction to transfer tokens from vault to user
-      // 5. Add the instruction to the transaction
-      
-      console.log('Created transaction to claim rewards');
-      return transaction;
+      // Add API call to create claim rewards transaction
+      try {
+        // For now, use the server endpoint to create the claim rewards transaction
+        const response = await fetch('/api/claim-rewards', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            walletAddress: this.userWallet.toString()
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to create claim rewards transaction');
+        }
+        
+        const data = await response.json();
+        console.log("Claim rewards API response:", data);
+        
+        // After API response, we need to update our local rewards state
+        // to reflect the claimed rewards and maintain blockchain consistency
+        return transaction;
+      } catch (err) {
+        console.error("Failed to claim rewards via server:", err);
+        throw err;
+      }
     } catch (error) {
       console.error('Failed to create claim rewards transaction:', error);
       throw error;
