@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Clipboard } from "lucide-react";
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { stringToUint8Array } from '@/lib/buffer-utils';
 
 // This is the address of the main staking vault smart contract
 // In a real implementation, this would be the program ID of the staking smart contract

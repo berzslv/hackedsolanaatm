@@ -1,5 +1,6 @@
 import { Connection, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
+import { base64ToUint8Array } from './buffer-utils';
 
 /**
  * Interface for user staking information
