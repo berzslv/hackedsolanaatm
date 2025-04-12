@@ -1,16 +1,18 @@
-// Import the buffer package (now installed as a dependency)
+/**
+ * Buffer Polyfill for Browser Environment
+ * This file provides Buffer implementation for browser compatibility.
+ * 
+ * We're using a direct approach since we can't modify vite.config.ts
+ */
+
 import { Buffer } from 'buffer';
 
-// Make Buffer available globally so libraries can access it
+// Make sure global is defined
 if (typeof window !== 'undefined') {
-  // Set up Buffer in the global namespace
-  window.Buffer = Buffer;
+  window.global = window;
+  window.process = window.process || { env: {} };
   
-  // Ensure global is defined
-  if (typeof window.global === 'undefined') {
-    window.global = window;
-  }
-  
-  // Make sure global.Buffer is set
-  window.global.Buffer = Buffer;
+  // Set up Buffer globally
+  window.Buffer = window.Buffer || Buffer;
+  window.global.Buffer = window.global.Buffer || Buffer;
 }
