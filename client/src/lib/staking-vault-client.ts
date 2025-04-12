@@ -141,8 +141,14 @@ export class StakingVaultClient {
         throw new Error('Amount must be greater than zero');
       }
       
-      // Create a new transaction
-      const transaction = new Transaction();
+      // Get a recent blockhash
+      const { blockhash } = await this.connection.getLatestBlockhash();
+      
+      // Create a new transaction with the recent blockhash
+      const transaction = new Transaction({
+        feePayer: this.userWallet,
+        recentBlockhash: blockhash
+      });
       
       // In a real implementation, add instructions to the transaction
       // For example:
@@ -171,8 +177,14 @@ export class StakingVaultClient {
         throw new Error('Amount must be greater than zero');
       }
       
-      // Create a new transaction
-      const transaction = new Transaction();
+      // Get a recent blockhash
+      const { blockhash } = await this.connection.getLatestBlockhash();
+      
+      // Create a new transaction with the recent blockhash
+      const transaction = new Transaction({
+        feePayer: this.userWallet,
+        recentBlockhash: blockhash
+      });
       
       // In a real implementation, add instructions to the transaction
       // For example:
@@ -196,8 +208,14 @@ export class StakingVaultClient {
    */
   async createClaimRewardsTransaction(): Promise<Transaction> {
     try {
-      // Create a new transaction
-      const transaction = new Transaction();
+      // Get a recent blockhash
+      const { blockhash } = await this.connection.getLatestBlockhash();
+      
+      // Create a new transaction with the recent blockhash
+      const transaction = new Transaction({
+        feePayer: this.userWallet,
+        recentBlockhash: blockhash
+      });
       
       // In a real implementation, add instructions to the transaction
       // For example:
@@ -221,8 +239,14 @@ export class StakingVaultClient {
    */
   async createCompoundRewardsTransaction(): Promise<Transaction> {
     try {
-      // Create a new transaction
-      const transaction = new Transaction();
+      // Get a recent blockhash
+      const { blockhash } = await this.connection.getLatestBlockhash();
+      
+      // Create a new transaction with the recent blockhash
+      const transaction = new Transaction({
+        feePayer: this.userWallet,
+        recentBlockhash: blockhash
+      });
       
       // In a real implementation, add instructions to the transaction
       // For example:

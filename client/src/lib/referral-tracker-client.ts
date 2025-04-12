@@ -60,9 +60,14 @@ export class ReferralTrackerClient {
         throw new Error('Invalid referral code. It should be 1-10 characters long.');
       }
 
-      // Create transaction (stub)
-      // In a full implementation, this would create the actual transaction
-      const transaction = new Transaction();
+      // Get a recent blockhash
+      const { blockhash } = await this.connection.getLatestBlockhash();
+      
+      // Create transaction with the recent blockhash
+      const transaction = new Transaction({
+        feePayer: this.userWallet,
+        recentBlockhash: blockhash
+      });
       
       // Add instruction to register referral code
       // transaction.add(instructionToRegisterCode);
@@ -95,8 +100,14 @@ export class ReferralTrackerClient {
         throw new Error('Referral code is required');
       }
 
-      // Create transaction (stub)
-      const transaction = new Transaction();
+      // Get a recent blockhash
+      const { blockhash } = await this.connection.getLatestBlockhash();
+      
+      // Create transaction with the recent blockhash
+      const transaction = new Transaction({
+        feePayer: this.userWallet,
+        recentBlockhash: blockhash
+      });
       
       // Add instruction to record referral
       // transaction.add(instructionToRecordReferral);
@@ -121,8 +132,14 @@ export class ReferralTrackerClient {
         throw new Error('Amount must be greater than zero');
       }
 
-      // Create transaction (stub)
-      const transaction = new Transaction();
+      // Get a recent blockhash
+      const { blockhash } = await this.connection.getLatestBlockhash();
+      
+      // Create transaction with the recent blockhash
+      const transaction = new Transaction({
+        feePayer: this.userWallet,
+        recentBlockhash: blockhash
+      });
       
       // Add instruction to claim rewards
       // transaction.add(instructionToClaimRewards);

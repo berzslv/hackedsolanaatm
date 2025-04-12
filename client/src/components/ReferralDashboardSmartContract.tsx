@@ -293,23 +293,24 @@ const ReferralDashboardSmartContract: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Enter a referral code (3-10 chars)"
-                  value={newReferralCode}
-                  onChange={(e) => setNewReferralCode(e.target.value)}
-                  maxLength={10}
-                  className="flex-grow"
-                />
-                <Button 
-                  onClick={handleRegisterReferralCode}
-                  disabled={!newReferralCode || loading}
-                >
-                  Register
-                </Button>
-              </div>
+              <Button 
+                onClick={() => {
+                  // Generate a random code
+                  const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                  setNewReferralCode(randomCode);
+                  
+                  // Register it after a short delay
+                  setTimeout(() => {
+                    handleRegisterReferralCode();
+                  }, 100);
+                }}
+                disabled={loading}
+                className="w-full"
+              >
+                Generate & Register Referral Code
+              </Button>
               <p className="text-xs text-muted-foreground">
-                Choose a unique code to share with friends and start earning HATM tokens.
+                Click the button to automatically generate a unique referral code and start earning HATM tokens.
               </p>
             </div>
           )}
