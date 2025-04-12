@@ -1022,24 +1022,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeSinceStake = now - stakedAt.getTime();
       const timeUntilUnlock = timeSinceStake >= SEVEN_DAYS_MS ? 0 : SEVEN_DAYS_MS - timeSinceStake;
       
-      // Get actual on-chain token balance from the wallet to simulate the staked amount
-      // For a full implementation, we'd read this directly from the staking contract
-      // After the user stakes tokens, they are transferred to a staking account
-      
-      // For simplicity, let's simulate a staking contract balance by using 
-      // a percentage of the user's token balance as their "staked" amount
-      // In a real implementation, this would be read directly from the staking contract
-      
-      // Get the token balance and calculate a simulated staked amount
+      // In a true on-chain implementation, the staked amount would be read directly from the staking contract
+      // Since all tokens are automatically staked when purchased, the staked amount should be
+      // the full token balance the user has
       const walletTokenBalance = tokenAmount;
       
-      // Simulate that 30% of the user's tokens are staked
-      // This allows the number to change dynamically as users buy more tokens
-      // In reality, we'd read the actual staked amount from the contract
-      const amountStaked = Math.floor(walletTokenBalance * 0.3);
+      // For this implementation, we'll use the full token balance as the staked amount
+      // since all tokens are automatically staked when purchased according to the requirements
+      const amountStaked = walletTokenBalance;
       
-      // Add some variance to the pending rewards based on the staked amount
-      const pendingRewards = parseFloat((amountStaked * 0.05).toFixed(2));
+      // Calculate pending rewards based on the staked amount (this would come from the contract in a real implementation)
+      const pendingRewards = parseFloat((amountStaked * 0.02).toFixed(2));
       
       // Prepare the response with the dynamic staking amount
       const stakingResponse = {
@@ -1323,11 +1316,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userWalletPubkey
         );
         
-        // Use the actual amount that was staked (from the request parameter)
-        // but verify it doesn't exceed a reasonable percentage of their tokens
-        // This simulates an on-chain verification of the staking transaction
-        const maxReasonableStake = Math.floor(tokenBalance * 0.9); // 90% of their tokens max
-        const verifiedStakeAmount = Math.min(parsedAmount, maxReasonableStake);
+        // Since all tokens are automatically staked when bought, we should show the full token balance
+        // as staked, or at minimum the amount that was just purchased if that's what the transaction was for
+        const verifiedStakeAmount = tokenBalance; // Use full token balance as the staked amount
         
         // For our simulation, create staking info based on the actual staked amount
         const stakingInfo = {
