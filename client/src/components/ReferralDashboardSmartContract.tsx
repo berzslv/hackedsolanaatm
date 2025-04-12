@@ -57,56 +57,75 @@ const ReferralDashboardSmartContract: React.FC = () => {
   }, [connected, publicKey]);
 
   // Load referral stats
+  // Define a function to refresh stats that can be called from other places
+  const refreshStats = async () => {
+    if (!connected || !publicKey) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Use the client to get stats if available, otherwise fallback to API
+      if (referralClient) {
+        const stats = await referralClient.getReferralStats();
+        if (stats) {
+          setReferralStats({
+            ...stats,
+            weeklyRank: null,
+            recentActivity: []
+          });
+        }
+      }
+      
+      // Always fetch from the current backend API for complete data
+      const response = await fetch(`/api/referrals/${publicKey.toString()}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch referral stats");
+      }
+
+      const data = await response.json();
+      
+      // Get referral code from localStorage if not present in API response
+      const storedCode = localStorage.getItem('userReferralCode');
+      const finalReferralCode = data.referralCode || storedCode || '';
+      
+      // If we have a code in localStorage but not in the API, keep it
+      if (storedCode && !data.referralCode) {
+        console.log("Using referral code from localStorage:", storedCode);
+      }
+      
+      setReferralStats({
+        referralCode: finalReferralCode, 
+        totalReferred: data.totalReferred || 0,
+        totalEarnings: data.totalEarnings || 0,
+        claimableRewards: data.claimableRewards || 0,
+        referredCount: data.referredCount || 0,
+        weeklyRank: data.weeklyRank,
+        recentActivity: data.recentActivity || []
+      });
+      
+      // Always make sure localStorage is updated with the current code
+      if (finalReferralCode) {
+        localStorage.setItem('userReferralCode', finalReferralCode);
+        console.log("Saved referral code to localStorage:", finalReferralCode);
+      }
+    } catch (err) {
+      console.error("Failed to fetch referral stats:", err);
+      setError("Failed to load referral data. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initialize referral stats on component mount and when dependencies change
   useEffect(() => {
-    const fetchReferralStats = async () => {
-      if (!connected || !publicKey) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        
-        // Use the client to get stats if available, otherwise fallback to API
-        if (referralClient) {
-          const stats = await referralClient.getReferralStats();
-          if (stats) {
-            setReferralStats({
-              ...stats,
-              weeklyRank: null,
-              recentActivity: []
-            });
-          }
-        }
-        
-        // Always fetch from the current backend API for complete data
-        const response = await fetch(`/api/referrals/${publicKey.toString()}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch referral stats");
-        }
-
-        const data = await response.json();
-        setReferralStats({
-          referralCode: data.referralCode || '',
-          totalReferred: data.totalReferrals || 0,
-          totalEarnings: data.totalEarnings || 0,
-          claimableRewards: data.claimable || 0,
-          referredCount: data.referredCount || 0,
-          weeklyRank: data.weeklyRank,
-          recentActivity: data.recentActivity || []
-        });
-      } catch (err) {
-        console.error("Failed to fetch referral stats:", err);
-        setError("Failed to load referral data. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchReferralStats();
+    refreshStats();
     
     // Refresh every 30 seconds
-    const interval = setInterval(fetchReferralStats, 30000);
+    const interval = setInterval(refreshStats, 30000);
     return () => clearInterval(interval);
   }, [connected, publicKey, referralClient]);
 
@@ -138,8 +157,9 @@ const ReferralDashboardSmartContract: React.FC = () => {
         return;
       }
       
-      // First, store in backend (temporary solution until smart contract integration is complete)
+      // First, store in backend database
       try {
+        console.log(`Registering referral code ${newReferralCode} for wallet ${publicKey!.toString()}`);
         const response = await fetch('/api/register-referral-code', {
           method: 'POST',
           headers: {
@@ -155,6 +175,9 @@ const ReferralDashboardSmartContract: React.FC = () => {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to register referral code');
         }
+        
+        const data = await response.json();
+        console.log("Backend registration successful:", data);
       } catch (error) {
         console.error("Backend registration failed:", error);
         setError("Failed to register referral code on server. Try again.");
@@ -162,29 +185,49 @@ const ReferralDashboardSmartContract: React.FC = () => {
         return;
       }
       
-      // Now create and sign the blockchain transaction
-      const transaction = await referralClient.createRegisterReferralCodeTransaction(newReferralCode);
-      const signedTransaction = await signTransaction(transaction);
-      
-      // Send the transaction
-      const signature = await sendTransaction(signedTransaction);
-      console.log("Referral code registration sent:", signature);
+      // Only proceed with blockchain registration if backend was successful
+      try {
+        // Now create and sign the blockchain transaction
+        const transaction = await referralClient.createRegisterReferralCodeTransaction(newReferralCode);
+        const signedTransaction = await signTransaction(transaction);
+        
+        // Send the transaction
+        const signature = await sendTransaction(signedTransaction);
+        console.log("Referral code blockchain registration transaction sent:", signature);
+        
+        // Wait briefly for the transaction to confirm
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (blockchainError) {
+        // If blockchain registration fails, we still have the backend registration,
+        // so we'll consider this a partial success
+        console.warn("Blockchain registration failed, but backend succeeded:", blockchainError);
+      }
       
       toast({
         title: "Success!",
         description: `Your referral code ${newReferralCode} has been registered`,
       });
       
-      // Update the stats
+      // Update the UI immediately
       setReferralStats(prev => ({
         ...prev!,
         referralCode: newReferralCode
       }));
       
-      // This is important - explicitly update the state to prevent the code from disappearing
+      // Store in localStorage for persistence across refreshes
       localStorage.setItem('userReferralCode', newReferralCode);
       
+      // Also update global state if available
+      if (window.localStorage) {
+        window.localStorage.setItem('referralCode', newReferralCode);
+      }
+      
       setLoading(false);
+      
+      // Refresh data after a short delay
+      setTimeout(() => {
+        refreshStats();
+      }, 2000);
     } catch (err: any) {
       console.error("Failed to register referral code:", err);
       setError(err.message || "Failed to register referral code");

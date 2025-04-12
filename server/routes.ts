@@ -591,16 +591,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             walletAddress,
             type: 'stakers',
             period: 'weekly',
-            score: tokenAmount,
-            updatedAt: new Date()
+            amount: tokenAmount,
+            rank: 1 // This will be recalculated by the system later
           });
           
           await storage.updateLeaderboard({
             walletAddress,
             type: 'stakers',
             period: 'monthly',
-            score: tokenAmount,
-            updatedAt: new Date()
+            amount: tokenAmount,
+            rank: 1 // This will be recalculated by the system later
           });
           
           stakingResult = {
