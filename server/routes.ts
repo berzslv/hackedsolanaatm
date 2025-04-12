@@ -562,24 +562,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateTokenStats({
             totalSupply: tokenStats.totalSupply + tokenAmount,
             circulatingSupply: tokenStats.circulatingSupply + tokenAmount,
-            totalStaked: tokenStats.totalStaked + Math.floor(tokenAmount * 0.1), // 10% goes to staking
-            stakersCount: tokenStats.stakersCount + (Math.random() > 0.7 ? 1 : 0), // occasionally add stakers
           });
         } catch (error) {
           console.error("Error updating token stats:", error);
           // Continue even if stats update fails
         }
         
+        // Automatically stake all purchased tokens (new feature)
+        let stakingResult = null;
+        try {
+          // Record staking in database
+          const staking = await storage.stakeTokens({
+            walletAddress,
+            amountStaked: tokenAmount,
+          });
+          
+          console.log(`Automatically staked ${tokenAmount} tokens for ${walletAddress}`);
+          
+          // Update staking stats
+          const updatedTokenStats = await storage.getTokenStats();
+          await storage.updateTokenStats({
+            totalStaked: updatedTokenStats.totalStaked + tokenAmount,
+            stakersCount: updatedTokenStats.stakersCount + 1, // New staker
+          });
+          
+          // Update leaderboard for staker
+          await storage.updateLeaderboard({
+            walletAddress,
+            type: 'stakers',
+            period: 'weekly',
+            score: tokenAmount,
+            updatedAt: new Date()
+          });
+          
+          await storage.updateLeaderboard({
+            walletAddress,
+            type: 'stakers',
+            period: 'monthly',
+            score: tokenAmount,
+            updatedAt: new Date()
+          });
+          
+          stakingResult = {
+            success: true,
+            amountStaked: tokenAmount,
+            message: "Tokens automatically staked"
+          };
+        } catch (stakingError) {
+          console.error("Failed to automatically stake tokens:", stakingError);
+          stakingResult = {
+            success: false,
+            error: "Failed to automatically stake tokens"
+          };
+        }
+        
         // Return success response
         return res.json({
           success: true,
-          message: `${tokenAmount} HATM tokens have been purchased successfully`,
+          message: `${tokenAmount} HATM tokens have been purchased and automatically staked`,
           solAmount: parseFloat(solAmount),
           tokenAmount,
           currentBalance: tokenBalance,
           solTransferSignature,
           mintSignature,
-          explorerUrl: `https://explorer.solana.com/tx/${mintSignature}?cluster=devnet`
+          explorerUrl: `https://explorer.solana.com/tx/${mintSignature}?cluster=devnet`,
+          staking: stakingResult
         });
       } catch (error) {
         console.error("Error verifying SOL transfer transaction:", error);

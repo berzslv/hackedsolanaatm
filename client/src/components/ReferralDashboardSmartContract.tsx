@@ -138,7 +138,31 @@ const ReferralDashboardSmartContract: React.FC = () => {
         return;
       }
       
-      // Create and sign the transaction
+      // First, store in backend (temporary solution until smart contract integration is complete)
+      try {
+        const response = await fetch('/api/register-referral-code', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            walletAddress: publicKey!.toString(),
+            referralCode: newReferralCode
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to register referral code');
+        }
+      } catch (error) {
+        console.error("Backend registration failed:", error);
+        setError("Failed to register referral code on server. Try again.");
+        setLoading(false);
+        return;
+      }
+      
+      // Now create and sign the blockchain transaction
       const transaction = await referralClient.createRegisterReferralCodeTransaction(newReferralCode);
       const signedTransaction = await signTransaction(transaction);
       
@@ -151,18 +175,16 @@ const ReferralDashboardSmartContract: React.FC = () => {
         description: `Your referral code ${newReferralCode} has been registered`,
       });
       
-      // Update the stats after a delay to allow blockchain confirmation
-      setTimeout(async () => {
-        const stats = await referralClient.getReferralStats();
-        if (stats) {
-          setReferralStats(prev => ({
-            ...prev!,
-            referralCode: newReferralCode
-          }));
-        }
-        setLoading(false);
-      }, 5000);
+      // Update the stats
+      setReferralStats(prev => ({
+        ...prev!,
+        referralCode: newReferralCode
+      }));
       
+      // This is important - explicitly update the state to prevent the code from disappearing
+      localStorage.setItem('userReferralCode', newReferralCode);
+      
+      setLoading(false);
     } catch (err: any) {
       console.error("Failed to register referral code:", err);
       setError(err.message || "Failed to register referral code");
