@@ -6,7 +6,7 @@ import * as path from 'path';
 import { getMintAuthority } from './token-utils';
 
 // Program information
-const PROGRAM_ID = 'Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS'; // Default placeholder, should be your real program ID
+const PROGRAM_ID = '2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap'; // From Anchor.toml configuration
 const TOKEN_MINT_ADDRESS = '12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5';
 
 // Models for staking data
@@ -148,18 +148,18 @@ export async function getStakingVaultProgram(): Promise<Program> {
       };
     }
     
-    // Initialize the program - using the provider we created earlier
+    // Initialize the program using Program.at which fetches the IDL
     try {
       const programId = new PublicKey(PROGRAM_ID);
-      // Pass provider as the third argument
-      return new Program(idl, programId, provider);
+      // Use the manually loaded IDL since we don't have a deployed contract that we can fetch the IDL from
+      const coder = new anchor.BorshCoder(idl);
+      return new Program(idl as Idl, programId, provider, coder);
     } catch (error) {
       console.error('Error with program ID, using fallback:', error);
-      
-      // Create a fallback program ID from the mint authority
+      // If that fails, use the mint authority public key as a fallback
       const fallbackProgramId = mintAuthority.keypair.publicKey;
-      // Pass provider as the third argument
-      return new Program(idl, fallbackProgramId, provider);
+      const coder = new anchor.BorshCoder(idl);
+      return new Program(idl as Idl, fallbackProgramId, provider, coder);
     }
   } catch (error) {
     console.error('Failed to initialize staking vault program:', error);
