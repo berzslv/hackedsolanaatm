@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { AlertCircle, ArrowLeftRight, Clock, CheckCircle, Leaf } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import { useSolana } from "@/context/SolanaContext";
-import { Connection, VersionedTransaction, Transaction, clusterApiUrl } from "@solana/web3.js";
+import { Connection, VersionedTransaction, Transaction, clusterApiUrl, MessageV0 } from "@solana/web3.js";
 import { StakingVaultClient } from "@/lib/staking-vault-client";
 
 interface StakingInfo {
@@ -57,7 +57,7 @@ const StakingWidgetSmartContract: React.FC = () => {
   
   // Load user staking info and global stats
   useEffect(() => {
-    if (!stakingClient || !connected) return;
+    if (!stakingClient || !connected || !publicKey) return;
     
     setInfoLoading(true);
     
@@ -72,17 +72,16 @@ const StakingWidgetSmartContract: React.FC = () => {
         setStakingStats(stats);
         
         // Fetch token balance
-        // (Simplified here - you would call an API or use the StakingVaultClient)
         try {
           const response = await fetch(`/api/token-balance/${publicKey.toString()}`);
           const data = await response.json();
           if (data.success) {
             setTokenBalance(data.balance);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to fetch token balance", error);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to load staking data", error);
       } finally {
         setInfoLoading(false);
@@ -107,7 +106,7 @@ const StakingWidgetSmartContract: React.FC = () => {
   };
   
   const handleStake = async () => {
-    if (!stakingClient || !signTransaction || !sendTransaction) return;
+    if (!stakingClient || !sendTransaction || !publicKey) return;
     
     setStakeError(null);
     setLoading(true);
@@ -116,21 +115,47 @@ const StakingWidgetSmartContract: React.FC = () => {
       const amount = parseInt(stakeAmount);
       if (isNaN(amount) || amount <= 0) {
         setStakeError("Please enter a valid amount to stake");
+        setLoading(false);
         return;
       }
       
       if (amount > tokenBalance) {
         setStakeError("Insufficient token balance");
+        setLoading(false);
         return;
       }
       
-      // Create and sign stake transaction
+      // Create the transaction
       const transaction = await stakingClient.createStakeTransaction(amount);
-      const signedTransaction = await signTransaction(transaction as Transaction);
+      console.log("Created stake transaction:", transaction);
       
-      // Send transaction
-      const signature = await sendTransaction(signedTransaction);
+      // Send the transaction - will automatically be signed by wallet
+      const signature = await sendTransaction(transaction);
       console.log("Stake transaction sent:", signature);
+
+      // Call the confirm-staking endpoint to update database
+      try {
+        const confirmResponse = await fetch('/api/confirm-staking', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            walletAddress: publicKey.toString(),
+            amount: amount,
+            transactionSignature: signature
+          }),
+        });
+
+        const confirmData = await confirmResponse.json();
+        if (!confirmResponse.ok) {
+          console.warn("Staking confirmation issue:", confirmData);
+        } else {
+          console.log("Staking confirmed in database:", confirmData);
+        }
+      } catch (confirmError: any) {
+        console.error("Error confirming stake:", confirmError);
+      }
       
       // Reset input
       setStakeAmount("");
@@ -148,13 +173,13 @@ const StakingWidgetSmartContract: React.FC = () => {
           if (data.success) {
             setTokenBalance(data.balance);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to fetch token balance", error);
         }
         
         setLoading(false);
       }, 5000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Staking failed", error);
       setStakeError("Staking failed: " + (error.message || "Unknown error"));
       setLoading(false);
@@ -162,7 +187,7 @@ const StakingWidgetSmartContract: React.FC = () => {
   };
   
   const handleUnstake = async () => {
-    if (!stakingClient || !signTransaction || !sendTransaction) return;
+    if (!stakingClient || !sendTransaction || !publicKey) return;
     
     setUnstakeError(null);
     setLoading(true);
@@ -171,20 +196,21 @@ const StakingWidgetSmartContract: React.FC = () => {
       const amount = parseInt(unstakeAmount);
       if (isNaN(amount) || amount <= 0) {
         setUnstakeError("Please enter a valid amount to unstake");
+        setLoading(false);
         return;
       }
       
       if (!stakingInfo || amount > stakingInfo.amountStaked) {
         setUnstakeError("Insufficient staked balance");
+        setLoading(false);
         return;
       }
       
-      // Create and sign unstake transaction
+      // Create transaction
       const transaction = await stakingClient.createUnstakeTransaction(amount);
-      const signedTransaction = await signTransaction(transaction as Transaction);
       
       // Send transaction
-      const signature = await sendTransaction(signedTransaction);
+      const signature = await sendTransaction(transaction);
       console.log("Unstake transaction sent:", signature);
       
       // Reset input
@@ -203,13 +229,13 @@ const StakingWidgetSmartContract: React.FC = () => {
           if (data.success) {
             setTokenBalance(data.balance);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to fetch token balance", error);
         }
         
         setLoading(false);
       }, 5000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Unstaking failed", error);
       setUnstakeError("Unstaking failed: " + (error.message || "Unknown error"));
       setLoading(false);
@@ -217,17 +243,16 @@ const StakingWidgetSmartContract: React.FC = () => {
   };
   
   const handleClaimRewards = async () => {
-    if (!stakingClient || !signTransaction || !sendTransaction) return;
+    if (!stakingClient || !sendTransaction || !publicKey) return;
     
     setLoading(true);
     
     try {
-      // Create and sign claim rewards transaction
+      // Create claim rewards transaction
       const transaction = await stakingClient.createClaimRewardsTransaction();
-      const signedTransaction = await signTransaction(transaction as Transaction);
       
       // Send transaction
-      const signature = await sendTransaction(signedTransaction);
+      const signature = await sendTransaction(transaction);
       console.log("Claim rewards transaction sent:", signature);
       
       // Wait for confirmation and refresh data
@@ -243,13 +268,13 @@ const StakingWidgetSmartContract: React.FC = () => {
           if (data.success) {
             setTokenBalance(data.balance);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to fetch token balance", error);
         }
         
         setLoading(false);
       }, 5000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Claiming rewards failed", error);
       setLoading(false);
     }
