@@ -56,6 +56,13 @@ const SmartContractStakingSection = () => {
           <div className="bg-card/80 backdrop-blur-sm shadow-lg rounded-xl p-6 border border-border col-span-1 lg:col-span-1 order-2 lg:order-1">
             <h3 className="text-xl font-semibold mb-4 text-foreground">Staking Stats</h3>
             
+            {/* Display on-chain staked balance if wallet is connected */}
+            {connected && (
+              <div className="mb-6">
+                <StakedBalance />
+              </div>
+            )}
+            
             <div className="space-y-6">
               <div>
                 <div className="flex justify-between text-sm mb-1">
