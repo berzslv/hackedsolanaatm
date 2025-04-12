@@ -1,7 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, MemStorage } from "./storage";
-import { insertUserSchema, insertStakingSchema, insertReferralSchema, type Staking } from "@shared/schema";
+import { insertUserSchema, insertStakingSchema, insertReferralSchema, type Staking, users } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -1019,12 +1021,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Referral code already in use" });
       }
       
-      // Create the referral with the code
-      await storage.createReferral({
-        referrerAddress: walletAddress,
-        referralCode,
-        createdAt: new Date()
-      });
+      // Get the user by wallet address
+      const user = await storage.getUserByWalletAddress(walletAddress);
+
+      if (user) {
+        // Update the user with the referral code
+        await storage.updateUserReferralCode(walletAddress, referralCode);
+      } else {
+        // Create the user if they don't exist
+        await storage.createUser({
+          walletAddress,
+          username: `user_${walletAddress.substring(0, 6)}`,
+          referralCode
+        });
+      }
       
       return res.json({
         success: true,
