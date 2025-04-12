@@ -1031,10 +1031,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 1. We need to simulate some tokens as being staked (not in wallet)
       // 2. For our demo, we'll use a fixed value to represent staked tokens
       
-      // This is a simulated staked balance (tokens not in wallet but in staking contract)
       // In a real implementation, this would come from the staking contract account
-      // For this example, we'll use a fixed staked amount to show different from wallet balance
-      const amountStaked = 55; // Fixed amount to demonstrate staked tokens not in wallet
+      // Since we're simulating staking behavior where tokens are sent from wallet to staking contract,
+      // let's use a dynamic amount based on the wallet's historical activity
+      
+      // The total tokens issued to this wallet = current balance + staked amount
+      // For this demo, we'll assume total issued tokens is 1.8x the current balance
+      // This gives us: staked = 0.8 * current balance
+      const amountStaked = Math.floor(walletTokenBalance * 0.8); // 80% of current balance as staked
       
       // Calculate pending rewards based on the staked amount
       const pendingRewards = parseFloat((amountStaked * 0.02).toFixed(2));
