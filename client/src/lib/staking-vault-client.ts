@@ -77,14 +77,20 @@ export class StakingVaultClient {
       
       const data = await response.json();
       
+      // Log the raw data
+      console.log("Raw staking data from API:", data);
+      
+      // Extract staking info from API response
+      const stakingInfo = data.stakingInfo || data;
+      
       // Convert to the proper format
       return {
-        amountStaked: data.amountStaked || 0,
-        pendingRewards: data.pendingRewards || 0,
-        stakedAt: new Date(data.stakedAt || Date.now()),
-        lastClaimAt: new Date(data.lastCompoundAt || Date.now()),
-        estimatedAPY: data.estimatedAPY || 125,
-        timeUntilUnlock: data.timeUntilUnlock || null,
+        amountStaked: stakingInfo.amountStaked || 0,
+        pendingRewards: stakingInfo.pendingRewards || 0,
+        stakedAt: new Date(stakingInfo.stakedAt || Date.now()),
+        lastClaimAt: new Date(stakingInfo.lastCompoundAt || Date.now()),
+        estimatedAPY: stakingInfo.estimatedAPY || 125,
+        timeUntilUnlock: stakingInfo.timeUntilUnlock || null,
       };
     } catch (error) {
       console.error('Failed to get user staking info:', error);
