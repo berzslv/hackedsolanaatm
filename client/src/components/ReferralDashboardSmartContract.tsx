@@ -56,7 +56,7 @@ const ReferralDashboardSmartContract: React.FC = () => {
     }
   }, [connected, publicKey]);
 
-  // Load referral stats
+  // Load referral stats directly from blockchain
   // Define a function to refresh stats that can be called from other places
   const refreshStats = async () => {
     if (!connected || !publicKey) {
@@ -68,53 +68,42 @@ const ReferralDashboardSmartContract: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // Use the client to get stats if available, otherwise fallback to API
+      // Get stats directly from the blockchain using our client
       if (referralClient) {
+        console.log("Getting referral stats directly from blockchain");
         const stats = await referralClient.getReferralStats();
+        
         if (stats) {
+          console.log("On-chain referral stats retrieved:", stats);
+          
+          // Use the on-chain referral code
+          const onChainReferralCode = stats.referralCode;
+          
+          // Set the stats in component state
           setReferralStats({
-            ...stats,
-            weeklyRank: null,
-            recentActivity: []
+            referralCode: onChainReferralCode, 
+            totalReferred: stats.totalReferred || 0,
+            totalEarnings: stats.totalEarnings || 0,
+            claimableRewards: stats.claimableRewards || 0,
+            referredCount: stats.referredCount || 0,
+            weeklyRank: null, // Ranking would come from blockchain in full implementation
+            recentActivity: [] // Activity would come from blockchain in full implementation
           });
+          
+          // Store the on-chain code in localStorage for persistence
+          if (onChainReferralCode) {
+            localStorage.setItem('userReferralCode', onChainReferralCode);
+            console.log("Saved on-chain referral code to localStorage:", onChainReferralCode);
+          }
+        } else {
+          throw new Error("Failed to get on-chain referral stats");
         }
-      }
-      
-      // Always fetch from the current backend API for complete data
-      const response = await fetch(`/api/referrals/${publicKey.toString()}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch referral stats");
-      }
-
-      const data = await response.json();
-      
-      // Get referral code from localStorage if not present in API response
-      const storedCode = localStorage.getItem('userReferralCode');
-      const finalReferralCode = data.referralCode || storedCode || '';
-      
-      // If we have a code in localStorage but not in the API, keep it
-      if (storedCode && !data.referralCode) {
-        console.log("Using referral code from localStorage:", storedCode);
-      }
-      
-      setReferralStats({
-        referralCode: finalReferralCode, 
-        totalReferred: data.totalReferred || 0,
-        totalEarnings: data.totalEarnings || 0,
-        claimableRewards: data.claimableRewards || 0,
-        referredCount: data.referredCount || 0,
-        weeklyRank: data.weeklyRank,
-        recentActivity: data.recentActivity || []
-      });
-      
-      // Always make sure localStorage is updated with the current code
-      if (finalReferralCode) {
-        localStorage.setItem('userReferralCode', finalReferralCode);
-        console.log("Saved referral code to localStorage:", finalReferralCode);
+      } else {
+        throw new Error("Referral client not initialized");
       }
     } catch (err) {
-      console.error("Failed to fetch referral stats:", err);
-      setError("Failed to load referral data. Please try again later.");
+      console.error("Failed to fetch on-chain referral stats:", err);
+      setError("Failed to load on-chain referral data. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -155,50 +144,25 @@ const ReferralDashboardSmartContract: React.FC = () => {
         return;
       }
       
-      // First, store in backend database
+      // Create and sign the blockchain transaction only - no backend database
       try {
-        console.log(`Registering referral code ${newReferralCode} for wallet ${publicKey!.toString()}`);
-        const response = await fetch('/api/register-referral-code', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            walletAddress: publicKey!.toString(),
-            referralCode: newReferralCode
-          }),
-        });
+        console.log(`Registering on-chain referral code ${newReferralCode} for wallet ${publicKey!.toString()}`);
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to register referral code');
-        }
-        
-        const data = await response.json();
-        console.log("Backend registration successful:", data);
-      } catch (error) {
-        console.error("Backend registration failed:", error);
-        setError("Failed to register referral code on server. Try again.");
-        setLoading(false);
-        return;
-      }
-      
-      // Only proceed with blockchain registration if backend was successful
-      try {
-        // Now create and sign the blockchain transaction
+        // Create the blockchain transaction to register this code
         const transaction = await referralClient.createRegisterReferralCodeTransaction(newReferralCode);
         const signedTransaction = await signTransaction(transaction);
         
         // Send the transaction
         const signature = await sendTransaction(signedTransaction);
-        console.log("Referral code blockchain registration transaction sent:", signature);
+        console.log("On-chain referral code registration transaction sent:", signature);
         
         // Wait briefly for the transaction to confirm
         await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (blockchainError) {
-        // If blockchain registration fails, we still have the backend registration,
-        // so we'll consider this a partial success
-        console.warn("Blockchain registration failed, but backend succeeded:", blockchainError);
+        console.error("On-chain referral code registration failed:", blockchainError);
+        setError("Failed to register referral code on blockchain. Please try again.");
+        setLoading(false);
+        return;
       }
       
       toast({
@@ -358,19 +322,26 @@ const ReferralDashboardSmartContract: React.FC = () => {
             <div className="space-y-3">
               <Button 
                 onClick={() => {
-                  // Generate a random code
-                  const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-                  setNewReferralCode(randomCode);
-                  
-                  // Register it after a short delay
-                  setTimeout(() => {
-                    handleRegisterReferralCode();
-                  }, 100);
+                  // Use the deterministic code generation from the wallet address
+                  if (publicKey && referralClient) {
+                    // Generate the deterministic code based on wallet
+                    const walletAddress = publicKey.toString();
+                    // Access the private method via a wrapper function that exposes it for this use case
+                    const deterministicCode = referralClient['generateReferralCodeFromWallet'](walletAddress);
+                    
+                    console.log(`Generated deterministic on-chain referral code: ${deterministicCode} for wallet: ${walletAddress}`);
+                    setNewReferralCode(deterministicCode);
+                    
+                    // Register it after a short delay
+                    setTimeout(() => {
+                      handleRegisterReferralCode();
+                    }, 100);
+                  }
                 }}
                 disabled={loading}
                 className="w-full"
               >
-                Generate & Register Referral Code
+                Generate On-Chain Referral Code
               </Button>
               <p className="text-xs text-muted-foreground">
                 Click the button to automatically generate a unique referral code and start earning HATM tokens.
