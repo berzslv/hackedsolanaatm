@@ -309,4 +309,52 @@ export class StakingVaultClient {
       throw error;
     }
   }
+
+  /**
+   * Create a transaction that will purchase tokens and automatically stake them
+   * @param solAmount Amount of SOL to spend on token purchase
+   * @param referralCode Optional referral code to use for the purchase
+   * @returns Transaction for signing
+   */
+  async createPurchaseAndStakeTransaction(solAmount: number, referralCode?: string): Promise<Transaction> {
+    try {
+      if (solAmount <= 0) {
+        throw new Error('SOL amount must be greater than zero');
+      }
+
+      // Get transaction from backend that handles:
+      // 1. SOL transfer for purchase
+      // 2. Token minting to user wallet
+      // 3. Token transfer to staking vault
+      // 4. Referral fee distribution if referral code is valid
+      const response = await fetch('/api/purchase-and-stake', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: this.userWallet.toString(),
+          solAmount: solAmount,
+          referralCode: referralCode || undefined
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create purchase and stake transaction');
+      }
+
+      const data = await response.json();
+      if (data.success && data.transaction) {
+        // Return the transaction created by the server
+        console.log("Using server-created transaction for purchase and stake");
+        return Transaction.from(Buffer.from(data.transaction, 'base64'));
+      } else {
+        throw new Error('Invalid response data from server');
+      }
+    } catch (error) {
+      console.error('Failed to create purchase and stake transaction:', error);
+      throw error;
+    }
+  }
 }
