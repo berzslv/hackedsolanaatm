@@ -1,5 +1,5 @@
 import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
-import { BN } from 'bn.js';
+import BN from 'bn.js';
 
 // Interface for referral stats
 interface ReferralStats {
@@ -23,12 +23,12 @@ export class ReferralTrackerClient {
    * Constructor for ReferralTrackerClient
    * @param connection Solana connection
    * @param userWallet User's wallet public key
-   * @param tokenMint Token mint public key
+   * @param tokenMint Token mint public key (optional)
    */
-  constructor(connection: Connection, userWallet: PublicKey, tokenMint: string) {
+  constructor(connection: Connection, userWallet: PublicKey, tokenMint?: string) {
     this.connection = connection;
     this.userWallet = userWallet;
-    this.tokenMint = new PublicKey(tokenMint);
+    this.tokenMint = tokenMint ? new PublicKey(tokenMint) : new PublicKey('12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5');
     
     // Program ID from Anchor.toml
     this.programId = new PublicKey('Gg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnH');
@@ -227,6 +227,55 @@ export class ReferralTrackerClient {
     } catch (error) {
       console.error('Failed to validate referral code:', error);
       return false;
+    }
+  }
+  
+  /**
+   * Get user referral information with detailed stats and activity
+   * @returns User referral info with referral count, earnings, and activity
+   */
+  async getUserReferralInfo(): Promise<{
+    referralCount: number;
+    totalEarnings: number;
+    activity: Array<{
+      date: string;
+      transaction: string;
+      amount: number;
+      reward: number;
+    }>;
+  }> {
+    try {
+      console.log(`Fetching detailed referral info for: ${this.userWallet.toString()}`);
+      
+      // Get the basic stats first
+      const stats = await this.getReferralStats();
+      
+      if (!stats) {
+        throw new Error('Failed to get referral stats');
+      }
+      
+      // Fetch referral activity from the backend
+      const response = await fetch(`/api/referrals/${this.userWallet.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch referral activity');
+      }
+      
+      const data = await response.json();
+      
+      return {
+        referralCount: stats.totalReferred || 0,
+        totalEarnings: stats.totalEarnings || 0,
+        activity: Array.isArray(data.recentActivity) ? data.recentActivity : []
+      };
+    } catch (error) {
+      console.error('Failed to get user referral info:', error);
+      
+      // Return default values
+      return {
+        referralCount: 0,
+        totalEarnings: 0,
+        activity: []
+      };
     }
   }
 }

@@ -186,15 +186,15 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             userPendingRewards = userInfo.pendingRewards;
           }
           
-          // Get global staking stats
-          const globalStats = await stakingClient.getGlobalStats();
-          console.log("On-chain staking stats:", globalStats);
+          // Get global staking stats through vault info
+          const vaultInfo = await stakingClient.getVaultInfo();
+          console.log("On-chain vault info:", vaultInfo);
           
-          if (globalStats) {
+          if (vaultInfo) {
             stakingStats = {
-              totalStaked: globalStats.totalStaked,
-              stakersCount: globalStats.stakersCount,
-              rewardPool: globalStats.rewardPool
+              totalStaked: vaultInfo.totalStaked,
+              stakersCount: vaultInfo.stakersCount,
+              rewardPool: vaultInfo.rewardPool
             };
           }
         } catch (e) {
@@ -425,7 +425,7 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       };
       
       // Call the fetch function
-      fetchTokenBalance();
+      fetchTokenData();
     } else {
       // Reset user data when disconnected
       setTokenData(prev => ({

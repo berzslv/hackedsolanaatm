@@ -130,6 +130,34 @@ export class StakingVaultClient {
   }
   
   /**
+   * Get vault information including total staked, stakers count, and reward pool
+   * @returns Promise with vault information
+   */
+  async getVaultInfo(): Promise<{totalStaked: number, stakersCount: number, rewardPool: number}> {
+    try {
+      console.log('Fetching vault info from on-chain data');
+      
+      // For now, fetch global staking stats
+      const stats = await this.getStakingStats();
+      
+      return {
+        totalStaked: stats.totalStaked,
+        stakersCount: stats.stakersCount,
+        rewardPool: stats.rewardPool
+      };
+    } catch (error) {
+      console.error('Failed to get vault info:', error);
+      
+      // Return default values
+      return {
+        totalStaked: 0,
+        stakersCount: 0,
+        rewardPool: 0
+      };
+    }
+  }
+  
+  /**
    * Create a transaction for staking tokens
    * @param amount Amount of tokens to stake
    * @returns Transaction for signing
