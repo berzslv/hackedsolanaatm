@@ -154,7 +154,7 @@ export class StakingVaultClient {
       try {
         // For now, use the server endpoint to create staking transaction
         // which works without requiring full smart contract integration
-        const response = await fetch('/api/stake', {
+        const response = await fetch('/api/stake-tokens', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -213,7 +213,7 @@ export class StakingVaultClient {
       // Create and add instruction
       try {
         // For now, use the server endpoint to create unstaking transaction
-        const response = await fetch('/api/unstake', {
+        const response = await fetch('/api/unstake-tokens', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
