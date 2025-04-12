@@ -146,6 +146,53 @@ export async function getOrCreateAssociatedTokenAccount(
   }
 }
 
+// Get token mint address
+export function getTokenMint(): PublicKey {
+  const mintAuthority = getMintAuthority();
+  return mintAuthority.mintPublicKey;
+}
+
+// Get token balance for a wallet
+export async function getTokenBalance(
+  connection: Connection,
+  tokenMint: PublicKey,
+  walletAddress: PublicKey,
+  decimals: number = 9
+): Promise<number> {
+  try {
+    console.log(`Getting token balance for wallet: ${walletAddress.toString()}`);
+    
+    // Get the associated token account address
+    const associatedTokenAddress = await getAssociatedTokenAddress(
+      tokenMint,
+      walletAddress,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    
+    try {
+      // Get the token account
+      const tokenAccount = await getAccount(connection, associatedTokenAddress);
+      
+      // Calculate the token amount with decimals
+      const balance = Number(tokenAccount.amount) / Math.pow(10, decimals);
+      console.log(`Token balance: ${balance}`);
+      
+      return balance;
+    } catch (error) {
+      if (error instanceof TokenAccountNotFoundError) {
+        console.log('Token account does not exist, balance is 0');
+        return 0;
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error getting token balance:', error);
+    throw error;
+  }
+}
+
 // Mint tokens to a wallet
 export async function mintTokens(
   connection: Connection,
