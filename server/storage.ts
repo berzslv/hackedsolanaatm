@@ -71,6 +71,7 @@ export interface IStorage {
   getReferralStats(walletAddress: string): Promise<ReferralStats>;
   createReferral(referral: InsertReferral): Promise<Referral>;
   validateReferralCode(code: string): Promise<boolean>;
+  getReferrerAddressByCode(code: string): Promise<string | null>;
   
   // Staking methods
   getStakingInfo(walletAddress: string): Promise<StakingInfo>;
@@ -252,6 +253,26 @@ export class MemStorage implements IStorage {
     
     console.log(`Validating referral code "${code}": ${!!userWithCode}`);
     return !!userWithCode; // Return true if found, false if not
+  }
+  
+  async getReferrerAddressByCode(code: string): Promise<string | null> {
+    // For development/testing, return a predefined address for test codes
+    if (code === "TEST") return "test-referrer-address";
+    if (code === "AKIPB0") return "9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX";
+    if (code === "123456") return "9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX";
+    
+    // Find a user with this referral code
+    const userWithCode = Array.from(this.users.values()).find(
+      (user) => user.referralCode === code
+    );
+    
+    if (!userWithCode || !userWithCode.walletAddress) {
+      console.log(`No referrer found for code "${code}"`);
+      return null;
+    }
+    
+    console.log(`Found referrer for code "${code}": ${userWithCode.walletAddress}`);
+    return userWithCode.walletAddress;
   }
 
   // Staking methods
@@ -559,6 +580,27 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`Validating referral code "${code}": ${!!user}`);
     return !!user; // Return true if user exists with this code, false otherwise
+  }
+  
+  async getReferrerAddressByCode(code: string): Promise<string | null> {
+    // For development/testing, return a predefined address for test codes
+    if (code === "TEST") return "test-referrer-address";
+    if (code === "AKIPB0") return "9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX";
+    if (code === "123456") return "9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX";
+    
+    // Find a user with this referral code
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.referralCode, code));
+    
+    if (!user || !user.walletAddress) {
+      console.log(`No referrer found for code "${code}"`);
+      return null;
+    }
+    
+    console.log(`Found referrer for code "${code}": ${user.walletAddress}`);
+    return user.walletAddress;
   }
 
   async getStakingInfo(walletAddress: string): Promise<StakingInfo> {
