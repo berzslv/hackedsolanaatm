@@ -951,6 +951,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Referral System Routes
+  
+  // Register a referral code
+  app.post("/api/register-referral-code", async (req, res) => {
+    try {
+      const { walletAddress, referralCode } = req.body;
+      
+      if (!walletAddress || !referralCode) {
+        return res.status(400).json({ error: "Wallet address and referral code are required" });
+      }
+      
+      if (referralCode.length < 3 || referralCode.length > 10) {
+        return res.status(400).json({ error: "Referral code must be between 3-10 characters" });
+      }
+      
+      // Check if code is already in use
+      const isCodeValid = await storage.validateReferralCode(referralCode);
+      if (isCodeValid) {
+        return res.status(400).json({ error: "Referral code already in use" });
+      }
+      
+      // Create the referral with the code
+      await storage.createReferral({
+        referrerAddress: walletAddress,
+        referralCode,
+        createdAt: new Date()
+      });
+      
+      return res.json({
+        success: true,
+        message: `Referral code "${referralCode}" registered successfully`,
+        referralCode
+      });
+    } catch (error) {
+      console.error("Error registering referral code:", error);
+      return res.status(500).json({
+        error: "Failed to register referral code",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // Get referral code for wallet address
+  app.get("/api/referral-code/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      
+      if (!walletAddress) {
+        return res.status(400).json({ error: "Wallet address is required" });
+      }
+      
+      // Get referral stats for this wallet to find the code
+      const stats = await storage.getReferralStats(walletAddress);
+      
+      if (stats.referralCode) {
+        return res.json({
+          success: true,
+          referralCode: stats.referralCode
+        });
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: "No referral code found for this wallet"
+        });
+      }
+    } catch (error) {
+      console.error("Error getting referral code:", error);
+      return res.status(500).json({
+        error: "Failed to get referral code",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // Get referrer address by code
+  app.get("/api/referrer/:code", async (req, res) => {
+    try {
+      const { code } = req.params;
+      
+      if (!code) {
+        return res.status(400).json({ error: "Referral code is required" });
+      }
+      
+      const referrerAddress = await storage.getReferrerAddressByCode(code);
+      
+      if (referrerAddress) {
+        return res.json({
+          success: true,
+          referrerAddress
+        });
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: "Referral code not found"
+        });
+      }
+    } catch (error) {
+      console.error("Error getting referrer address:", error);
+      return res.status(500).json({
+        error: "Failed to get referrer address",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // Claim referral rewards
+  app.post("/api/claim-referral-rewards", async (req, res) => {
+    try {
+      const { walletAddress } = req.body;
+      
+      if (!walletAddress) {
+        return res.status(400).json({ error: "Wallet address is required" });
+      }
+      
+      // Get referral stats to see if there are rewards to claim
+      const stats = await storage.getReferralStats(walletAddress);
+      
+      if (!stats.claimable || stats.claimable <= 0) {
+        return res.status(400).json({ error: "No rewards available to claim" });
+      }
+      
+      // In the future, this would be an on-chain transaction
+      // For now, mint the tokens directly
+      const simpleToken = await import('./simple-token');
+      const signature = await simpleToken.mintTokens(walletAddress, stats.claimable);
+      
+      return res.json({
+        success: true,
+        message: `Claimed ${stats.claimable} HATM tokens`,
+        amount: stats.claimable,
+        signature
+      });
+    } catch (error) {
+      console.error("Error claiming referral rewards:", error);
+      return res.status(500).json({
+        error: "Failed to claim referral rewards",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
   const httpServer = createServer(app);
   return httpServer;
 }
