@@ -33,7 +33,16 @@ const TOKEN_MINT_ADDRESS = "12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5";
 
 const StakingWidgetSmartContract: React.FC = () => {
   const { connected, publicKey, signTransaction, sendTransaction, balance, refreshBalance } = useSolana();
-  const { tokenBalance, refreshTokenBalance } = useTokenData();
+  const { 
+    userTokenBalance, 
+    userStakedBalance, 
+    userPendingRewards,
+    currentAPY,
+    totalStaked,
+    stakersCount,
+    rewardPool,
+    refreshTokenBalance 
+  } = useTokenData();
   const [stakeAmount, setStakeAmount] = useState<string>("");
   const [unstakeAmount, setUnstakeAmount] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -89,7 +98,7 @@ const StakingWidgetSmartContract: React.FC = () => {
   }, [stakingClient, connected, publicKey]);
   
   const handleMaxStake = () => {
-    setStakeAmount(tokenBalance.toString());
+    setStakeAmount(userTokenBalance.toString());
   };
   
   const handleMaxUnstake = () => {
@@ -112,7 +121,7 @@ const StakingWidgetSmartContract: React.FC = () => {
         return;
       }
       
-      if (amount > tokenBalance) {
+      if (amount > userTokenBalance) {
         setStakeError("Insufficient token balance");
         setLoading(false);
         return;
@@ -440,7 +449,7 @@ const StakingWidgetSmartContract: React.FC = () => {
             
             <div className="flex items-center justify-between mb-1">
               <span className="text-sm text-muted-foreground">Available Balance</span>
-              <span className="text-sm font-medium">{formatTokenAmount(tokenBalance)} HATM</span>
+              <span className="text-sm font-medium">{formatTokenAmount(userTokenBalance)} HATM</span>
             </div>
             
             <div className="flex space-x-2">
@@ -452,7 +461,7 @@ const StakingWidgetSmartContract: React.FC = () => {
                   onChange={(e) => setStakeAmount(e.target.value)}
                   className="pr-16"
                   min="0"
-                  max={tokenBalance}
+                  max={userTokenBalance}
                   disabled={loading}
                 />
                 <Button
@@ -467,7 +476,7 @@ const StakingWidgetSmartContract: React.FC = () => {
               
               <Button
                 onClick={handleStake}
-                disabled={loading || !stakeAmount || parseInt(stakeAmount) <= 0 || parseInt(stakeAmount) > tokenBalance}
+                disabled={loading || !stakeAmount || parseInt(stakeAmount) <= 0 || parseInt(stakeAmount) > userTokenBalance}
                 className="w-24"
               >
                 {loading ? "Staking..." : "Stake"}
