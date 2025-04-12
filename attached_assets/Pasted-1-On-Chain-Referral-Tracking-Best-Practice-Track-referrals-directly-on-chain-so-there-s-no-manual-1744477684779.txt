@@ -1,0 +1,89 @@
+1. On-Chain Referral Tracking (Best Practice)
+Track referrals directly on-chain so there's no manual tracking, no cheating, and it's publicly verifiable.
+
+✅ How to do it:
+Create a mapping:
+
+ts
+Copy
+Edit
+referrer => [referred wallets, total referred amount, earned rewards]
+Store the referrer in each buyer's state account at first buy.
+
+Prevent changing referrer after the first purchase.
+
+💡 Benefit:
+You can distribute rewards automatically and allow public tools (like leaderboards) to verify everything on-chain.
+
+💸 2. Fee Distribution Logic in Token Contract
+When a buy happens:
+
+Collect a fee (e.g. 8% total).
+
+Split it:
+
+5% → Referrer
+
+1% → Marketing wallet
+
+2% → Stakers
+
+This logic should live in the token transfer / buy handler smart contract, so it's automatic and tamper-proof.
+
+🎁 3. Referral Reward Claiming System
+Let users claim referral earnings from the contract, or auto-distribute every X minutes.
+
+Option A: Manual Claim
+Cheaper gas, but requires users to click “claim”.
+
+Option B: Auto-Payout
+Distribute rewards to referrers on each purchase, or batch every 30 mins.
+
+🧱 4. Smart Contract Setup
+Split the logic into clear contracts:
+
+Referral Tracker – stores who referred whom and tracks volume.
+
+Token Handler – handles buys and triggers reward splits.
+
+Staking Vault – receives and distributes the 2% staking fees.
+
+Optional:
+
+Leaderboard Contract – tracks top referrers.
+
+👤 5. One-Time Referral Binding
+To prevent gaming the system:
+
+Bind referrer only on first token buy.
+
+Don’t allow changing referrer afterward.
+
+Users without a referrer → all fees go to marketing/staking.
+
+🌐 6. Referral Link Format
+Use base58 encoding or URL query:
+
+perl
+Copy
+Edit
+https://yourtoken.com/?ref=AKIPB0
+Backend or frontend extracts the code, passes it to smart contract during buy.
+
+🔒 7. Security and Anti-Exploit Tips
+Limit one referral reward per wallet (no multi-accounts).
+
+Don’t allow self-referrals.
+
+Use on-chain referral registration to avoid backend abuse.
+
+✅ Summary: Best Setup
+Feature	Recommended Approach
+Tracking	On-chain account binding (per wallet)
+Reward Split	In buy handler smart contract
+Claiming Rewards	Manual claim or auto-payout
+Binding Referrer	Only on first buy
+Fee Structure	5% referrer, 2% stakers, 1% marketing
+Storage	Use Anchor program to track referrals
+Frontend Referral Flow	URL → Wallet connects → Code gets bound
+Transparency	All data publicly readable from contract
