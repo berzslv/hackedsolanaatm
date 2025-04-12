@@ -1,6 +1,5 @@
 import { Connection, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
-import { base64ToUint8Array } from './buffer-utils';
 
 /**
  * Interface for user staking information
@@ -247,17 +246,8 @@ export class StakingVaultClient {
         if (data.success && data.transaction) {
           // Use the transaction created by the server
           console.log("Using server-created transaction");
-          
-          // Create a new empty transaction and add instructions manually
-          // This avoids using Transaction.from() which depends on Buffer
-          const newTx = new Transaction({
-            feePayer: this.userWallet,
-            recentBlockhash: blockhash
-          });
-          
-          // Simply return this new transaction as a placeholder
-          console.log("Created placeholder transaction for staking");
-          return newTx;
+          const buffer = Uint8Array.from(atob(data.transaction), c => c.charCodeAt(0));
+          return Transaction.from(buffer);
         }
       } catch (err) {
         console.error("Failed to get transaction from server:", err);
@@ -437,28 +427,10 @@ export class StakingVaultClient {
 
       const data = await response.json();
       if (data.success && data.solTransferTransaction) {
-        // Return a placeholder transaction instead of using Transaction.from(buffer)
-        console.log("Creating placeholder transaction for purchase and stake");
-        
-        // Get a recent blockhash
-        const { blockhash } = await this.connection.getLatestBlockhash();
-        
-        // Create a new empty transaction as a placeholder
-        const newTx = new Transaction({
-          feePayer: this.userWallet,
-          recentBlockhash: blockhash
-        });
-        
-        // Add a dummy system instruction to make it a valid transaction
-        newTx.add(
-          SystemProgram.transfer({
-            fromPubkey: this.userWallet,
-            toPubkey: this.userWallet,
-            lamports: 100 // minimal SOL amount, almost free
-          })
-        );
-        
-        return newTx;
+        // Return the transaction created by the server
+        console.log("Using server-created transaction for purchase and stake");
+        const buffer = Uint8Array.from(atob(data.solTransferTransaction), c => c.charCodeAt(0));
+        return Transaction.from(buffer);
       } else {
         throw new Error('Invalid response data from server - missing solTransferTransaction');
       }

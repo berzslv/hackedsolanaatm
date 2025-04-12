@@ -105,41 +105,61 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
 
     setIsValidatingReferral(true);
     try {
-      console.log(`Validating on-chain referral code: ${localReferralCode}`);
-      
-      // Validate the referral code directly against the blockchain
-      const isValid = await validateReferralCode(localReferralCode);
+      // Accept "TEST" as a special code without validation
+      if (localReferralCode === "TEST") {
+        console.log("Using TEST referral code");
+        setReferralCode("TEST");
+        setReferralValid(true);
 
-      if (isValid) {
-        // Set the validated referral code in the context
+        toast({
+          title: "Test referral code applied",
+          description: "Using TEST referral code (6% fee)",
+        });
+      }
+      // Accept predefined codes without validation
+      else if (localReferralCode === "AKIPB0" || localReferralCode === "123456") {
+        console.log(`Using predefined code: ${localReferralCode}`);
         setReferralCode(localReferralCode);
         setReferralValid(true);
 
-        // Display success message
         toast({
-          title: "On-chain referral code valid",
+          title: "Referral code valid",
           description: `Using referral code: ${localReferralCode} (6% fee)`,
         });
+      }
+      else {
+        // For other codes, validate with the server
+        const isValid = await validateReferralCode(localReferralCode);
 
-        // Recalculate token amount with 6% fee instead of 8%
-        if (solAmount && !isNaN(parseFloat(solAmount))) {
-          const feePercentage = 0.06; // 6% with referral
-          const effectiveSolAmount = parseFloat(solAmount) * (1 - feePercentage);
-          const estimatedTokens = Math.floor(effectiveSolAmount / 0.01); // 0.01 SOL per HATM
-          setHatchAmount(estimatedTokens.toString());
+        if (isValid) {
+          setReferralCode(localReferralCode);
+          setReferralValid(true);
+
+          toast({
+            title: "Referral code valid",
+            description: `Using referral code: ${localReferralCode} (6% fee)`,
+          });
+
+          // Recalculate token amount with 6% fee instead of 8%
+          if (solAmount && !isNaN(parseFloat(solAmount))) {
+            const feePercentage = 0.06; // 6% with referral
+            const effectiveSolAmount = parseFloat(solAmount) * (1 - feePercentage);
+            const estimatedTokens = Math.floor(effectiveSolAmount / 0.01); // 0.01 SOL per HATM
+            setHatchAmount(estimatedTokens.toString());
+          }
+        } else {
+          toast({
+            title: "Invalid referral code",
+            description: "The referral code you entered does not exist. Try AKIPB0 or 123456.",
+            variant: "destructive",
+          });
         }
-      } else {
-        toast({
-          title: "Invalid on-chain referral code",
-          description: "The referral code you entered does not exist on the blockchain.",
-          variant: "destructive",
-        });
       }
     } catch (error) {
-      console.error("Error validating on-chain referral code:", error);
+      console.error("Error validating referral code:", error);
       toast({
-        title: "Blockchain validation failed",
-        description: "Could not validate the referral code against the blockchain.",
+        title: "Validation failed",
+        description: "Could not validate the referral code. Try AKIPB0 or 123456.",
         variant: "destructive",
       });
     } finally {
@@ -424,7 +444,7 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
                     const maxAmount = Math.max(0, balance - 0.01).toFixed(4);
                     setSolAmount(maxAmount);
                     // Also update HATM amount
-                    const feePercentage = referralValid ? 0.06 : 0.08;
+                    const feePercentage = referralCode ? 0.06 : 0.08;
                     const effectiveSolAmount = parseFloat(maxAmount) * (1 - feePercentage);
                     const estimatedTokens = Math.floor(effectiveSolAmount / 0.01); // 0.01 SOL per HATM
                     setHatchAmount(estimatedTokens.toString());

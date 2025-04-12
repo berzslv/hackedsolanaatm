@@ -181,7 +181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // RESTful endpoint for validating referral codes against blockchain
+  // RESTful endpoint for validating referral codes
   app.get("/api/validate-referral/:code", async (req, res) => {
     try {
       const { code } = req.params;
@@ -189,42 +189,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!code) {
         return res.status(400).json({ valid: false, message: "Referral code is required" });
       }
-      
-      // Basic validation of the code format
-      if (!/^[A-Z0-9]{6}$/.test(code.toUpperCase())) {
-        console.log(`Validating on-chain referral code: ${code} - Invalid format`);
-        return res.json({ 
-          valid: false, 
-          message: "Invalid referral code format",
-          onChain: true
-        });
-      }
 
-      // In a real implementation, this would verify the code exists on the blockchain
-      // For now, we'll simulate an on-chain validation by checking if the code follows 
-      // our required format and isn't blacklisted
-      
-      // Blacklist for testing invalid codes
-      const invalidCodes = ["000000", "INVALID", "BADCOD"];
-      
-      // Check if code is blacklisted
-      const isValid = !invalidCodes.includes(code.toUpperCase());
-      
-      console.log(`Validating on-chain referral code: ${code} - Result: ${isValid}`);
+      // Find a user with this referral code
+      const isValid = await storage.validateReferralCode(code);
+      console.log("Validating referral code:", code, "Result:", isValid);
 
-      // Always return JSON with consistent format
+      // Always return JSON with consistent format, don't use 404 status
       return res.json({ 
         valid: isValid, 
-        message: isValid ? "Valid on-chain referral code" : "Invalid on-chain referral code",
-        onChain: true
+        message: isValid ? "Valid referral code" : "Invalid referral code" 
       });
     } catch (error) {
-      console.error("Error validating on-chain referral code:", error);
-      res.status(500).json({ 
-        valid: false, 
-        message: "Failed to validate on-chain referral code",
-        onChain: true
-      });
+      console.error("Error validating referral code:", error);
+      res.status(500).json({ valid: false, message: "Failed to validate referral code" });
     }
   });
 
@@ -978,99 +955,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Wallet address is required" });
       }
       
-      // Reading directly from blockchain
-      // In a real implementation, this would be a direct call to the deployed smart contract
-      // For now, we'll simulate this using token-utils to read the actual token balances from chain
+      // For the transition period, we're simulating reading from blockchain
+      // In a real implementation, this would be a direct call to the smart contract
       
-      console.log("Loading authority from token-keypair.json");
+      // Read token balance directly from blockchain
       const tokenUtils = await import('./token-utils');
       const web3 = await import('@solana/web3.js');
       const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
       
-      // Get the mint authority and token mint public key
-      const mintAuthority = tokenUtils.getMintAuthority();
       const userWalletPubkey = new web3.PublicKey(walletAddress);
       const tokenMint = tokenUtils.getTokenMint();
       
-      console.log("Mint authority public key:", mintAuthority.keypair.publicKey.toString());
-      console.log("Mint public key:", tokenMint.toString());
-      
-      // Simulate reading from blockchain: 
-      // In reality, this would directly query the staking contract for this wallet's stake amount
-      // For demo, we'll get the token balance in the user's token account
-      const associatedTokenAddress = await tokenUtils.getOrCreateAssociatedTokenAccount(
-        connection,
-        mintAuthority,
-        userWalletPubkey
-      );
-      
-      // Get token balance in the wallet
-      const tokenAmount = await tokenUtils.getTokenBalance(
-        connection,
-        tokenMint,
-        userWalletPubkey
-      );
-      
-      // In a real smart contract, these timestamps would be stored on-chain
-      // For demo, we'll use a default timestamp or get it from local storage 
-      const now = Date.now();
-      const stakedAt = new Date(now - (2 * 60 * 60 * 1000)); // Assume staked 2 hours ago
-      const lastCompoundAt = new Date(now - (30 * 60 * 1000)); // Assume compounded 30 min ago
+      // Get on-chain token balance in the staking vault for this user
+      // For demo, we're using staked tokens stored in database
+      const stakingInfo = await storage.getStakingInfo(walletAddress);
       
       // Calculate time until unlock - 7 days from staked time
       const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-      const timeSinceStake = now - stakedAt.getTime();
+      const stakedTime = stakingInfo.stakedAt.getTime();
+      const now = Date.now();
+      const timeSinceStake = now - stakedTime;
       const timeUntilUnlock = timeSinceStake >= SEVEN_DAYS_MS ? 0 : SEVEN_DAYS_MS - timeSinceStake;
       
-      // In a true on-chain implementation, the staked amount would be read directly from the staking contract
-      // Get wallet token balance first - these are tokens that are NOT staked
-      const walletTokenBalance = tokenAmount;
-      
-      // In a real implementation, we'd query the staking contract to get the staked balance
-      // Since we don't have a staking contract implemented yet, let's simulate it:
-      // 1. We need to simulate some tokens as being staked (not in wallet)
-      // 2. For our demo, we'll use a fixed value to represent staked tokens
-      
-      // We need to fetch the actual staked balance from the staking token account
-      // In a real implementation, each user would have a staking position in a vault contract
-      
-      // For now, we'll use a simulated staking vault address (in a real app, this would 
-      // be the address of a PDA or token account controlled by a staking contract)
-      // We'll use the mint authority keypair's token account as our simulated staking vault
-      const stakingVaultPubkey = mintAuthority.keypair.publicKey;
-      
-      // Get the staked token balance from the staking vault (this is a placeholder)
-      // In a real implementation, we'd query the staking contract's storage to get this user's staked position
-      
-      // For demo, we're giving a fixed amount that will still update with each request
-      // This simulates an on-chain query that would return the user's actual staked balance
-      // The amount is deterministic based on the wallet address to simulate a real staking contract
-      const stakingVaultSeed = userWalletPubkey.toBuffer().toString('hex').slice(0, 8);
-      const stakingVaultSeedNumber = parseInt(stakingVaultSeed, 16);
-      const amountStaked = 10000 + (stakingVaultSeedNumber % 10000); // Amount between 10,000 and 20,000 tokens
-      
-      // Calculate pending rewards based on the staked amount
-      const pendingRewards = parseFloat((amountStaked * 0.02).toFixed(2));
-      
-      // Prepare the response with the dynamic staking amount
+      // Prepare the response
       const stakingResponse = {
-        amountStaked: amountStaked,
-        pendingRewards: pendingRewards,
-        stakedAt: stakedAt,
-        lastCompoundAt: lastCompoundAt,
-        estimatedAPY: 125.4, // Hardcoded APY for demo, would be calculated from contract
+        amountStaked: stakingInfo.amountStaked,
+        pendingRewards: stakingInfo.pendingRewards,
+        stakedAt: stakingInfo.stakedAt,
+        lastCompoundAt: stakingInfo.lastCompoundAt,
+        estimatedAPY: 125.4, // Hardcoded APY for demo, would be calculated from on-chain data
         timeUntilUnlock: timeUntilUnlock
       };
       
       // Add debug logging to see what's being returned
       console.log("Staking info for", walletAddress, ":", JSON.stringify(stakingResponse, null, 2));
       
-      // Return staking info directly, without nesting it
-      return res.json(stakingResponse);
+      return res.json({
+        success: true,
+        stakingInfo: stakingResponse,
+      });
     } catch (error) {
-      console.error("Error fetching staking info from blockchain:", error);
+      console.error("Error fetching staking info:", error);
       return res.status(500).json({
-        error: "Failed to fetch staking information from blockchain",
+        error: "Failed to fetch staking information",
         details: error instanceof Error ? error.message : String(error)
       });
     }
@@ -1313,60 +1240,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid token amount" });
       }
       
-      console.log(`Recording on-chain staking after successful transaction for wallet: ${walletAddress}, amount: ${parsedAmount}, tx: ${transactionSignature}`);
+      console.log(`Recording staking after successful transaction for wallet: ${walletAddress}, amount: ${parsedAmount}, tx: ${transactionSignature}`);
       
       try {
-        // In a fully decentralized application, this confirmation would come from the blockchain itself
-        // When tokens are staked on-chain, the smart contract would automatically record the stake
+        // Create staking entry with zero pending rewards
+        const stakingEntry = await storage.stakeTokens({
+          walletAddress,
+          amountStaked: parsedAmount,
+          pendingRewards: 0
+        });
         
-        // Get the current token balance to calculate a realistic staking amount
-        // In a real implementation, this would be read directly from the staking contract
-        const tokenUtils = await import('./token-utils');
-        const web3 = await import('@solana/web3.js');
-        const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
-        const userWalletPubkey = new web3.PublicKey(walletAddress);
-        
-        // Get the user's token balance
-        const tokenMint = tokenUtils.getTokenMint();
-        const tokenBalance = await tokenUtils.getTokenBalance(
-          connection,
-          tokenMint,
-          userWalletPubkey
-        );
-        
-        // We want to show the staked amount as separate from the wallet balance
-        // In a real implementation, we'd read this value from a staking contract
-        // For now, let's use the requested staking amount
-        const verifiedStakeAmount = parsedAmount; // Use the amount that was specified in the staking request
-        
-        // For our simulation, create staking info based on the actual staked amount
-        const stakingInfo = {
-          amountStaked: verifiedStakeAmount, // Use the verified stake amount
-          pendingRewards: 0, // Start with zero pending rewards
-          stakedAt: new Date(),
-          lastCompoundAt: new Date(),
-          estimatedAPY: 125.4,
-          timeUntilUnlock: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
-        };
+        // Get updated staking info
+        const stakingInfo = await storage.getStakingInfo(walletAddress);
         
         return res.json({
           success: true,
-          message: `${parsedAmount} HATM tokens have been staked successfully on-chain`,
+          message: `${parsedAmount} HATM tokens have been staked successfully`,
           stakingInfo,
-          transactionSignature,
-          explorerUrl: `https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`
+          stakingEntry,
+          transactionSignature
         });
       } catch (error) {
-        console.error("Error in on-chain staking confirmation process:", error);
+        console.error("Error in staking record process:", error);
         return res.status(500).json({
-          error: "Failed to confirm on-chain staking",
+          error: "Failed to record staking",
           details: error instanceof Error ? error.message : String(error)
         });
       }
     } catch (error) {
-      console.error("Error processing on-chain staking confirmation request:", error);
+      console.error("Error processing staking confirmation request:", error);
       return res.status(500).json({
-        error: "Failed to process on-chain staking confirmation",
+        error: "Failed to process staking confirmation",
         details: error instanceof Error ? error.message : String(error)
       });
     }
@@ -1376,7 +1280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Referral System Routes
   
-  // Register a referral code on-chain
+  // Register a referral code
   app.post("/api/register-referral-code", async (req, res) => {
     try {
       const { walletAddress, referralCode } = req.body;
@@ -1389,32 +1293,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Referral code must be between 3-10 characters" });
       }
       
-      // Simulate an on-chain validation. In a real implementation, this would:
-      // 1. Check the blockchain to see if this code is already registered
-      // 2. If not registered, create a transaction for the user to sign
+      // Check if code is already in use
+      const isCodeValid = await storage.validateReferralCode(referralCode);
+      if (isCodeValid) {
+        return res.status(400).json({ error: "Referral code already in use" });
+      }
       
-      // For now, we'll simply accept any valid code and treat it as registered on-chain
-      // In our UI, the actual registration is done through the blockchain transaction
-      // which is created in the ReferralTrackerClient
-      
-      console.log(`Simulating on-chain referral code registration for: ${walletAddress}, code: ${referralCode}`);
+      // Get the user by wallet address
+      const user = await storage.getUserByWalletAddress(walletAddress);
+
+      if (user) {
+        // Update the user with the referral code
+        await storage.updateUserReferralCode(walletAddress, referralCode);
+      } else {
+        // Create the user if they don't exist
+        await storage.createUser({
+          walletAddress,
+          referralCode
+        });
+      }
       
       return res.json({
         success: true,
-        message: `Referral code "${referralCode}" registered on-chain successfully`,
-        referralCode,
-        onChain: true
+        message: `Referral code "${referralCode}" registered successfully`,
+        referralCode
       });
     } catch (error) {
-      console.error("Error registering on-chain referral code:", error);
+      console.error("Error registering referral code:", error);
       return res.status(500).json({
-        error: "Failed to register on-chain referral code",
+        error: "Failed to register referral code",
         details: error instanceof Error ? error.message : String(error)
       });
     }
   });
   
-  // Get referral code for wallet address directly from blockchain
+  // Get referral code for wallet address
   app.get("/api/referral-code/:walletAddress", async (req, res) => {
     try {
       const { walletAddress } = req.params;
@@ -1423,53 +1336,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Wallet address is required" });
       }
       
-      // Generate the deterministic referral code from the wallet address
-      // This is the same algorithm used in ReferralTrackerClient
-      const generateReferralCodeFromWallet = (walletAddr: string): string => {
-        // Convert the wallet address to a number array for more consistent codes
-        const addressBytes = [];
-        for (let i = 0; i < Math.min(walletAddr.length, 32); i++) {
-          addressBytes.push(walletAddr.charCodeAt(i));
-        }
-        
-        // Create a deterministic hash from the wallet address
-        const hash = addressBytes.reduce((acc, val, idx) => acc + (val * (idx + 1)), 0);
-        let code = '';
-        
-        // Generate a 6 character alphanumeric code without spaces or ambiguous characters
-        const validChars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // No 0, O, I to avoid confusion
-        for (let i = 0; i < 6; i++) {
-          // Use a different part of the hash for each position
-          const position = (hash * (i + 1)) % validChars.length;
-          code += validChars.charAt(Math.abs(position));
-        }
-        
-        return code;
-      };
+      // Get referral stats for this wallet to find the code
+      const stats = await storage.getReferralStats(walletAddress);
       
-      // In a real implementation, this would make a direct call to the blockchain
-      // to query the on-chain program for this wallet's registered referral code
-      
-      // For now, we'll generate the deterministic code just like the client would
-      const onChainReferralCode = generateReferralCodeFromWallet(walletAddress);
-      
-      console.log(`Generated on-chain referral code for wallet ${walletAddress}: ${onChainReferralCode}`);
-      
-      return res.json({
-        success: true,
-        referralCode: onChainReferralCode,
-        onChain: true
-      });
+      if (stats.referralCode) {
+        return res.json({
+          success: true,
+          referralCode: stats.referralCode
+        });
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: "No referral code found for this wallet"
+        });
+      }
     } catch (error) {
-      console.error("Error getting on-chain referral code:", error);
+      console.error("Error getting referral code:", error);
       return res.status(500).json({
-        error: "Failed to get on-chain referral code",
+        error: "Failed to get referral code",
         details: error instanceof Error ? error.message : String(error)
       });
     }
   });
   
-  // Get referrer address by code from blockchain
+  // Get referrer address by code
   app.get("/api/referrer/:code", async (req, res) => {
     try {
       const { code } = req.params;
@@ -1478,79 +1368,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Referral code is required" });
       }
       
-      // Basic validation of the code format
-      // In a real implementation, this would check if the code is valid on-chain
-      if (!/^[A-Z0-9]{6}$/.test(code.toUpperCase())) {
-        return res.status(400).json({ error: "Invalid referral code format" });
+      const referrerAddress = await storage.getReferrerAddressByCode(code);
+      
+      if (referrerAddress) {
+        return res.json({
+          success: true,
+          referrerAddress
+        });
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: "Referral code not found"
+        });
       }
-      
-      // In a real implementation, this would query the blockchain to find 
-      // the wallet address that registered this code
-      // For now, we'll generate a deterministic wallet address based on the code
-      const simulateReferrerFromCode = (referralCode: string): string => {
-        // In a real implementation, this would be actual blockchain data
-        // For demo, we generate something that looks like a wallet address
-        return `${referralCode}ReferrerWalletAddress${referralCode.substring(0, 3)}`;
-      };
-      
-      const onChainReferrerAddress = simulateReferrerFromCode(code);
-      
-      console.log(`Found on-chain referrer for code ${code}: ${onChainReferrerAddress}`);
-      
-      return res.json({
-        success: true,
-        referrerAddress: onChainReferrerAddress,
-        onChain: true
-      });
     } catch (error) {
-      console.error("Error getting referrer address from blockchain:", error);
+      console.error("Error getting referrer address:", error);
       return res.status(500).json({
-        error: "Failed to get referrer address from blockchain",
+        error: "Failed to get referrer address",
         details: error instanceof Error ? error.message : String(error)
       });
     }
   });
   
-  // Claim referral rewards from blockchain
+  // Claim referral rewards
   app.post("/api/claim-referral-rewards", async (req, res) => {
     try {
-      const { walletAddress, amount, transactionSignature } = req.body;
+      const { walletAddress } = req.body;
       
       if (!walletAddress) {
         return res.status(400).json({ error: "Wallet address is required" });
       }
       
-      // In a real implementation:
-      // 1. This endpoint would be called after a successful on-chain transaction
-      // 2. The transaction would claim rewards directly from the referral program
-      // 3. We'd verify the transaction succeeded by checking it on-chain
+      // Get referral stats to see if there are rewards to claim
+      const stats = await storage.getReferralStats(walletAddress);
       
-      // For our simulation, we'll use a fixed amount of claimable rewards (3 HATM)
-      // This would represent the amount that was claimed in the blockchain transaction
-      const claimedAmount = amount || 3; // Default to 3 tokens if not specified
+      if (!stats.claimableRewards || stats.claimableRewards <= 0) {
+        return res.status(400).json({ error: "No rewards available to claim" });
+      }
       
-      // Generate a transaction signature if one wasn't provided
-      const txSignature = transactionSignature || 
-                         `simulatedReferralClaimTx_${Date.now()}_${walletAddress.substring(0, 6)}`;
-      
-      console.log(`Processing on-chain referral claim for wallet: ${walletAddress}, amount: ${claimedAmount}, tx: ${txSignature}`);
-      
-      // For a full implementation, we would mint real tokens to the user as a result of this claim
-      // but since we're moving away from the backend and to pure blockchain transactions,
-      // we'll just simulate the response as if the tokens were already transferred on-chain
+      // In the future, this would be an on-chain transaction
+      // For now, mint the tokens directly
+      const simpleToken = await import('./simple-token');
+      const signature = await simpleToken.mintTokens(walletAddress, stats.claimableRewards);
       
       return res.json({
         success: true,
-        message: `Claimed ${claimedAmount} HATM tokens from on-chain referral program`,
-        amount: claimedAmount,
-        signature: txSignature,
-        onChain: true,
-        explorerUrl: `https://explorer.solana.com/tx/${txSignature}?cluster=devnet`
+        message: `Claimed ${stats.claimableRewards} HATM tokens`,
+        amount: stats.claimableRewards,
+        signature
       });
     } catch (error) {
-      console.error("Error processing on-chain referral rewards claim:", error);
+      console.error("Error claiming referral rewards:", error);
       return res.status(500).json({
-        error: "Failed to process on-chain referral rewards claim",
+        error: "Failed to claim referral rewards",
         details: error instanceof Error ? error.message : String(error)
       });
     }

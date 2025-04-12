@@ -176,117 +176,62 @@ export class ReferralTrackerClient {
   }
 
   /**
-   * Get referral stats for the current user directly from the blockchain
+   * Get referral stats for the current user
    * @returns Promise with the referral stats
    */
   async getReferralStats(): Promise<ReferralStats | null> {
     try {
-      console.log(`Fetching on-chain referral stats for: ${this.userWallet.toString()}`);
+      console.log(`Fetching referral stats for: ${this.userWallet.toString()}`);
       
-      // Generate a deterministic referral code based on wallet address
-      // This is a simplified version for the transition - in a full implementation
-      // this would be reading from an on-chain program account
-      const addressString = this.userWallet.toString();
-      const referralCode = this.generateReferralCodeFromWallet(addressString);
+      // Fetch from the frontend server for now
+      const response = await fetch(`/api/referrals/${this.userWallet.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch referral stats');
+      }
       
-      // In a real implementation, this would query the blockchain data for
-      // actual referral statistics. For now, we'll construct a basic response.
+      const data = await response.json();
+      
       return {
-        referralCode: referralCode,
-        totalReferred: 0, // Would be fetched from blockchain
-        totalEarnings: 0, // Would be fetched from blockchain
-        claimableRewards: 0, // Would be fetched from blockchain
-        referredCount: 0, // Would be fetched from blockchain
+        referralCode: data.referralCode || '',
+        totalReferred: data.totalReferrals || 0,
+        totalEarnings: data.totalEarnings || 0,
+        claimableRewards: data.claimable || 0,
+        referredCount: data.referredCount || 0,
       };
     } catch (error) {
-      console.error('Failed to get on-chain referral stats:', error);
+      console.error('Failed to get referral stats:', error);
       return null;
     }
   }
-  
-  /**
-   * Generate a deterministic referral code from wallet address
-   * @param walletAddress The wallet address as string
-   * @returns A deterministic referral code based on the wallet
-   */
-  generateReferralCodeFromWallet(walletAddress: string): string {
-    // Generate a deterministic code using the first 6 characters of the wallet's hash
-    // This is a simplified approach - in production you'd use a more sophisticated method
-    // and ensure uniqueness through the smart contract
-    
-    // Convert the wallet address to a number array for more consistent codes
-    const addressBytes = [];
-    for (let i = 0; i < Math.min(walletAddress.length, 32); i++) {
-      addressBytes.push(walletAddress.charCodeAt(i));
-    }
-    
-    // Create a deterministic hash from the wallet address
-    const hash = addressBytes.reduce((acc, val, idx) => acc + (val * (idx + 1)), 0);
-    let code = '';
-    
-    // Generate a 6 character alphanumeric code without spaces or ambiguous characters
-    const validChars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // No 0, O, I to avoid confusion
-    for (let i = 0; i < 6; i++) {
-      // Use a different part of the hash for each position
-      const position = (hash * (i + 1)) % validChars.length;
-      code += validChars.charAt(Math.abs(position));
-    }
-    
-    return code;
-  }
 
   /**
-   * Validate if a referral code exists on-chain
+   * Validate if a referral code exists
    * @param referralCode The referral code to validate
    * @returns Promise<boolean> indicating if the code is valid
    */
   async validateReferralCode(referralCode: string): Promise<boolean> {
     try {
-      // Basic validation
-      if (!referralCode || referralCode.length !== 6) {
+      // Validate
+      if (!referralCode) {
         return false;
       }
 
-      // In a real on-chain implementation, we would check if this code
-      // corresponds to a valid account in the referral program
-      // For now, we'll use a simple validation that the code is 6 alphanumeric characters
-      const isValidFormat = /^[A-Z0-9]{6}$/.test(referralCode.toUpperCase());
+      // Check with the backend for now
+      const response = await fetch(`/api/validate-referral/${referralCode}`);
+      if (!response.ok) {
+        return false;
+      }
       
-      console.log(`Validated referral code ${referralCode}: ${isValidFormat}`);
-      return isValidFormat;
+      const data = await response.json();
+      return data.valid === true;
     } catch (error) {
-      console.error('Failed to validate referral code on-chain:', error);
+      console.error('Failed to validate referral code:', error);
       return false;
     }
   }
   
   /**
-   * Look up a referral code and get the owner's wallet address
-   * @param referralCode The referral code to look up
-   * @returns The wallet address that created this code, or null if not found
-   */
-  async getReferrerFromCode(referralCode: string): Promise<string | null> {
-    try {
-      // In a real implementation, this would retrieve the actual wallet address 
-      // from the on-chain program that owns this referral code
-      
-      // For demo purposes, we'll just return a fixed address
-      // This simulates that we found a valid referrer on-chain
-      const isValid = await this.validateReferralCode(referralCode);
-      if (isValid) {
-        // Simulating retrieval of referrer address from blockchain
-        return "DummyReferrerAddressFromCode" + referralCode;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error retrieving referrer from code:', error);
-      return null;
-    }
-  }
-  
-  /**
-   * Get user referral information with detailed stats and activity directly from the blockchain
+   * Get user referral information with detailed stats and activity
    * @returns User referral info with referral count, earnings, and activity
    */
   async getUserReferralInfo(): Promise<{
@@ -300,26 +245,30 @@ export class ReferralTrackerClient {
     }>;
   }> {
     try {
-      console.log(`Fetching on-chain detailed referral info for: ${this.userWallet.toString()}`);
+      console.log(`Fetching detailed referral info for: ${this.userWallet.toString()}`);
       
-      // Get the basic stats directly from the blockchain
+      // Get the basic stats first
       const stats = await this.getReferralStats();
       
       if (!stats) {
-        throw new Error('Failed to get on-chain referral stats');
+        throw new Error('Failed to get referral stats');
       }
       
-      // In a real implementation, we would query the blockchain for transaction history
-      // and build the activity list from actual on-chain data
-      // For now, we'll return an empty activity list
+      // Fetch referral activity from the backend
+      const response = await fetch(`/api/referrals/${this.userWallet.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch referral activity');
+      }
+      
+      const data = await response.json();
       
       return {
         referralCount: stats.totalReferred || 0,
         totalEarnings: stats.totalEarnings || 0,
-        activity: [] // Would be populated from blockchain transaction history
+        activity: Array.isArray(data.recentActivity) ? data.recentActivity : []
       };
     } catch (error) {
-      console.error('Failed to get on-chain user referral info:', error);
+      console.error('Failed to get user referral info:', error);
       
       // Return default values
       return {

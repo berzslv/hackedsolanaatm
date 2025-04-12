@@ -5,12 +5,9 @@ import { Progress } from "@/components/ui/progress";
 import { formatNumber, formatTimeRemaining, getTimeUntilNextDistribution } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
-import StakedBalance from "@/components/StakedBalance";
-import { useSolana } from "@/context/SolanaContext";
 
 const SmartContractStakingSection = () => {
   const { currentAPY, totalStaked, rewardPool, stakersCount, nextReward } = useTokenData();
-  const { connected } = useSolana();
   const [timeToNextReward, setTimeToNextReward] = useState<string>("");
   
   useEffect(() => {
@@ -55,13 +52,6 @@ const SmartContractStakingSection = () => {
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="bg-card/80 backdrop-blur-sm shadow-lg rounded-xl p-6 border border-border col-span-1 lg:col-span-1 order-2 lg:order-1">
             <h3 className="text-xl font-semibold mb-4 text-foreground">Staking Stats</h3>
-            
-            {/* Display on-chain staked balance if wallet is connected */}
-            {connected && (
-              <div className="mb-6">
-                <StakedBalance />
-              </div>
-            )}
             
             <div className="space-y-6">
               <div>

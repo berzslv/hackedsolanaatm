@@ -48,31 +48,25 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const validateReferralCode = async (code: string): Promise<boolean> => {
     try {
       // Make sure code is valid format before making API call
-      // Validate format for blockchain-compatible codes: 6 alphanumeric characters
-      if (!code || !/^[A-Z0-9]{6}$/.test(code.toUpperCase())) {
-        console.log(`Invalid referral code format: ${code}`);
+      if (!code || code.length !== 6) {
         return false;
       }
       
-      console.log(`Validating blockchain referral code: ${code}`);
-      const response = await fetch(`/api/validate-referral/${code.toUpperCase()}`);
+      const response = await fetch(`/api/validate-referral/${code}`);
       const data = await response.json();
-      
-      console.log(`Blockchain validation response:`, data);
       
       if (response.ok) {
         // If valid, also save to context and session storage
         if (data.valid) {
-          setReferralCode(code.toUpperCase());
+          setReferralCode(code);
           setReferralFromLink(false);
-          console.log(`Valid blockchain referral code applied: ${code.toUpperCase()}`);
         }
         return data.valid;
       }
       
       return false;
     } catch (error) {
-      console.error('Error validating blockchain referral code:', error);
+      console.error('Error validating referral code:', error);
       return false;
     }
   };
