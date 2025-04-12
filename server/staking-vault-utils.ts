@@ -49,12 +49,38 @@ export async function getStakingVaultProgram(): Promise<Program> {
     // Set the provider globally
     anchor.setProvider(provider);
     
-    // Try to read IDL from target/idl directory
+    // Try to read IDL from multiple possible locations
     let idl;
     try {
-      const idlPath = path.resolve('./target/idl/staking_vault.json');
-      const idlFile = fs.readFileSync(idlPath, 'utf8');
-      idl = JSON.parse(idlFile);
+      // Try different possible locations for the IDL file
+      const possiblePaths = [
+        './target/idl/staking_vault.json',
+        './target/types/staking_vault.json',
+        './staking_vault.json',
+        './programs/staking-vault/staking_vault.json',
+        './idl/staking_vault.json'  // Special directory for you to add your own IDL
+      ];
+      
+      let idlFile = null;
+      let loadedPath = null;
+      
+      for (const idlPath of possiblePaths) {
+        try {
+          const resolvedPath = path.resolve(idlPath);
+          idlFile = fs.readFileSync(resolvedPath, 'utf8');
+          loadedPath = resolvedPath;
+          break;
+        } catch (err) {
+          // Continue to the next path
+        }
+      }
+      
+      if (idlFile) {
+        console.log(`Successfully loaded IDL from ${loadedPath}`);
+        idl = JSON.parse(idlFile);
+      } else {
+        throw new Error("Could not find IDL file in any of the expected locations");
+      }
     } catch (e) {
       console.warn("Could not load staking vault IDL from file, using placeholder:", e);
       // Create a placeholder IDL
@@ -149,29 +175,26 @@ export async function getStakingVaultProgram(): Promise<Program> {
     }
     
     // Initialize the program with the IDL
-    // Note: For TypeScript compatibility, we need to cast some objects
     try {
-      return new Program(
-        idl, 
-        new PublicKey(PROGRAM_ID), 
-        provider
-      );
-    } catch (error) {
-      console.error('Error creating program, returning mock program:', error);
+      // Here we're setting up the program with the IDL you'll provide
+      const programId = new PublicKey(PROGRAM_ID);
       
-      // Create a minimal mock program with the provider and basic properties
+      console.log("Creating Anchor program with Program ID:", programId.toString());
+      // When you upload your real IDL, this will use that instead of the generated mock
+      return new Program(idl, programId, provider);
+    } catch (error) {
+      console.error('Error creating program:', error);
+      
+      // If there's an error, we'll return a mock program that has the necessary interface
+      // This will be replaced with real on-chain data when you deploy the contract and upload the IDL
       return {
         programId: new PublicKey(PROGRAM_ID),
         provider: provider,
         idl: idl,
-        // Mock additional needed properties
+        // These mocks provide the necessary interface properties for the rest of the code
         account: {
-          stakingVault: {
-            fetch: async () => {}
-          },
-          userStake: {
-            fetch: async () => {}
-          }
+          stakingVault: { fetch: async () => {} },
+          userStake: { fetch: async () => {} }
         }
       } as unknown as Program;
     }

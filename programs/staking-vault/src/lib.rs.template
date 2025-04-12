@@ -1,0 +1,453 @@
+use anchor_lang::prelude::*;
+use anchor_spl::{
+    token::{self, Mint, Token, TokenAccount, Transfer},
+};
+
+declare_id!("2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap"); // Replace with your program ID
+
+#[program]
+pub mod staking_vault {
+    use super::*;
+
+    // Initialize the staking vault
+    pub fn initialize(
+        ctx: Context<Initialize>,
+        reward_pool_amount: u64,
+        initial_apy_basis_points: u32,
+    ) -> Result<()> {
+        let staking_vault = &mut ctx.accounts.staking_vault;
+        staking_vault.authority = ctx.accounts.authority.key();
+        staking_vault.token_mint = ctx.accounts.token_mint.key();
+        staking_vault.token_vault = ctx.accounts.token_vault.key();
+        staking_vault.total_staked = 0;
+        staking_vault.reward_pool = reward_pool_amount;
+        staking_vault.stakers_count = 0;
+        staking_vault.current_apy_basis_points = initial_apy_basis_points;
+
+        Ok(())
+    }
+
+    // Stake tokens into the vault
+    pub fn stake(ctx: Context<Stake>, amount: u64) -> Result<()> {
+        // Get current timestamp
+        let clock = Clock::get()?;
+        let current_time = clock.unix_timestamp;
+
+        // Transfer tokens from user to vault
+        let transfer_ctx = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.user_token_account.to_account_info(),
+                to: ctx.accounts.token_vault.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        );
+        token::transfer(transfer_ctx, amount)?;
+
+        // Update staking vault data
+        let staking_vault = &mut ctx.accounts.staking_vault;
+        staking_vault.total_staked = staking_vault.total_staked.checked_add(amount).unwrap();
+        
+        // Update user stake data
+        let user_stake = &mut ctx.accounts.user_stake;
+        
+        if user_stake.amount_staked == 0 {
+            // New staker
+            staking_vault.stakers_count = staking_vault.stakers_count.checked_add(1).unwrap();
+            user_stake.owner = ctx.accounts.user.key();
+            user_stake.staked_at = current_time;
+        }
+
+        // Add to existing amount
+        user_stake.amount_staked = user_stake.amount_staked.checked_add(amount).unwrap();
+        user_stake.last_claim_at = current_time;
+
+        Ok(())
+    }
+
+    // Unstake tokens from the vault
+    pub fn unstake(ctx: Context<Unstake>, amount: u64) -> Result<()> {
+        let clock = Clock::get()?;
+        let current_time = clock.unix_timestamp;
+        let user_stake = &mut ctx.accounts.user_stake;
+        let staking_vault = &mut ctx.accounts.staking_vault;
+
+        // Validate amount
+        require!(
+            amount <= user_stake.amount_staked,
+            StakingError::InsufficientStakedAmount
+        );
+
+        // Calculate early withdrawal fee if applicable (7-day lock period)
+        let seconds_staked = current_time.checked_sub(user_stake.staked_at).unwrap();
+        let lock_period = 7 * 24 * 60 * 60; // 7 days in seconds
+        
+        let mut fee_amount = 0;
+        let mut net_amount = amount;
+        
+        if seconds_staked < lock_period {
+            // Apply 10% early withdrawal fee
+            fee_amount = amount.checked_mul(10).unwrap().checked_div(100).unwrap();
+            net_amount = amount.checked_sub(fee_amount).unwrap();
+        }
+
+        // Transfer tokens from vault to user
+        let seeds = &[
+            b"staking-vault".as_ref(),
+            &[*ctx.bumps.get("staking_vault").unwrap()],
+        ];
+        let signer = &[&seeds[..]];
+        
+        let transfer_ctx = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.token_vault.to_account_info(),
+                to: ctx.accounts.user_token_account.to_account_info(),
+                authority: ctx.accounts.staking_vault.to_account_info(),
+            },
+            signer,
+        );
+        token::transfer(transfer_ctx, net_amount)?;
+
+        // Update staking vault data
+        staking_vault.total_staked = staking_vault.total_staked.checked_sub(amount).unwrap();
+        
+        // Update user stake data
+        user_stake.amount_staked = user_stake.amount_staked.checked_sub(amount).unwrap();
+        
+        if user_stake.amount_staked == 0 {
+            // User has unstaked everything
+            staking_vault.stakers_count = staking_vault.stakers_count.checked_sub(1).unwrap();
+        }
+
+        // If there was a fee, we're keeping it in the vault as reward for other stakers
+        if fee_amount > 0 {
+            staking_vault.reward_pool = staking_vault.reward_pool.checked_add(fee_amount).unwrap();
+        }
+
+        Ok(())
+    }
+
+    // Claim staking rewards
+    pub fn claim_rewards(ctx: Context<ClaimRewards>) -> Result<()> {
+        let clock = Clock::get()?;
+        let current_time = clock.unix_timestamp;
+        let user_stake = &mut ctx.accounts.user_stake;
+        let staking_vault = &mut ctx.accounts.staking_vault;
+        
+        // Calculate rewards
+        let seconds_since_last_claim = current_time.checked_sub(user_stake.last_claim_at).unwrap();
+        let apy_decimal = staking_vault.current_apy_basis_points as f64 / 10000.0; // Convert basis points to decimal
+        
+        // Calculate rewards based on APY
+        // formula: staked_amount * (apy / 365 days) * days_since_last_claim
+        let seconds_in_year = 365 * 24 * 60 * 60;
+        let time_fraction = seconds_since_last_claim as f64 / seconds_in_year as f64;
+        let reward_amount = (user_stake.amount_staked as f64 * apy_decimal * time_fraction) as u64;
+        
+        // Ensure we have enough in the reward pool
+        require!(
+            reward_amount <= staking_vault.reward_pool,
+            StakingError::InsufficientRewardPool
+        );
+        
+        if reward_amount > 0 {
+            // Transfer rewards from vault to user
+            let seeds = &[
+                b"staking-vault".as_ref(),
+                &[*ctx.bumps.get("staking_vault").unwrap()],
+            ];
+            let signer = &[&seeds[..]];
+            
+            let transfer_ctx = CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.token_vault.to_account_info(),
+                    to: ctx.accounts.user_token_account.to_account_info(),
+                    authority: ctx.accounts.staking_vault.to_account_info(),
+                },
+                signer,
+            );
+            token::transfer(transfer_ctx, reward_amount)?;
+            
+            // Update reward pool
+            staking_vault.reward_pool = staking_vault.reward_pool.checked_sub(reward_amount).unwrap();
+        }
+        
+        // Update last claim timestamp
+        user_stake.last_claim_at = current_time;
+        
+        Ok(())
+    }
+
+    // Update APY (admin only)
+    pub fn update_apy(ctx: Context<UpdateApy>, new_apy_basis_points: u32) -> Result<()> {
+        let staking_vault = &mut ctx.accounts.staking_vault;
+        
+        // Verify authority
+        require!(
+            ctx.accounts.authority.key() == staking_vault.authority,
+            StakingError::Unauthorized
+        );
+        
+        staking_vault.current_apy_basis_points = new_apy_basis_points;
+        
+        Ok(())
+    }
+
+    // Add to reward pool (admin only)
+    pub fn add_to_reward_pool(ctx: Context<AddToRewardPool>, amount: u64) -> Result<()> {
+        let staking_vault = &mut ctx.accounts.staking_vault;
+        
+        // Verify authority
+        require!(
+            ctx.accounts.authority.key() == staking_vault.authority,
+            StakingError::Unauthorized
+        );
+        
+        // Transfer tokens from admin to vault
+        let transfer_ctx = CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.admin_token_account.to_account_info(),
+                to: ctx.accounts.token_vault.to_account_info(),
+                authority: ctx.accounts.authority.to_account_info(),
+            },
+        );
+        token::transfer(transfer_ctx, amount)?;
+        
+        // Update reward pool
+        staking_vault.reward_pool = staking_vault.reward_pool.checked_add(amount).unwrap();
+        
+        Ok(())
+    }
+}
+
+// Account contexts
+#[derive(Accounts)]
+pub struct Initialize<'info> {
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + StakingVault::INIT_SPACE,
+        seeds = [b"staking-vault"],
+        bump
+    )]
+    pub staking_vault: Account<'info, StakingVault>,
+    
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    
+    pub token_mint: Account<'info, Mint>,
+    
+    #[account(
+        init,
+        payer = authority,
+        token::mint = token_mint,
+        token::authority = staking_vault,
+    )]
+    pub token_vault: Account<'info, TokenAccount>,
+    
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+pub struct Stake<'info> {
+    #[account(
+        mut,
+        seeds = [b"staking-vault"],
+        bump
+    )]
+    pub staking_vault: Account<'info, StakingVault>,
+    
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = 8 + UserStake::INIT_SPACE,
+        seeds = [b"user-stake", user.key().as_ref()],
+        bump
+    )]
+    pub user_stake: Account<'info, UserStake>,
+    
+    #[account(mut)]
+    pub user: Signer<'info>,
+    
+    #[account(
+        mut,
+        token::mint = token_mint,
+        token::authority = user
+    )]
+    pub user_token_account: Account<'info, TokenAccount>,
+    
+    #[account(
+        mut,
+        token::mint = token_mint,
+        token::authority = staking_vault
+    )]
+    pub token_vault: Account<'info, TokenAccount>,
+    
+    pub token_mint: Account<'info, Mint>,
+    
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+pub struct Unstake<'info> {
+    #[account(
+        mut,
+        seeds = [b"staking-vault"],
+        bump
+    )]
+    pub staking_vault: Account<'info, StakingVault>,
+    
+    #[account(
+        mut,
+        seeds = [b"user-stake", user.key().as_ref()],
+        bump,
+        constraint = user_stake.owner == user.key()
+    )]
+    pub user_stake: Account<'info, UserStake>,
+    
+    #[account(mut)]
+    pub user: Signer<'info>,
+    
+    #[account(
+        mut,
+        token::mint = token_mint,
+        token::authority = user
+    )]
+    pub user_token_account: Account<'info, TokenAccount>,
+    
+    #[account(
+        mut,
+        token::mint = token_mint,
+        token::authority = staking_vault
+    )]
+    pub token_vault: Account<'info, TokenAccount>,
+    
+    pub token_mint: Account<'info, Mint>,
+    
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimRewards<'info> {
+    #[account(
+        mut,
+        seeds = [b"staking-vault"],
+        bump
+    )]
+    pub staking_vault: Account<'info, StakingVault>,
+    
+    #[account(
+        mut,
+        seeds = [b"user-stake", user.key().as_ref()],
+        bump,
+        constraint = user_stake.owner == user.key()
+    )]
+    pub user_stake: Account<'info, UserStake>,
+    
+    #[account(mut)]
+    pub user: Signer<'info>,
+    
+    #[account(
+        mut,
+        token::mint = token_mint,
+        token::authority = user
+    )]
+    pub user_token_account: Account<'info, TokenAccount>,
+    
+    #[account(
+        mut,
+        token::mint = token_mint,
+        token::authority = staking_vault
+    )]
+    pub token_vault: Account<'info, TokenAccount>,
+    
+    pub token_mint: Account<'info, Mint>,
+    
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateApy<'info> {
+    #[account(
+        mut,
+        seeds = [b"staking-vault"],
+        bump
+    )]
+    pub staking_vault: Account<'info, StakingVault>,
+    
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct AddToRewardPool<'info> {
+    #[account(
+        mut,
+        seeds = [b"staking-vault"],
+        bump
+    )]
+    pub staking_vault: Account<'info, StakingVault>,
+    
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    
+    #[account(
+        mut,
+        token::mint = token_mint,
+        token::authority = authority
+    )]
+    pub admin_token_account: Account<'info, TokenAccount>,
+    
+    #[account(
+        mut,
+        token::mint = token_mint,
+        token::authority = staking_vault
+    )]
+    pub token_vault: Account<'info, TokenAccount>,
+    
+    pub token_mint: Account<'info, Mint>,
+    
+    pub token_program: Program<'info, Token>,
+}
+
+// Account definitions
+#[account]
+#[derive(InitSpace)]
+pub struct StakingVault {
+    pub authority: Pubkey,
+    pub token_mint: Pubkey,
+    pub token_vault: Pubkey,
+    pub total_staked: u64,
+    pub reward_pool: u64,
+    pub stakers_count: u32,
+    pub current_apy_basis_points: u32,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct UserStake {
+    pub owner: Pubkey,
+    pub amount_staked: u64,
+    pub staked_at: i64,
+    pub last_claim_at: i64,
+}
+
+// Error codes
+#[error_code]
+pub enum StakingError {
+    #[msg("Insufficient staked amount")]
+    InsufficientStakedAmount,
+    #[msg("Insufficient reward pool")]
+    InsufficientRewardPool,
+    #[msg("Unauthorized access")]
+    Unauthorized,
+}
