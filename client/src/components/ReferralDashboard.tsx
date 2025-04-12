@@ -71,21 +71,27 @@ const ReferralDashboard = () => {
           <div className="bg-muted rounded-lg p-4 border border-border/50">
             <p className="text-sm text-foreground/70 mb-1">Total Referrals</p>
             <p className="text-2xl font-semibold text-foreground">
-              {connected ? referralStats.totalReferrals : '0'}
+              {connected && referralStats && typeof referralStats.totalReferrals === 'number' 
+                ? referralStats.totalReferrals 
+                : '0'}
             </p>
           </div>
           
           <div className="bg-muted rounded-lg p-4 border border-border/50">
             <p className="text-sm text-foreground/70 mb-1">Total Earnings</p>
             <p className="text-2xl font-semibold text-secondary">
-              {connected ? `${referralStats.totalEarnings} HATM` : '0 HATM'}
+              {connected && referralStats && typeof referralStats.totalEarnings === 'number' 
+                ? `${referralStats.totalEarnings} HATM` 
+                : '0 HATM'}
             </p>
           </div>
           
           <div className="bg-muted rounded-lg p-4 border border-border/50">
             <p className="text-sm text-foreground/70 mb-1">Weekly Rank</p>
             <p className="text-2xl font-semibold text-foreground">
-              {connected && referralStats.weeklyRank ? `#${referralStats.weeklyRank}` : '--'}
+              {connected && referralStats && referralStats.weeklyRank 
+                ? `#${referralStats.weeklyRank}` 
+                : '--'}
             </p>
           </div>
         </div>

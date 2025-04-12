@@ -22,13 +22,32 @@ const Leaderboard = () => {
   
   const renderLeaderboard = (type: LeaderboardType, tab: LeaderboardTab) => {
     const leaderboard = type === 'referrers' 
-      ? referrersLeaderboard[tab] 
-      : stakersLeaderboard[tab];
+      ? (referrersLeaderboard && referrersLeaderboard[tab] ? referrersLeaderboard[tab] : [])
+      : (stakersLeaderboard && stakersLeaderboard[tab] ? stakersLeaderboard[tab] : []);
+    
+    if (!Array.isArray(leaderboard) || leaderboard.length === 0) {
+      return (
+        <div className="bg-card/50 rounded-lg p-6 text-center mb-6">
+          <p className="text-foreground/70">No data available for this period</p>
+        </div>
+      );
+    }
     
     return (
       <div className="space-y-4 mb-6">
         {leaderboard.map((entry, index) => {
           const rankColors = getRankColor(index + 1);
+          
+          if (!entry || typeof entry !== 'object') {
+            return null;
+          }
+          
+          // Safe access to properties with fallbacks
+          const address = entry.address ? shortenAddress(entry.address) : 'Unknown';
+          const referralCount = typeof entry.referralCount === 'number' ? entry.referralCount : 0;
+          const stakingDuration = typeof entry.stakingDuration === 'number' ? entry.stakingDuration : 0;
+          const amount = typeof entry.amount === 'number' ? entry.amount : 0;
+          const apyBonus = typeof entry.apyBonus === 'number' ? entry.apyBonus : 0;
           
           return (
             <div 
@@ -40,23 +59,23 @@ const Leaderboard = () => {
                   {index + 1}
                 </div>
                 <div>
-                  <p className="text-foreground font-medium">{shortenAddress(entry.address)}</p>
+                  <p className="text-foreground font-medium">{address}</p>
                   <p className="text-xs text-foreground/70 mt-1">
                     {type === 'referrers' 
-                      ? `${entry.referralCount} referrals this ${tab}` 
-                      : `${entry.stakingDuration} days staking`
+                      ? `${referralCount} referrals this ${tab}` 
+                      : `${stakingDuration} days staking`
                     }
                   </p>
                 </div>
               </div>
               <div className="text-right">
                 <p className={type === 'referrers' ? 'text-accent font-semibold' : 'text-primary font-semibold'}>
-                  {entry.amount} HATM
+                  {amount} HATM
                 </p>
                 <p className="text-xs text-foreground/70 mt-1">
                   {type === 'referrers' 
                     ? 'earned from referrals' 
-                    : `staked with +${entry.apyBonus}% APY bonus`
+                    : `staked with +${apyBonus}% APY bonus`
                   }
                 </p>
               </div>
