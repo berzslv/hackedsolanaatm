@@ -19,7 +19,7 @@ export interface BuyWidgetProps {
 const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
   const { connected, balance, publicKey, sendTransaction, refreshBalance } = useSolana();
   const { openWalletModal } = useWalletModalOpener();
-  const { tokenPrice } = useTokenData();
+  const { tokenPrice, refreshTokenBalance } = useTokenData();
   const { toast } = useToast();
   const { referralCode, setReferralCode, validateReferralCode } = useReferral();
   const [solAmount, setSolAmount] = useState<string>('');
@@ -282,7 +282,10 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
           // Refresh SOL balance
           await refreshBalance();
           
-          // Force refresh of staking data by calling staking client 
+          // Refresh token and staking data from on-chain
+          await refreshTokenBalance();
+          
+          // Additional direct refresh of staking data via client
           // This is better than page reload
           setTimeout(async () => {
             try {
