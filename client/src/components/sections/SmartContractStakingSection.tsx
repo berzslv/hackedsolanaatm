@@ -5,9 +5,12 @@ import { Progress } from "@/components/ui/progress";
 import { formatNumber, formatTimeRemaining, getTimeUntilNextDistribution } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
+import StakedBalance from "@/components/StakedBalance";
+import { useSolana } from "@/context/SolanaContext";
 
 const SmartContractStakingSection = () => {
   const { currentAPY, totalStaked, rewardPool, stakersCount, nextReward } = useTokenData();
+  const { connected } = useSolana();
   const [timeToNextReward, setTimeToNextReward] = useState<string>("");
   
   useEffect(() => {
