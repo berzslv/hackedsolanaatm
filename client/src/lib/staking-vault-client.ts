@@ -80,13 +80,15 @@ export class StakingVaultClient {
       // Log the raw data
       console.log("Raw staking data from API:", data);
       
-      // Extract staking info from API response
-      const stakingInfo = data.stakingInfo || data;
+      // Extract staking info from API response - API returns {success: true, stakingInfo: {...}}
+      const stakingInfo = data.success && data.stakingInfo ? data.stakingInfo : data;
+      
+      console.log("Extracted staking info:", stakingInfo);
       
       // Convert to the proper format
       return {
-        amountStaked: stakingInfo.amountStaked || 0,
-        pendingRewards: stakingInfo.pendingRewards || 0,
+        amountStaked: stakingInfo.amountStaked !== undefined ? Number(stakingInfo.amountStaked) : 0,
+        pendingRewards: stakingInfo.pendingRewards !== undefined ? Number(stakingInfo.pendingRewards) : 0,
         stakedAt: new Date(stakingInfo.stakedAt || Date.now()),
         lastClaimAt: new Date(stakingInfo.lastCompoundAt || Date.now()),
         estimatedAPY: stakingInfo.estimatedAPY || 125,

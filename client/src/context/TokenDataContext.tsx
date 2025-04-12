@@ -100,14 +100,22 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         
         console.log("Refreshed staking info:", stakingData);
         
+        // Extract proper staking info
+        let stakedBalance = 0;
+        let pendingRewards = 0;
+        
+        if (stakingData.success && stakingData.stakingInfo) {
+          stakedBalance = Number(stakingData.stakingInfo.amountStaked) || 0;
+          pendingRewards = Number(stakingData.stakingInfo.pendingRewards) || 0;
+          console.log("Extracted staked balance:", stakedBalance, "pending rewards:", pendingRewards);
+        }
+        
         // Update token data with real values (keep referral stats the same)
         setTokenData(prev => ({
           ...prev,
-          userTokenBalance: balanceData.balance || 0,
-          userStakedBalance: stakingData.success && stakingData.stakingInfo ? 
-            stakingData.stakingInfo.amountStaked : 0,
-          userPendingRewards: stakingData.success && stakingData.stakingInfo ? 
-            stakingData.stakingInfo.pendingRewards : 0,
+          userTokenBalance: Number(balanceData.balance) || 0,
+          userStakedBalance: stakedBalance,
+          userPendingRewards: pendingRewards,
         }));
       }
     } catch (error) {
