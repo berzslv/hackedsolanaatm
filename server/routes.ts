@@ -1031,7 +1031,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create the user if they don't exist
         await storage.createUser({
           walletAddress,
-          username: `user_${walletAddress.substring(0, 6)}`,
           referralCode
         });
       }

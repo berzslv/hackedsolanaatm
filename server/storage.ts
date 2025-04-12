@@ -76,6 +76,7 @@ export interface IStorage {
   createReferral(referral: InsertReferral): Promise<Referral>;
   validateReferralCode(code: string): Promise<boolean>;
   getReferrerAddressByCode(code: string): Promise<string | null>;
+  updateUserReferralCode(walletAddress: string, referralCode: string): Promise<void>;
   
   // Staking methods
   getStakingInfo(walletAddress: string): Promise<StakingInfo>;
@@ -291,6 +292,22 @@ export class MemStorage implements IStorage {
     
     console.log(`Found referrer for code "${code}": ${userWithCode.walletAddress}`);
     return userWithCode.walletAddress;
+  }
+  
+  async updateUserReferralCode(walletAddress: string, referralCode: string): Promise<void> {
+    // Find the user by wallet address
+    const userToUpdate = Array.from(this.users.values()).find(
+      (user) => user.walletAddress === walletAddress
+    );
+    
+    if (userToUpdate) {
+      // Update the referral code
+      userToUpdate.referralCode = referralCode;
+      this.users.set(userToUpdate.id, userToUpdate);
+      console.log(`Updated referral code for ${walletAddress} to ${referralCode}`);
+    } else {
+      console.log(`User with wallet address ${walletAddress} not found`);
+    }
   }
 
   // Staking methods
@@ -637,6 +654,26 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`Found referrer for code "${code}": ${user.walletAddress}`);
     return user.walletAddress;
+  }
+
+  async updateUserReferralCode(walletAddress: string, referralCode: string): Promise<void> {
+    // Find the user by wallet address
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.walletAddress, walletAddress));
+    
+    if (user) {
+      // Update the referral code
+      await db
+        .update(users)
+        .set({ referralCode })
+        .where(eq(users.id, user.id));
+      
+      console.log(`Updated referral code for ${walletAddress} to ${referralCode}`);
+    } else {
+      console.log(`User with wallet address ${walletAddress} not found`);
+    }
   }
 
   async getStakingInfo(walletAddress: string): Promise<StakingInfo> {
