@@ -1023,15 +1023,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeUntilUnlock = timeSinceStake >= SEVEN_DAYS_MS ? 0 : SEVEN_DAYS_MS - timeSinceStake;
       
       // In a true on-chain implementation, the staked amount would be read directly from the staking contract
-      // Since all tokens are automatically staked when purchased, the staked amount should be
-      // the full token balance the user has
+      // Get wallet token balance first - these are tokens that are NOT staked
       const walletTokenBalance = tokenAmount;
       
-      // For this implementation, we'll use the full token balance as the staked amount
-      // since all tokens are automatically staked when purchased according to the requirements
-      const amountStaked = walletTokenBalance;
+      // In a real implementation, we'd query the staking contract to get the staked balance
+      // Since we don't have a staking contract implemented yet, let's simulate it:
+      // 1. We need to simulate some tokens as being staked (not in wallet)
+      // 2. For our demo, we'll use a fixed value to represent staked tokens
       
-      // Calculate pending rewards based on the staked amount (this would come from the contract in a real implementation)
+      // This is a simulated staked balance (tokens not in wallet but in staking contract)
+      // In a real implementation, this would come from the staking contract account
+      // For this example, we'll use a fixed staked amount to show different from wallet balance
+      const amountStaked = 55; // Fixed amount to demonstrate staked tokens not in wallet
+      
+      // Calculate pending rewards based on the staked amount
       const pendingRewards = parseFloat((amountStaked * 0.02).toFixed(2));
       
       // Prepare the response with the dynamic staking amount
@@ -1316,9 +1321,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userWalletPubkey
         );
         
-        // Since all tokens are automatically staked when bought, we should show the full token balance
-        // as staked, or at minimum the amount that was just purchased if that's what the transaction was for
-        const verifiedStakeAmount = tokenBalance; // Use full token balance as the staked amount
+        // We want to show the staked amount as separate from the wallet balance
+        // In a real implementation, we'd read this value from a staking contract
+        // For now, let's use the requested staking amount
+        const verifiedStakeAmount = parsedAmount; // Use the amount that was specified in the staking request
         
         // For our simulation, create staking info based on the actual staked amount
         const stakingInfo = {
