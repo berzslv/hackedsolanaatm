@@ -424,6 +424,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Buy tokens endpoint
+  // On-chain purchase and stake endpoint
+  app.post("/api/purchase-and-stake", async (req, res) => {
+    try {
+      console.log("Received purchase-and-stake request:", req.body);
+      const { walletAddress, solAmount, referralCode } = req.body;
+      
+      if (!walletAddress || !solAmount) {
+        return res.status(400).json({ error: "Wallet address and SOL amount are required" });
+      }
+      
+      // Parse SOL amount
+      const parsedSolAmount = parseFloat(solAmount);
+      if (isNaN(parsedSolAmount) || parsedSolAmount <= 0) {
+        return res.status(400).json({ error: "Invalid SOL amount" });
+      }
+      
+      console.log(`Processing purchase and stake for wallet: ${walletAddress}, SOL amount: ${parsedSolAmount}`);
+      
+      try {
+        // Import the web3 utilities
+        const web3 = await import('@solana/web3.js');
+        const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
+        
+        // Get destination wallet (mint authority as treasury)
+        const { keypair: authorityKeypair } = await (await import('./simple-token')).getMintAuthority();
+        const treasuryWallet = authorityKeypair.publicKey;
+        
+        // Calculate token amount (1 HATM = 0.01 SOL)
+        const feePercentage = referralCode ? 0.06 : 0.08; // 6% with referral, 8% without
+        const effectiveSolAmount = parsedSolAmount * (1 - feePercentage);
+        const tokenAmount = Math.floor(effectiveSolAmount / 0.01); // 0.01 SOL per HATM token
+        
+        // Create a SOL transfer transaction
+        const transferTransaction = new web3.Transaction().add(
+          web3.SystemProgram.transfer({
+            fromPubkey: new web3.PublicKey(walletAddress),
+            toPubkey: treasuryWallet,
+            lamports: Math.floor(parsedSolAmount * web3.LAMPORTS_PER_SOL)
+          })
+        );
+        
+        // Get the recent blockhash
+        const { blockhash } = await connection.getLatestBlockhash();
+        transferTransaction.recentBlockhash = blockhash;
+        transferTransaction.feePayer = new web3.PublicKey(walletAddress);
+        
+        // Sign with the authority's keypair (signature will be replaced by user but is needed for serialization)
+        transferTransaction.partialSign(authorityKeypair);
+        
+        // Serialize the transaction for the client to sign
+        const serializedTransaction = transferTransaction.serialize({
+          requireAllSignatures: false, // We just need a partial signature
+          verifySignatures: false
+        }).toString('base64');
+        
+        // Return the serialized transaction for frontend to sign and send
+        return res.json({
+          success: true,
+          message: `Purchase and stake transaction prepared for ${parsedSolAmount} SOL`,
+          solAmount: parsedSolAmount,
+          tokenAmount: tokenAmount,
+          destinationWallet: treasuryWallet.toString(),
+          solTransferTransaction: serializedTransaction,
+          feePercentage: feePercentage * 100,
+          referralApplied: !!referralCode
+        });
+      } catch (error) {
+        console.error("Error creating purchase and stake transaction:", error);
+        return res.status(500).json({
+          error: "Failed to create purchase and stake transaction",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } catch (error) {
+      console.error("Error processing purchase and stake request:", error);
+      return res.status(500).json({
+        error: "Failed to process purchase and stake",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   app.post("/api/buy-token", async (req, res) => {
     try {
       const { walletAddress, solAmount, referralCode } = req.body;

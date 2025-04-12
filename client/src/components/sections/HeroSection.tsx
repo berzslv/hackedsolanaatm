@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { GradientText } from "@/components/ui/gradient-text";
 import { StatsCard } from "@/components/ui/stats-card";
 import { useWalletModalOpener } from "@/components/ui/wallet-adapter";
-import BuyWidget from "@/components/BuyWidget";
+import BuyWidgetOnChain from "@/components/BuyWidgetOnChain";
 import { Link } from "wouter";
 import { useSolana } from "@/context/SolanaContext";
 import React, { useRef, useState } from "react";
@@ -67,7 +67,7 @@ const HeroSection = () => {
           </div>
 
           <div className="order-2 relative">
-            <BuyWidget flashRef={buyWidgetFlashRef} />
+            <BuyWidgetOnChain flashRef={buyWidgetFlashRef} />
           </div>
         </div>
       </div>
