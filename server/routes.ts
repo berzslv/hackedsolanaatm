@@ -374,23 +374,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const referrerAddress = await storage.getReferrerAddressByCode(referralCode);
           
           if (referrerAddress) {
-            // Record the referral
-            try {
-              // Create a referral record with the actual referrer address
-              const referralData = {
-                referrerAddress: referrerAddress,
-                buyerAddress: walletAddress,
-                transactionHash: "devnet-" + Date.now(),
-                amount: parsedSolAmount,
-                reward: parsedSolAmount * 0.03 // 3% reward for referrer
-              };
-
-              await storage.createReferral(referralData);
-              console.log(`Referral recorded for code: ${referralCode}, referrer: ${referrerAddress}`);
-            } catch (error) {
-              console.error("Error creating referral:", error);
-              // Continue with the purchase even if referral recording fails
-            }
+            // We'll record the referral in the complete-purchase endpoint
+            console.log(`Valid referral code ${referralCode} will be processed after transaction completion`);
           } else {
             console.error(`Valid referral code ${referralCode} but could not find referrer address`);
           }

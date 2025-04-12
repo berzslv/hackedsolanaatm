@@ -1,31 +1,32 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
-import postgres from "postgres";
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-serverless';
+import ws from "ws";
 import * as schema from "@shared/schema";
-import { log } from "./vite";
 
-// Define the PostgreSQL connection string from environment variables
-const connectionString = process.env.DATABASE_URL || "";
+// Configure WebSocket for NeonDB connection
+neonConfig.webSocketConstructor = ws;
 
-if (!connectionString) {
-  throw new Error("DATABASE_URL environment variable is not set");
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL must be set. Did you forget to provision a database?",
+  );
 }
 
-// Create the connection
-const client = postgres(connectionString, { max: 1 });
+// Create a database connection pool
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-// Create Drizzle instance for querying
-export const db = drizzle(client, { schema });
+// Create a drizzle instance with the schema from shared/schema.ts
+export const db = drizzle(pool, { schema });
 
-// Function to run migrations - useful for setup
+// Export a function that can be called to run migrations
 export async function runMigrations() {
+  console.log("[database] Initializing database connection...");
   try {
-    log("Running database migrations...", "drizzle");
-    // Uncomment when you have migration files in place 
-    // await migrate(db, { migrationsFolder: "drizzle" });
-    log("Database migrations completed successfully", "drizzle");
+    // Check db connection
+    await pool.query('SELECT NOW()');
+    console.log("[database] Database connection established");
   } catch (error) {
-    log(`Migration error: ${error}`, "drizzle-error");
+    console.error("[database] Database connection failed:", error);
     throw error;
   }
 }
