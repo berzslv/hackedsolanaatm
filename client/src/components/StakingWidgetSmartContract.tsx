@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { AlertCircle, ArrowLeftRight, Clock, CheckCircle, Leaf } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import { useSolana } from "@/context/SolanaContext";
+import { useTokenData } from "@/context/TokenDataContext";
 import { Connection, VersionedTransaction, Transaction, clusterApiUrl, MessageV0 } from "@solana/web3.js";
 import { StakingVaultClient } from "@/lib/staking-vault-client";
 
@@ -27,11 +28,12 @@ interface StakingStats {
   currentAPY: number;
 }
 
-// Your token mint address goes here
-const TOKEN_MINT_ADDRESS = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk";
+// Correct token mint address
+const TOKEN_MINT_ADDRESS = "12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5";
 
 const StakingWidgetSmartContract: React.FC = () => {
   const { connected, publicKey, signTransaction, sendTransaction, balance, refreshBalance } = useSolana();
+  const { tokenBalance, refreshTokenBalance } = useTokenData();
   const [stakeAmount, setStakeAmount] = useState<string>("");
   const [unstakeAmount, setUnstakeAmount] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -40,7 +42,6 @@ const StakingWidgetSmartContract: React.FC = () => {
   const [stakingInfo, setStakingInfo] = useState<StakingInfo | null>(null);
   const [stakingStats, setStakingStats] = useState<StakingStats | null>(null);
   const [stakingClient, setStakingClient] = useState<StakingVaultClient | null>(null);
-  const [tokenBalance, setTokenBalance] = useState<number>(0);
   const [infoLoading, setInfoLoading] = useState(true);
   
   // Initialize staking client
@@ -71,16 +72,8 @@ const StakingWidgetSmartContract: React.FC = () => {
         const stats = await stakingClient.getStakingStats();
         setStakingStats(stats);
         
-        // Fetch token balance
-        try {
-          const response = await fetch(`/api/token-balance/${publicKey.toString()}`);
-          const data = await response.json();
-          if (data.success) {
-            setTokenBalance(data.balance);
-          }
-        } catch (error: any) {
-          console.error("Failed to fetch token balance", error);
-        }
+        // Update token balance using TokenDataContext
+        await refreshTokenBalance();
       } catch (error: any) {
         console.error("Failed to load staking data", error);
       } finally {
