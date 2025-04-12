@@ -138,13 +138,13 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     refreshTokenBalance: refreshTokenBalanceFunc
   });
   
-  // Function to refresh token balance and staking info
+  // Function to refresh token balance, staking info, referral data, and leaderboards
   const refreshTokenBalance = async () => {
     if (!connected || !publicKey) return;
     
     try {
       const walletAddress = publicKey.toString();
-      console.log("Refreshing token balance for:", walletAddress);
+      console.log("Refreshing token data for:", walletAddress);
       
       // Get token balance from the API
       const balanceResponse = await fetch(`/api/token-balance/${walletAddress}`);
@@ -159,7 +159,25 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         
         console.log("Refreshed staking info:", stakingData);
         
-        // Update token data with real values (keep referral stats the same)
+        // Get referral stats
+        const referralResponse = await fetch(`/api/referrals/${walletAddress}`);
+        const referralData = await referralResponse.json();
+        console.log("Refreshed referral stats:", referralData);
+        
+        // Get leaderboards
+        const referrersWeeklyResponse = await fetch('/api/leaderboard/referrers/weekly');
+        const referrersWeeklyData = await referrersWeeklyResponse.json();
+        
+        const referrersMonthlyResponse = await fetch('/api/leaderboard/referrers/monthly');
+        const referrersMonthlyData = await referrersMonthlyResponse.json();
+        
+        const stakersWeeklyResponse = await fetch('/api/leaderboard/stakers/weekly');
+        const stakersWeeklyData = await stakersWeeklyResponse.json();
+        
+        const stakersMonthlyResponse = await fetch('/api/leaderboard/stakers/monthly');
+        const stakersMonthlyData = await stakersMonthlyResponse.json();
+        
+        // Update token data with all refreshed values
         setTokenData(prev => ({
           ...prev,
           userTokenBalance: balanceData.balance || 0,
@@ -167,6 +185,15 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             stakingData.stakingInfo.amountStaked : 0,
           userPendingRewards: stakingData.success && stakingData.stakingInfo ? 
             stakingData.stakingInfo.pendingRewards : 0,
+          referralStats: referralData,
+          referrersLeaderboard: {
+            weekly: referrersWeeklyData || [],
+            monthly: referrersMonthlyData || []
+          },
+          stakersLeaderboard: {
+            weekly: stakersWeeklyData || [],
+            monthly: stakersMonthlyData || []
+          }
         }));
       }
     } catch (error) {
@@ -220,6 +247,24 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             
             console.log("Fetched staking info:", stakingData);
             
+            // Get referral stats
+            const referralResponse = await fetch(`/api/referrals/${walletAddress}`);
+            const referralData = await referralResponse.json();
+            console.log("Fetched referral stats:", referralData);
+            
+            // Get leaderboards
+            const referrersWeeklyResponse = await fetch('/api/leaderboard/referrers/weekly');
+            const referrersWeeklyData = await referrersWeeklyResponse.json();
+            
+            const referrersMonthlyResponse = await fetch('/api/leaderboard/referrers/monthly');
+            const referrersMonthlyData = await referrersMonthlyResponse.json();
+            
+            const stakersWeeklyResponse = await fetch('/api/leaderboard/stakers/weekly');
+            const stakersWeeklyData = await stakersWeeklyResponse.json();
+            
+            const stakersMonthlyResponse = await fetch('/api/leaderboard/stakers/monthly');
+            const stakersMonthlyData = await stakersMonthlyResponse.json();
+            
             // Update token data with real values
             setTokenData(prev => ({
               ...prev,
@@ -230,30 +275,14 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               userPendingRewards: stakingData.success && stakingData.stakingInfo ? 
                 stakingData.stakingInfo.pendingRewards : 0,
               refreshTokenBalance, // Make sure it's included
-              referralStats: {
-                totalReferrals: 12,
-                totalEarnings: 250,
-                weeklyRank: 8,
-                recentActivity: [
-                  {
-                    date: '2023-06-01',
-                    transaction: '5XkZHNqRstA1cLaBVY8FvDuKCJ2tLKWx1jQKbCYMFQY3',
-                    amount: 1000,
-                    reward: 30
-                  },
-                  {
-                    date: '2023-05-28',
-                    transaction: '2vKr8YPvR4FNYRqUwj5vkFdkB5v1AuVmfBKN3XxLwbGz',
-                    amount: 2500,
-                    reward: 75
-                  },
-                  {
-                    date: '2023-05-25',
-                    transaction: '3bC7gCJ86E8KFHtVCm5eH5E32k7vHyZ1xKr3UeGQMTLe',
-                    amount: 4800,
-                    reward: 144
-                  }
-                ]
+              referralStats: referralData,
+              referrersLeaderboard: {
+                weekly: referrersWeeklyData || [],
+                monthly: referrersMonthlyData || []
+              },
+              stakersLeaderboard: {
+                weekly: stakersWeeklyData || [],
+                monthly: stakersMonthlyData || []
               }
             }));
           }

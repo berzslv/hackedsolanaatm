@@ -103,13 +103,13 @@ const ReferralDashboard = () => {
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {connected && referralStats.recentActivity && referralStats.recentActivity.length > 0 ? (
+                {connected && referralStats && referralStats.recentActivity && Array.isArray(referralStats.recentActivity) && referralStats.recentActivity.length > 0 ? (
                   referralStats.recentActivity.map((activity, index) => (
                     <tr key={index} className="border-b border-border">
-                      <td className="py-3 text-foreground/70">{activity.date}</td>
-                      <td className="py-3 text-foreground/70">{shortenAddress(activity.transaction)}</td>
-                      <td className="py-3 text-foreground/70">{activity.amount} HATM</td>
-                      <td className="py-3 text-secondary">{activity.reward} HATM</td>
+                      <td className="py-3 text-foreground/70">{activity.date || 'N/A'}</td>
+                      <td className="py-3 text-foreground/70">{activity.transaction ? shortenAddress(activity.transaction) : 'N/A'}</td>
+                      <td className="py-3 text-foreground/70">{typeof activity.amount === 'number' ? `${activity.amount} HATM` : 'N/A'}</td>
+                      <td className="py-3 text-secondary">{typeof activity.reward === 'number' ? `${activity.reward} HATM` : 'N/A'}</td>
                     </tr>
                   ))
                 ) : (
