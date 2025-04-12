@@ -1022,13 +1022,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeSinceStake = now - stakedAt.getTime();
       const timeUntilUnlock = timeSinceStake >= SEVEN_DAYS_MS ? 0 : SEVEN_DAYS_MS - timeSinceStake;
       
-      // For this demonstration, we're using fixed values:
-      // In a real implementation, the staked amount would be read from a staking contract
-      // and pendingRewards would be calculated based on staking duration and APY
-      const amountStaked = 18; // The correct amount of tokens staked
-      const pendingRewards = 0.5; // A dummy value for pending rewards
+      // Get actual on-chain token balance from the wallet to simulate the staked amount
+      // For a full implementation, we'd read this directly from the staking contract
+      // After the user stakes tokens, they are transferred to a staking account
       
-      // Prepare the response with the correct staking amount
+      // For simplicity, let's simulate a staking contract balance by using 
+      // a percentage of the user's token balance as their "staked" amount
+      // In a real implementation, this would be read directly from the staking contract
+      
+      // Get the token balance and calculate a simulated staked amount
+      const walletTokenBalance = tokenAmount;
+      
+      // Simulate that 30% of the user's tokens are staked
+      // This allows the number to change dynamically as users buy more tokens
+      // In reality, we'd read the actual staked amount from the contract
+      const amountStaked = Math.floor(walletTokenBalance * 0.3);
+      
+      // Add some variance to the pending rewards based on the staked amount
+      const pendingRewards = parseFloat((amountStaked * 0.05).toFixed(2));
+      
+      // Prepare the response with the dynamic staking amount
       const stakingResponse = {
         amountStaked: amountStaked,
         pendingRewards: pendingRewards,
@@ -1041,10 +1054,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add debug logging to see what's being returned
       console.log("Staking info for", walletAddress, ":", JSON.stringify(stakingResponse, null, 2));
       
-      return res.json({
-        success: true,
-        stakingInfo: stakingResponse,
-      });
+      // Return staking info directly, without nesting it
+      return res.json(stakingResponse);
     } catch (error) {
       console.error("Error fetching staking info from blockchain:", error);
       return res.status(500).json({
@@ -1296,12 +1307,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // In a fully decentralized application, this confirmation would come from the blockchain itself
         // When tokens are staked on-chain, the smart contract would automatically record the stake
-        // For now, we'll simulate this by returning the correct staking amount of 18 tokens
         
-        // This would be the staking vault contract account for this user
-        // For our simulation, we'll use our fixed staking info
+        // Get the current token balance to calculate a realistic staking amount
+        // In a real implementation, this would be read directly from the staking contract
+        const tokenUtils = await import('./token-utils');
+        const web3 = await import('@solana/web3.js');
+        const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
+        const userWalletPubkey = new web3.PublicKey(walletAddress);
+        
+        // Get the user's token balance
+        const tokenMint = tokenUtils.getTokenMint();
+        const tokenBalance = await tokenUtils.getTokenBalance(
+          connection,
+          tokenMint,
+          userWalletPubkey
+        );
+        
+        // Use the actual amount that was staked (from the request parameter)
+        // but verify it doesn't exceed a reasonable percentage of their tokens
+        // This simulates an on-chain verification of the staking transaction
+        const maxReasonableStake = Math.floor(tokenBalance * 0.9); // 90% of their tokens max
+        const verifiedStakeAmount = Math.min(parsedAmount, maxReasonableStake);
+        
+        // For our simulation, create staking info based on the actual staked amount
         const stakingInfo = {
-          amountStaked: 18, // The correct amount (18 tokens)
+          amountStaked: verifiedStakeAmount, // Use the verified stake amount
           pendingRewards: 0, // Start with zero pending rewards
           stakedAt: new Date(),
           lastCompoundAt: new Date(),
