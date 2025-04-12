@@ -936,6 +936,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get staking info from storage
       const stakingInfo = await storage.getStakingInfo(walletAddress);
       
+      // Add debug logging to see what's being returned
+      console.log("Staking info for", walletAddress, ":", JSON.stringify(stakingInfo, null, 2));
+      
       return res.json({
         success: true,
         stakingInfo,
