@@ -1,16 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useSolana } from '@/context/SolanaContext';
 import { useTokenData } from '@/context/TokenDataContext';
 import { useReferral } from '@/context/ReferralContext';
 import { useToast } from '@/hooks/use-toast';
-import { shortenAddress } from '@/lib/utils';
+import { shortenAddress, generateUniqueId } from '@/lib/utils';
 
 const ReferralDashboard = () => {
   const { connected, publicKey } = useSolana();
-  const { referralStats } = useTokenData();
-  const { referralCode } = useReferral();
+  const { referralStats, referralCode: tokenDataReferralCode } = useTokenData();
+  const { referralCode: referralContextCode, setReferralCode } = useReferral();
   const { toast } = useToast();
+  
+  // Combine both possible sources of referral code
+  const referralCode = tokenDataReferralCode || referralContextCode;
+  
+  // Generate a referral code if none exists but wallet is connected
+  useEffect(() => {
+    if (connected && publicKey && !referralCode) {
+      const walletAddress = publicKey.toString();
+      const storedCodes = localStorage.getItem('walletReferralCodes');
+      const codeMap = storedCodes ? JSON.parse(storedCodes) : {};
+      
+      let walletReferralCode: string;
+      
+      // If we have a stored code for this wallet, use it
+      if (codeMap[walletAddress]) {
+        walletReferralCode = codeMap[walletAddress];
+      } else {
+        // Generate a new code for this wallet and store it
+        walletReferralCode = generateUniqueId().slice(0, 6).toUpperCase();
+        codeMap[walletAddress] = walletReferralCode;
+        localStorage.setItem('walletReferralCodes', JSON.stringify(codeMap));
+      }
+      
+      // Set the code in the referral context
+      setReferralCode(walletReferralCode);
+    }
+  }, [connected, publicKey, referralCode, setReferralCode]);
   
   const copyToClipboard = () => {
     if (!referralCode) return;
