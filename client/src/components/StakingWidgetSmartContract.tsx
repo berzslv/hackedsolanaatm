@@ -97,11 +97,10 @@ const StakingWidgetSmartContract: React.FC = () => {
       }
     };
     
+    // Load data once on component mount
     loadData();
     
-    // Refresh data every 30 seconds
-    const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
+    // No automatic interval - only refresh after actions
   }, [stakingClient, connected, publicKey, refreshTokenBalance, userTokenBalance]);
   
   const handleMaxStake = () => {

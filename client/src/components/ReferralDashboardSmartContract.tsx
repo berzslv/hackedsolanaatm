@@ -122,25 +122,23 @@ const ReferralDashboardSmartContract: React.FC = () => {
 
   // Initialize referral stats on component mount and when dependencies change
   useEffect(() => {
+    // Just fetch stats once when component mounts or dependencies change
     refreshStats();
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(refreshStats, 30000);
-    return () => clearInterval(interval);
+    // No automatic polling - refresh only when needed
   }, [connected, publicKey, referralClient]);
 
   const copyReferralLink = () => {
     if (!referralStats?.referralCode) return;
     
-    const referralLink = `https://hackatm.xyz/?ref=${referralStats.referralCode}`;
-    navigator.clipboard.writeText(referralLink);
+    // Just copy the code, not the URL
+    navigator.clipboard.writeText(referralStats.referralCode);
     
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     
     toast({
       title: "Copied!",
-      description: "Referral link copied to clipboard",
+      description: "Referral code copied to clipboard",
     });
   };
 
@@ -325,7 +323,7 @@ const ReferralDashboardSmartContract: React.FC = () => {
                 <div className="relative flex-grow">
                   <Input 
                     readOnly 
-                    value={`https://hackatm.xyz/?ref=${referralStats.referralCode}`} 
+                    value={referralStats.referralCode} 
                     className="pr-20"
                   />
                   <Button
@@ -353,7 +351,7 @@ const ReferralDashboardSmartContract: React.FC = () => {
               </div>
               
               <p className="text-xs text-muted-foreground">
-                Share this link with friends. When they buy HATM tokens, you'll receive 5% of their purchase amount.
+                Share this code with friends. When they buy HATM tokens, you'll receive 5% of their purchase amount.
               </p>
             </div>
           ) : (
@@ -507,7 +505,7 @@ const ReferralDashboardSmartContract: React.FC = () => {
             <div className="space-y-4 text-muted-foreground text-sm">
               <div className="space-y-2">
                 <h4 className="font-medium text-foreground">How to Earn</h4>
-                <p>1. Share your unique referral link with friends</p>
+                <p>1. Share your unique referral code with friends</p>
                 <p>2. When they buy HATM tokens, you earn 5% of their purchase amount</p>
                 <p>3. Rewards are automatically tracked on-chain and cannot be tampered with</p>
               </div>
