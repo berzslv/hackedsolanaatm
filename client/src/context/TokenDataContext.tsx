@@ -153,18 +153,84 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (balanceResponse.ok && balanceData.success) {
         console.log("Refreshed token balance:", balanceData.balance);
         
-        // Get staking info to update staked balance and pending rewards
-        const stakingResponse = await fetch(`/api/staking-info/${walletAddress}`);
-        const stakingData = await stakingResponse.json();
+        // Initialize on-chain data sources
+        const { Connection, clusterApiUrl } = await import('@solana/web3.js');
+        const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
         
-        console.log("Refreshed staking info:", stakingData);
+        // Initialize StakingVaultClient for staking data
+        const { StakingVaultClient } = await import('@/lib/staking-vault-client');
+        const tokenMint = "12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5";
         
-        // Get referral stats
-        const referralResponse = await fetch(`/api/referrals/${walletAddress}`);
-        const referralData = await referralResponse.json();
-        console.log("Refreshed referral stats:", referralData);
+        // Initialize ReferralTrackerClient for referral data
+        const { ReferralTrackerClient } = await import('@/lib/referral-tracker-client');
         
-        // Get leaderboards
+        // Fetch staking data from on-chain
+        let userStakedBalance = 0;
+        let userPendingRewards = 0;
+        let stakingStats = {
+          totalStaked: 0,
+          stakersCount: 0,
+          rewardPool: 0
+        };
+        
+        try {
+          const stakingClient = new StakingVaultClient(connection, publicKey, tokenMint);
+          await stakingClient.initialize();
+          
+          // Get user staking info
+          const userInfo = await stakingClient.getUserStakingInfo();
+          console.log("On-chain staking info:", userInfo);
+          
+          if (userInfo) {
+            userStakedBalance = userInfo.amountStaked;
+            userPendingRewards = userInfo.pendingRewards;
+          }
+          
+          // Get global staking stats
+          const globalStats = await stakingClient.getGlobalStats();
+          console.log("On-chain staking stats:", globalStats);
+          
+          if (globalStats) {
+            stakingStats = {
+              totalStaked: globalStats.totalStaked,
+              stakersCount: globalStats.stakersCount,
+              rewardPool: globalStats.rewardPool
+            };
+          }
+        } catch (e) {
+          console.error("Error fetching on-chain staking data:", e);
+        }
+        
+        // Fetch referral data from on-chain
+        let referralData = {
+          totalReferrals: 0,
+          totalEarnings: 0,
+          weeklyRank: null,
+          recentActivity: []
+        };
+        
+        try {
+          const referralClient = new ReferralTrackerClient(connection, publicKey);
+          await referralClient.initialize();
+          
+          // Get user referral stats
+          const userReferralData = await referralClient.getUserReferralInfo();
+          console.log("On-chain referral info:", userReferralData);
+          
+          if (userReferralData) {
+            referralData = {
+              totalReferrals: userReferralData.referralCount,
+              totalEarnings: userReferralData.totalEarnings,
+              weeklyRank: null,  // Not tracked on-chain yet
+              recentActivity: userReferralData.activity || []
+            };
+          }
+        } catch (e) {
+          console.error("Error fetching on-chain referral data:", e);
+        }
+        
+        // For leaderboard data, we'll still use the API endpoints
+        // In the future, this could be replaced with on-chain data
         const referrersWeeklyResponse = await fetch('/api/leaderboard/referrers/weekly');
         const referrersWeeklyData = await referrersWeeklyResponse.json();
         
@@ -181,10 +247,11 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setTokenData(prev => ({
           ...prev,
           userTokenBalance: balanceData.balance || 0,
-          userStakedBalance: stakingData.success && stakingData.stakingInfo ? 
-            stakingData.stakingInfo.amountStaked : 0,
-          userPendingRewards: stakingData.success && stakingData.stakingInfo ? 
-            stakingData.stakingInfo.pendingRewards : 0,
+          userStakedBalance: userStakedBalance,
+          userPendingRewards: userPendingRewards,
+          totalStaked: stakingStats.totalStaked,
+          stakersCount: stakingStats.stakersCount,
+          rewardPool: stakingStats.rewardPool,
           referralStats: referralData,
           referrersLeaderboard: {
             weekly: referrersWeeklyData || [],
@@ -231,8 +298,8 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       setReferralCode(walletReferralCode);
       
-      // Fetch real token balance from API
-      const fetchTokenBalance = async () => {
+      // Fetch token data from on-chain sources
+      const fetchTokenData = async () => {
         try {
           // Get token balance from the API
           const balanceResponse = await fetch(`/api/token-balance/${walletAddress}`);
@@ -241,18 +308,83 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           if (balanceResponse.ok && balanceData.success) {
             console.log("Fetched token balance:", balanceData.balance);
             
-            // Get staking info to update staked balance and pending rewards
-            const stakingResponse = await fetch(`/api/staking-info/${walletAddress}`);
-            const stakingData = await stakingResponse.json();
+            // Initialize on-chain data sources
+            const { Connection, clusterApiUrl } = await import('@solana/web3.js');
+            const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
             
-            console.log("Fetched staking info:", stakingData);
+            // Initialize StakingVaultClient for staking data
+            const { StakingVaultClient } = await import('@/lib/staking-vault-client');
+            const tokenMint = "12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5";
             
-            // Get referral stats
-            const referralResponse = await fetch(`/api/referrals/${walletAddress}`);
-            const referralData = await referralResponse.json();
-            console.log("Fetched referral stats:", referralData);
+            // Initialize ReferralTrackerClient for referral data
+            const { ReferralTrackerClient } = await import('@/lib/referral-tracker-client');
             
-            // Get leaderboards
+            // Fetch staking data from on-chain
+            let userStakedBalance = 0;
+            let userPendingRewards = 0;
+            let stakingStats = {
+              totalStaked: 0,
+              stakersCount: 0,
+              rewardPool: 0
+            };
+            
+            try {
+              const stakingClient = new StakingVaultClient(connection, publicKey, tokenMint);
+              await stakingClient.initialize();
+              
+              // Get user staking info
+              const userInfo = await stakingClient.getUserStakingInfo();
+              console.log("On-chain staking info:", userInfo);
+              
+              if (userInfo) {
+                userStakedBalance = userInfo.amountStaked;
+                userPendingRewards = userInfo.pendingRewards;
+              }
+              
+              // Get vault info for global stats
+              const vaultInfo = await stakingClient.getVaultInfo();
+              console.log("On-chain vault info:", vaultInfo);
+              
+              if (vaultInfo) {
+                stakingStats = {
+                  totalStaked: vaultInfo.totalStaked || 0,
+                  stakersCount: vaultInfo.stakersCount || 0,
+                  rewardPool: vaultInfo.rewardPool || 0
+                };
+              }
+            } catch (e) {
+              console.error("Error fetching on-chain staking data:", e);
+            }
+            
+            // Fetch referral data from on-chain
+            let referralData = {
+              totalReferrals: 0,
+              totalEarnings: 0,
+              weeklyRank: null,
+              recentActivity: []
+            };
+            
+            try {
+              const referralClient = new ReferralTrackerClient(connection, publicKey);
+              await referralClient.initialize();
+              
+              // Get user referral stats
+              const userReferralData = await referralClient.getUserReferralInfo();
+              console.log("On-chain referral info:", userReferralData);
+              
+              if (userReferralData) {
+                referralData = {
+                  totalReferrals: userReferralData.referralCount,
+                  totalEarnings: userReferralData.totalEarnings,
+                  weeklyRank: null,  // Not tracked on-chain yet
+                  recentActivity: userReferralData.activity || []
+                };
+              }
+            } catch (e) {
+              console.error("Error fetching on-chain referral data:", e);
+            }
+            
+            // For leaderboard data, we'll still use the API endpoints
             const referrersWeeklyResponse = await fetch('/api/leaderboard/referrers/weekly');
             const referrersWeeklyData = await referrersWeeklyResponse.json();
             
@@ -270,10 +402,11 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               ...prev,
               referralCode: walletReferralCode,
               userTokenBalance: balanceData.balance || 0,
-              userStakedBalance: stakingData.success && stakingData.stakingInfo ? 
-                stakingData.stakingInfo.amountStaked : 0,
-              userPendingRewards: stakingData.success && stakingData.stakingInfo ? 
-                stakingData.stakingInfo.pendingRewards : 0,
+              userStakedBalance: userStakedBalance,
+              userPendingRewards: userPendingRewards,
+              totalStaked: stakingStats.totalStaked,
+              stakersCount: stakingStats.stakersCount,
+              rewardPool: stakingStats.rewardPool,
               refreshTokenBalance, // Make sure it's included
               referralStats: referralData,
               referrersLeaderboard: {
