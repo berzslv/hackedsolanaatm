@@ -3,8 +3,8 @@ seeds = false
 skip-lint = false
 
 [programs.devnet]
-staking_vault = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-referral_tracker = "Gg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnH"
+staking_vault = "2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap"
+referral_tracker = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk"
 [programs.localnet]
 staking_vault = "programs/staking_vault"
 referral_tracker = "programs/referral_tracker"
