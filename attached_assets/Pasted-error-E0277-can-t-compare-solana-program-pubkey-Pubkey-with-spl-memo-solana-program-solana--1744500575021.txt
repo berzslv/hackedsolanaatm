@@ -1,0 +1,96 @@
+error[E0277]: can't compare `solana_program::pubkey::Pubkey` with `spl_memo::solana_program::solana_pubkey::Pubkey`
+  --> src/extension/memo_transfer/mod.rs:42:20
+   |
+42 |         program_id == &spl_memo::id() || program_id == &spl_memo::v1::id()
+   |                    ^^ no implementation for `solana_program::pubkey::Pubkey == spl_memo::solana_program::solana_pubkey::Pubkey`
+   |
+   = help: the trait `PartialEq<spl_memo::solana_program::solana_pubkey::Pubkey>` is not implemented for `solana_program::pubkey::Pubkey`, which is required by `&solana_program::pubkey::Pubkey: PartialEq<&spl_memo::solana_program::solana_pubkey::Pubkey>`
+   = help: the trait `PartialEq` is implemented for `solana_program::pubkey::Pubkey`
+   = help: for that trait implementation, expected `solana_program::pubkey::Pubkey`, found `spl_memo::solana_program::solana_pubkey::Pubkey`
+   = note: required for `&solana_program::pubkey::Pubkey` to implement `PartialEq<&spl_memo::solana_program::solana_pubkey::Pubkey>`
+
+error[E0277]: can't compare `solana_program::pubkey::Pubkey` with `spl_memo::solana_program::solana_pubkey::Pubkey`
+  --> src/extension/memo_transfer/mod.rs:42:53
+   |
+42 |         program_id == &spl_memo::id() || program_id == &spl_memo::v1::id()
+   |                                                     ^^ no implementation for `solana_program::pubkey::Pubkey == spl_memo::solana_program::solana_pubkey::Pubkey`
+   |
+   = help: the trait `PartialEq<spl_memo::solana_program::solana_pubkey::Pubkey>` is not implemented for `solana_program::pubkey::Pubkey`, which is required by `&solana_program::pubkey::Pubkey: PartialEq<&spl_memo::solana_program::solana_pubkey::Pubkey>`
+   = help: the trait `PartialEq` is implemented for `solana_program::pubkey::Pubkey`
+   = help: for that trait implementation, expected `solana_program::pubkey::Pubkey`, found `spl_memo::solana_program::solana_pubkey::Pubkey`
+   = note: required for `&solana_program::pubkey::Pubkey` to implement `PartialEq<&spl_memo::solana_program::solana_pubkey::Pubkey>`
+
+error[E0277]: can't compare `solana_program::pubkey::Pubkey` with `spl_memo::solana_program::solana_pubkey::Pubkey`
+  --> src/extension/memo_transfer/mod.rs:46:20
+   |
+46 |         program_id == &spl_memo::id() || program_id == &spl_memo::v1::id()
+   |                    ^^ no implementation for `solana_program::pubkey::Pubkey == spl_memo::solana_program::solana_pubkey::Pubkey`
+   |
+   = help: the trait `PartialEq<spl_memo::solana_program::solana_pubkey::Pubkey>` is not implemented for `solana_program::pubkey::Pubkey`, which is required by `&solana_program::pubkey::Pubkey: PartialEq<&spl_memo::solana_program::solana_pubkey::Pubkey>`
+   = help: the trait `PartialEq` is implemented for `solana_program::pubkey::Pubkey`
+   = help: for that trait implementation, expected `solana_program::pubkey::Pubkey`, found `spl_memo::solana_program::solana_pubkey::Pubkey`
+   = note: required for `&solana_program::pubkey::Pubkey` to implement `PartialEq<&spl_memo::solana_program::solana_pubkey::Pubkey>`
+
+error[E0277]: can't compare `solana_program::pubkey::Pubkey` with `spl_memo::solana_program::solana_pubkey::Pubkey`
+  --> src/extension/memo_transfer/mod.rs:46:53
+   |
+46 |         program_id == &spl_memo::id() || program_id == &spl_memo::v1::id()
+   |                                                     ^^ no implementation for `solana_program::pubkey::Pubkey == spl_memo::solana_program::solana_pubkey::Pubkey`
+   |
+   = help: the trait `PartialEq<spl_memo::solana_program::solana_pubkey::Pubkey>` is not implemented for `solana_program::pubkey::Pubkey`, which is required by `&solana_program::pubkey::Pubkey: PartialEq<&spl_memo::solana_program::solana_pubkey::Pubkey>`
+   = help: the trait `PartialEq` is implemented for `solana_program::pubkey::Pubkey`
+   = help: for that trait implementation, expected `solana_program::pubkey::Pubkey`, found `spl_memo::solana_program::solana_pubkey::Pubkey`
+   = note: required for `&solana_program::pubkey::Pubkey` to implement `PartialEq<&spl_memo::solana_program::solana_pubkey::Pubkey>`
+
+error[E0599]: no function or associated item named `get_packed_len` found for struct `spl_token::state::Account` in the current scope
+   --> src/state.rs:306:57
+    |
+306 |                         .get(spl_token::state::Account::get_packed_len())
+    |                                                         ^^^^^^^^^^^^^^ function or associated item not found in `Account`
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `Pack` which provides `get_packed_len` is implemented but not in scope; perhaps you want to import it
+    |
+3   + use spl_memo::solana_program::solana_program_pack::Pack;
+    |
+
+error[E0277]: can't compare `solana_program::pubkey::Pubkey` with `spl_memo::solana_program::solana_pubkey::Pubkey`
+   --> src/lib.rs:106:62
+    |
+106 |     if spl_token_program_id != &id() && spl_token_program_id != &spl_token::id() {
+    |                                                              ^^ no implementation for `solana_program::pubkey::Pubkey == spl_memo::solana_program::solana_pubkey::Pubkey`
+    |
+    = help: the trait `PartialEq<spl_memo::solana_program::solana_pubkey::Pubkey>` is not implemented for `solana_program::pubkey::Pubkey`, which is required by `&solana_program::pubkey::Pubkey: PartialEq<&spl_memo::solana_program::solana_pubkey::Pubkey>`
+    = help: the trait `PartialEq` is implemented for `solana_program::pubkey::Pubkey`
+    = help: for that trait implementation, expected `solana_program::pubkey::Pubkey`, found `spl_memo::solana_program::solana_pubkey::Pubkey`
+    = note: required for `&solana_program::pubkey::Pubkey` to implement `PartialEq<&spl_memo::solana_program::solana_pubkey::Pubkey>`
+
+error[E0599]: no function or associated item named `get_packed_len` found for struct `spl_token::state::Account` in the current scope
+   --> src/state.rs:310:57
+    |
+310 |                         .get(spl_token::state::Account::get_packed_len())
+    |                                                         ^^^^^^^^^^^^^^ function or associated item not found in `Account`
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `Pack` which provides `get_packed_len` is implemented but not in scope; perhaps you want to import it
+    |
+3   + use spl_memo::solana_program::solana_program_pack::Pack;
+    |
+
+error[E0277]: can't compare `solana_program::pubkey::Pubkey` with `spl_memo::solana_program::solana_pubkey::Pubkey`
+   --> src/lib.rs:111:62
+    |
+111 |     if spl_token_program_id != &id() && spl_token_program_id != &spl_token::id() {
+    |                                                              ^^ no implementation for `solana_program::pubkey::Pubkey == spl_memo::solana_program::solana_pubkey::Pubkey`
+    |
+    = help: the trait `PartialEq<spl_memo::solana_program::solana_pubkey::Pubkey>` is not implemented for `solana_program::pubkey::Pubkey`, which is required by `&solana_program::pubkey::Pubkey: PartialEq<&spl_memo::solana_program::solana_pubkey::Pubkey>`
+    = help: the trait `PartialEq` is implemented for `solana_program::pubkey::Pubkey`
+    = help: for that trait implementation, expected `solana_program::pubkey::Pubkey`, found `spl_memo::solana_program::solana_pubkey::Pubkey`
+    = note: required for `&solana_program::pubkey::Pubkey` to implement `PartialEq<&spl_memo::solana_program::solana_pubkey::Pubkey>`
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `spl-token-2022` (lib) due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `spl-token-2022` (lib) due to 4 previous errors
+solana@DESKTOP-4A6A9EA:~/hackedsolanaatm$
