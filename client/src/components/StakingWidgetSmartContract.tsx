@@ -73,18 +73,25 @@ const StakingWidgetSmartContract: React.FC = () => {
     
     const loadData = async () => {
       try {
+        console.log("[StakingWidget] Loading staking data with token balance:", userTokenBalance);
+        
         // Fetch user staking info
         const userInfo = await stakingClient.getUserStakingInfo();
         setStakingInfo(userInfo);
+        console.log("[StakingWidget] User staking info loaded:", userInfo);
         
         // Fetch global staking stats
         const stats = await stakingClient.getStakingStats();
         setStakingStats(stats);
+        console.log("[StakingWidget] Global staking stats loaded:", stats);
         
-        // Update token balance using TokenDataContext
-        await refreshTokenBalance();
+        // Update token balance using TokenDataContext - only if we need a refresh
+        if (userTokenBalance === 0) {
+          console.log("[StakingWidget] Refreshing token balance from context");
+          await refreshTokenBalance();
+        }
       } catch (error: any) {
-        console.error("Failed to load staking data", error);
+        console.error("[StakingWidget] Failed to load staking data", error);
       } finally {
         setInfoLoading(false);
       }
@@ -95,7 +102,7 @@ const StakingWidgetSmartContract: React.FC = () => {
     // Refresh data every 30 seconds
     const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
-  }, [stakingClient, connected, publicKey]);
+  }, [stakingClient, connected, publicKey, refreshTokenBalance, userTokenBalance]);
   
   const handleMaxStake = () => {
     setStakeAmount(userTokenBalance.toString());
