@@ -292,100 +292,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get staking info for a user - directly from blockchain
+  // Get staking info for a user - directly from blockchain using smart contract
   app.get("/api/staking/:walletAddress", async (req, res) => {
     try {
       const { walletAddress } = req.params;
       
-      // In a real implementation, this would query the smart contract
-      // to get the user's staking info directly from the blockchain
+      // Import the staking vault utilities that interact with the smart contract
+      const stakingVaultUtils = await import('./staking-vault-utils');
       
-      // For demonstration, we'll create mock on-chain data with realistic values
-      // This simulates reading from the staking vault smart contract
-      const web3 = await import('@solana/web3.js');
+      // Get user staking information directly from the smart contract
+      const userStakingInfo = await stakingVaultUtils.getUserStakingInfo(walletAddress);
+      
+      // Get the staking vault address (in a real implementation, this would also come from the contract)
       const tokenUtils = await import('./token-utils');
-      const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
-      
-      // Use walletAddress to generate deterministic but realistic staking data
-      // In a real implementation this would be actual on-chain data
-      const walletPubkey = new web3.PublicKey(walletAddress);
-      const walletSeed = walletPubkey.toBuffer()[0] + walletPubkey.toBuffer()[31];
-      
-      // Generate staking data based on wallet seed for consistent results
-      const amountStaked = Math.floor(100 + (walletSeed * 50));
-      const stakedDays = Math.floor(1 + (walletSeed % 7)); // 1-7 days
-      const stakedAt = new Date(Date.now() - (stakedDays * 24 * 60 * 60 * 1000));
-      const lastCompoundAt = new Date(Date.now() - (Math.floor(1 + (walletSeed % 4)) * 60 * 60 * 1000)); // 1-4 hours ago
-      
-      // Calculate days left in locking period, if any
-      const lockPeriodDays = 7; // 7-day lock period
-      const daysPassed = stakedDays;
-      const daysLeft = Math.max(0, lockPeriodDays - daysPassed);
-      const timeUntilUnlock = daysLeft > 0 ? (daysLeft * 24 * 60 * 60 * 1000) : null;
-      
-      // Calculate pending rewards using a formula similar to the smart contract
-      // In reality, this would be read directly from the blockchain
-      const baseAPY = 120; // 120% APY
-      const timeStaked = Date.now() - stakedAt.getTime();
-      const timeStakedDays = timeStaked / (24 * 60 * 60 * 1000);
-      const pendingRewards = Math.floor(amountStaked * (baseAPY/100) * (timeStakedDays / 365));
-      
-      // Get the staking vault address (in a real implementation this would be the contract address)
       const mintAuthority = tokenUtils.getMintAuthority();
       const stakingVaultAddress = mintAuthority.keypair.publicKey.toString();
       
+      // Format the response
       const stakingInfo = {
-        amountStaked,
-        pendingRewards,
-        stakedAt,
-        lastCompoundAt,
-        estimatedAPY: baseAPY + (walletSeed % 10), // Small variation in APY
-        timeUntilUnlock,
+        amountStaked: userStakingInfo.amountStaked,
+        pendingRewards: userStakingInfo.pendingRewards,
+        stakedAt: userStakingInfo.stakedAt,
+        lastCompoundAt: userStakingInfo.lastClaimAt || new Date(), // Using lastClaimAt for lastCompoundAt
+        estimatedAPY: userStakingInfo.estimatedAPY,
+        timeUntilUnlock: userStakingInfo.timeUntilUnlock,
         stakingVaultAddress
       };
       
-      console.log(`Retrieved staking info from blockchain for ${walletAddress}`);
+      console.log(`Retrieved staking info from smart contract for ${walletAddress}:`, stakingInfo);
       res.json(stakingInfo);
     } catch (error) {
-      console.error("Error getting staking info from blockchain:", error);
+      console.error("Error getting staking info from smart contract:", error);
       res.status(500).json({ 
-        message: "Failed to get staking info from blockchain",
+        message: "Failed to get staking info from smart contract",
         details: error instanceof Error ? error.message : String(error)
       });
     }
   });
   
-  // Get global staking stats - directly from blockchain
+  // Get global staking stats - directly from blockchain using smart contract
   app.get("/api/staking-stats", async (req, res) => {
     try {
-      // In a real implementation, this would query the smart contract
-      // to get the global staking statistics directly from the blockchain
+      // Import the staking vault utilities that interact with the smart contract
+      const stakingVaultUtils = await import('./staking-vault-utils');
       
-      // For demonstration, we'll mock the response with simulated on-chain data
-      const web3 = await import('@solana/web3.js');
-      const tokenUtils = await import('./token-utils');
-      const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
+      // Get global staking statistics directly from the smart contract
+      const vaultInfo = await stakingVaultUtils.getStakingVaultInfo();
       
-      // Get the staking vault address (in a real implementation this would be the contract address)
-      const mintAuthority = tokenUtils.getMintAuthority();
-      const stakingVaultAddress = mintAuthority.keypair.publicKey.toString();
-      
-      // Generate mock data with realistic values
+      // Format the response with the data from the smart contract
       const stakingStats = {
-        totalStaked: 25000000, // 25 million HATM tokens
-        rewardPool: 3750000, // 3.75 million HATM tokens reserved for rewards
-        stakersCount: 9542, // Number of active stakers
-        currentAPY: 125.4, // Current APY in percentage
-        stakingVaultAddress,
+        totalStaked: vaultInfo.totalStaked,
+        rewardPool: vaultInfo.rewardPool,
+        stakersCount: vaultInfo.stakersCount,
+        currentAPY: vaultInfo.currentAPY,
+        stakingVaultAddress: vaultInfo.stakingVaultAddress,
         lastUpdated: new Date().toISOString()
       };
       
-      console.log(`Retrieved global staking stats from blockchain`);
+      console.log(`Retrieved global staking stats from smart contract:`, stakingStats);
       res.json(stakingStats);
     } catch (error) {
-      console.error("Error getting global staking stats from blockchain:", error);
+      console.error("Error getting global staking stats from smart contract:", error);
       res.status(500).json({ 
-        message: "Failed to get staking stats from blockchain",
+        message: "Failed to get staking stats from smart contract",
         details: error instanceof Error ? error.message : String(error)
       });
     }
