@@ -13,7 +13,7 @@ interface ReferralStats {
   totalReferrals: number;
   totalEarnings: number;
   weeklyRank: number | null;
-  recentActivity: Array<ReferralActivity>;
+  recentActivity: ReferralActivity[];
 }
 
 interface LeaderboardEntry {

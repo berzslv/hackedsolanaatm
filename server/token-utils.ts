@@ -253,6 +253,7 @@ export async function mintTokens(
         associatedTokenAddress, // destination
         mintAuthority.keypair.publicKey, // authority
         tokenAmount, // amount
+        [mintAuthority.keypair.publicKey], // multiSigners (array of signers)
         TOKEN_PROGRAM_ID
       )
     );
