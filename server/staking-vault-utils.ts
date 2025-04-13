@@ -76,9 +76,10 @@ export async function getStakingVaultProgram(): Promise<any> {
       try {
         // This is the correct way to create a program 
         // new Program(idl, programId, provider)
+        // In Anchor 0.26.0 the constructor looks like: Program(idl, address, provider)
         const program = new Program(
           idl,
-          programId,  // Use PublicKey object directly
+          programId.toString(),  // Program ID as string
           provider
         );
         
