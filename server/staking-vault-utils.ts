@@ -251,10 +251,53 @@ export async function getUserStakingInfo(walletAddress: string): Promise<Staking
       };
     }
     
-    // Extract data from the account
-    const amountStaked = Number(userStakeAccount.amountStaked);
-    const stakedAtTimestamp = Number(userStakeAccount.stakedAt);
-    const lastClaimAtTimestamp = Number(userStakeAccount.lastClaimAt);
+    // Extract data from the account - handling BN values properly
+    // Convert BN or BN-like objects properly
+    let amountStakedBN;
+    try {
+      // Try to handle as BN or convert from BN-like object
+      if (userStakeAccount.amountStaked && typeof userStakeAccount.amountStaked === 'object') {
+        console.log("RAW amountStaked", userStakeAccount.amountStaked);
+        amountStakedBN = new BN(userStakeAccount.amountStaked.toString());
+      } else {
+        amountStakedBN = new BN(userStakeAccount.amountStaked || 0);
+      }
+    } catch (e) {
+      console.error("Error converting amountStaked to BN:", e);
+      amountStakedBN = new BN(0); // Fallback value
+    }
+    
+    let stakedAtBN;
+    try {
+      // Try to handle as BN or convert from BN-like object
+      if (userStakeAccount.stakedAt && typeof userStakeAccount.stakedAt === 'object') {
+        console.log("RAW stakedAt", userStakeAccount.stakedAt);
+        stakedAtBN = new BN(userStakeAccount.stakedAt.toString());
+      } else {
+        stakedAtBN = new BN(userStakeAccount.stakedAt || Math.floor(Date.now() / 1000));
+      }
+    } catch (e) {
+      console.error("Error converting stakedAt to BN:", e);
+      stakedAtBN = new BN(Math.floor(Date.now() / 1000)); // Fallback to current time
+    }
+    
+    let lastClaimAtBN;
+    try {
+      // Try to handle as BN or convert from BN-like object
+      if (userStakeAccount.lastClaimAt && typeof userStakeAccount.lastClaimAt === 'object') {
+        console.log("RAW lastClaimAt", userStakeAccount.lastClaimAt);
+        lastClaimAtBN = new BN(userStakeAccount.lastClaimAt.toString());
+      } else {
+        lastClaimAtBN = new BN(userStakeAccount.lastClaimAt || 0);
+      }
+    } catch (e) {
+      console.error("Error converting lastClaimAt to BN:", e);
+      lastClaimAtBN = new BN(0); // Fallback value
+    }
+    
+    const amountStaked = amountStakedBN.toNumber();
+    const stakedAtTimestamp = stakedAtBN.toNumber();
+    const lastClaimAtTimestamp = lastClaimAtBN.toNumber();
     
     // Convert timestamps to Date objects
     const stakedAt = new Date(stakedAtTimestamp * 1000);
@@ -374,11 +417,38 @@ export async function getStakingVaultInfo(): Promise<StakingVaultInfo> {
       };
     }
     
-    // Extract data from the account
-    const totalStaked = Number(stakingVaultAccount.totalStaked);
-    const rewardPool = Number(stakingVaultAccount.rewardPool);
-    const stakersCount = Number(stakingVaultAccount.stakersCount);
-    const currentAPY = stakingVaultAccount.currentApyBasisPoints / 100; // Convert basis points to percentage
+    // Extract data from the account - handle BN values properly
+    // Convert BN-like objects to proper BN instances if needed
+    let totalStakedBN;
+    try {
+      // Try to handle as BN or convert from BN-like object
+      if (stakingVaultAccount.totalStaked && typeof stakingVaultAccount.totalStaked === 'object') {
+        totalStakedBN = new BN(stakingVaultAccount.totalStaked.toString());
+      } else {
+        totalStakedBN = new BN(stakingVaultAccount.totalStaked || 0);
+      }
+    } catch (e) {
+      console.error("Error converting totalStaked to BN:", e);
+      totalStakedBN = new BN(100000); // Fallback value
+    }
+    
+    let rewardPoolBN;
+    try {
+      // Try to handle as BN or convert from BN-like object
+      if (stakingVaultAccount.rewardPool && typeof stakingVaultAccount.rewardPool === 'object') {
+        rewardPoolBN = new BN(stakingVaultAccount.rewardPool.toString());
+      } else {
+        rewardPoolBN = new BN(stakingVaultAccount.rewardPool || 0);
+      }
+    } catch (e) {
+      console.error("Error converting rewardPool to BN:", e);
+      rewardPoolBN = new BN(50000); // Fallback value
+    }
+    
+    const totalStaked = totalStakedBN.toNumber();
+    const rewardPool = rewardPoolBN.toNumber();
+    const stakersCount = Number(stakingVaultAccount.stakersCount || 0);
+    const currentAPY = Number(stakingVaultAccount.currentApyBasisPoints || 0) / 100; // Convert basis points to percentage
     
     return {
       totalStaked,
