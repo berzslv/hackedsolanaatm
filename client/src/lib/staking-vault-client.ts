@@ -250,6 +250,23 @@ export class StakingVaultClient {
    * @param amount Amount of tokens to stake
    * @returns Transaction for signing
    */
+  /**
+   * Force refresh all cached data
+   * Call this after any transaction to ensure UI displays current state
+   */
+  async forceRefreshAllData(): Promise<void> {
+    console.log("Forcing refresh of all staking data");
+    // Clear all cached data
+    this.cachedStakingInfo = null;
+    this.cachedStakingStats = null;
+    this.lastStakingInfoUpdate = null;
+    this.lastStakingStatsUpdate = null;
+    
+    // Trigger fresh fetches
+    await this.getUserStakingInfo(true);
+    await this.getStakingStats(true);
+  }
+  
   async createStakeTransaction(amount: number): Promise<Transaction> {
     try {
       // Validate input

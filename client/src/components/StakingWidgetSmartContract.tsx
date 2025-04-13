@@ -201,6 +201,11 @@ const StakingWidgetSmartContract: React.FC = () => {
       setTimeout(async () => {
         try {
           console.log("Refreshing data after staking transaction...");
+          // Force refresh vault client data directly
+          if (stakingClient) {
+            await stakingClient.forceRefreshAllData();
+          }
+          // Then refresh the context data
           await refreshAllData(true);
           console.log("Data refresh complete after staking");
         } catch (error) {
@@ -254,6 +259,11 @@ const StakingWidgetSmartContract: React.FC = () => {
       setTimeout(async () => {
         try {
           console.log("Refreshing data after unstaking transaction...");
+          // Force refresh vault client data directly
+          if (stakingClient) {
+            await stakingClient.forceRefreshAllData();
+          }
+          // Then refresh the context data
           await refreshAllData(true);
           console.log("Data refresh complete after unstaking");
         } catch (error) {
