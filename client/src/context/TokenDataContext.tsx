@@ -48,6 +48,15 @@ interface TokenDataContextType {
 
 const TokenDataContext = createContext<TokenDataContextType | undefined>(undefined);
 
+// Hook for consuming the context
+export const useTokenData = () => {
+  const context = useContext(TokenDataContext);
+  if (!context) {
+    throw new Error('useTokenData must be used within a TokenDataProvider');
+  }
+  return context;
+};
+
 // Sample data for demonstration
 const mockReferrersLeaderboard: Leaderboard = {
   weekly: [
@@ -458,12 +467,4 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       {children}
     </TokenDataContext.Provider>
   );
-};
-
-export const useTokenData = () => {
-  const context = useContext(TokenDataContext);
-  if (context === undefined) {
-    throw new Error('useTokenData must be used within a TokenDataProvider');
-  }
-  return context;
 };

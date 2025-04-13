@@ -116,6 +116,10 @@ export class StakingVaultClient {
       
       console.log("Formatted on-chain staking data:", formattedInfo);
       
+      // Update the cache with fresh data
+      this.cachedStakingInfo = formattedInfo;
+      this.lastStakingInfoUpdate = Date.now();
+      
       return formattedInfo;
     } catch (error) {
       console.error('Failed to get on-chain user staking info:', error);
@@ -139,12 +143,20 @@ export class StakingVaultClient {
    */
   async getStakingStats(forceUpdate: boolean = false): Promise<StakingStats> {
     try {
-      console.log(`Fetching real staking statistics from blockchain, forceUpdate: ${forceUpdate}`);
+      // Always force update after cache expiration (30 seconds) or if explicitly requested
+      const now = Date.now();
+      const cacheExpired = this.lastStakingStatsUpdate && 
+        (now - this.lastStakingStatsUpdate > 30 * 1000);
+        
+      if (forceUpdate || cacheExpired || !this.cachedStakingStats) {
+        console.log(`Fetching fresh blockchain staking statistics`);
+      } else if (this.cachedStakingStats) {
+        console.log("Using cached staking stats from memory");
+        return this.cachedStakingStats;
+      }
       
-      // Build URL with cache-busting if forceUpdate is true
-      const url = forceUpdate 
-        ? `/api/staking-stats?t=${Date.now()}` 
-        : `/api/staking-stats`;
+      // Build URL with cache-busting to always get fresh data from the server
+      const url = `/api/staking-stats?t=${Date.now()}`;
       
       // Fetch global statistics from the token analytics endpoint
       // This endpoint reads actual token data from the blockchain
@@ -171,6 +183,10 @@ export class StakingVaultClient {
       };
       
       console.log("Processed staking stats:", stakingStats);
+      
+      // Update the cache with fresh data
+      this.cachedStakingStats = stakingStats;
+      this.lastStakingStatsUpdate = Date.now();
       
       return stakingStats;
     } catch (error) {
