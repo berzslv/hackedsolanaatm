@@ -74,12 +74,22 @@ export async function getStakingVaultProgram(): Promise<any> {
       console.log("Creating Anchor program with Program ID:", programId.toString());
       
       try {
-        // This is the correct way to create a program 
-        // new Program(idl, programId, provider)
+        // Convert program ID string to PublicKey
+        const programPublicKey = new PublicKey(programId.toString());
+        
+        // Create the program with explicit BN conversion handling
         const program = new Program(
           idl,
-          programId,
-          provider
+          programPublicKey,
+          provider,
+          undefined,
+          (value) => {
+            // Handle BN conversion explicitly
+            if (typeof value === 'object' && value._bn) {
+              return new BN(value._bn.toString());
+            }
+            return value;
+          }
         );
         
         // Basic validation to ensure we have the expected structure
