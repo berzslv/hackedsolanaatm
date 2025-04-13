@@ -486,6 +486,7 @@ pub struct CompoundRewards<'info> {
 }
 
 #[account]
+#[derive(Default)]
 pub struct StakingVault {
     pub authority: Pubkey,
     pub token_mint: Pubkey,
@@ -503,6 +504,7 @@ impl StakingVault {
 }
 
 #[account]
+#[derive(Default)]
 pub struct UserStakeInfo {
     pub authority: Pubkey,
     pub staking_vault: Pubkey,

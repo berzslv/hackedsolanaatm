@@ -235,16 +235,23 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           console.log("On-chain referral info:", userReferralData);
           
           if (userReferralData) {
+            const activities: ReferralActivity[] = [];
+            if (userReferralData.activity && Array.isArray(userReferralData.activity)) {
+              userReferralData.activity.forEach(activity => {
+                activities.push({
+                  date: activity.date || new Date().toISOString(),
+                  transaction: activity.transaction || '',
+                  amount: activity.amount || 0,
+                  reward: activity.reward || 0
+                });
+              });
+            }
+            
             referralData = {
               totalReferrals: userReferralData.referralCount,
               totalEarnings: userReferralData.totalEarnings,
               weeklyRank: null,  // Not tracked on-chain yet
-              recentActivity: (userReferralData.activity || []).map(activity => ({
-                date: activity.date || new Date().toISOString(),
-                transaction: activity.transaction || '',
-                amount: activity.amount || 0,
-                reward: activity.reward || 0
-              }))
+              recentActivity: activities
             };
           }
         } catch (e) {
@@ -395,16 +402,23 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               console.log("On-chain referral info:", userReferralData);
               
               if (userReferralData) {
+                const activities: ReferralActivity[] = [];
+                if (userReferralData.activity && Array.isArray(userReferralData.activity)) {
+                  userReferralData.activity.forEach(activity => {
+                    activities.push({
+                      date: activity.date || new Date().toISOString(),
+                      transaction: activity.transaction || '',
+                      amount: activity.amount || 0,
+                      reward: activity.reward || 0
+                    });
+                  });
+                }
+                
                 referralData = {
                   totalReferrals: userReferralData.referralCount,
                   totalEarnings: userReferralData.totalEarnings,
                   weeklyRank: null,  // Not tracked on-chain yet
-                  recentActivity: (userReferralData.activity || []).map(activity => ({
-                    date: activity.date || new Date().toISOString(),
-                    transaction: activity.transaction || '',
-                    amount: activity.amount || 0,
-                    reward: activity.reward || 0
-                  }))
+                  recentActivity: activities
                 };
               }
             } catch (e) {
