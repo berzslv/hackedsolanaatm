@@ -78,7 +78,7 @@ export async function getStakingVaultProgram(): Promise<any> {
         // new Program(idl, programId, provider)
         const program = new Program(
           idl,
-          programId,
+          programId.toString(),  // Convert PublicKey to string to avoid type error
           provider
         );
         
