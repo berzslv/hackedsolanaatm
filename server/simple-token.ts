@@ -29,20 +29,48 @@ export function getConnection(): Connection {
 // Load the mint authority from token-keypair.json
 export function getMintAuthority(): { keypair: Keypair, mintPublicKey: PublicKey } {
   try {
+    // First try to load the original format from backup
+    const tokenKeypairOrigPath = path.join(process.cwd(), 'token-keypair-original.json');
+    
+    if (fs.existsSync(tokenKeypairOrigPath)) {
+      console.log(`Loading authority from ${tokenKeypairOrigPath}`);
+      const tokenData = JSON.parse(fs.readFileSync(tokenKeypairOrigPath, 'utf-8'));
+      const authoritySecretKey = new Uint8Array(tokenData.authority.secretKey);
+      
+      const mintAuthority = {
+        keypair: Keypair.fromSecretKey(authoritySecretKey),
+        mintPublicKey: new PublicKey(tokenData.mint.publicKey)
+      };
+      
+      console.log(`Mint authority public key: ${mintAuthority.keypair.publicKey.toString()}`);
+      console.log(`Mint public key: ${mintAuthority.mintPublicKey.toString()}`);
+      
+      return mintAuthority;
+    }
+    
+    // Fall back to the Anchor format keypair
     const tokenKeypairPath = path.join(process.cwd(), 'token-keypair.json');
     
     if (!fs.existsSync(tokenKeypairPath)) {
       throw new Error(`Token keypair file not found: ${tokenKeypairPath}`);
     }
     
-    console.log(`Loading token data from ${tokenKeypairPath}`);
-    const tokenData = JSON.parse(fs.readFileSync(tokenKeypairPath, 'utf-8'));
-    const authoritySecretKey = new Uint8Array(tokenData.authority.secretKey);
+    console.log(`Loading authority from Anchor format keypair: ${tokenKeypairPath}`);
+    const secretKeyArray = JSON.parse(fs.readFileSync(tokenKeypairPath, 'utf-8'));
+    const keypair = Keypair.fromSecretKey(new Uint8Array(secretKeyArray));
     
-    return {
-      keypair: Keypair.fromSecretKey(authoritySecretKey),
-      mintPublicKey: new PublicKey(tokenData.mint.publicKey)
+    // In this case, we use a fixed mint address since it's not in the keypair file
+    const mintPublicKey = new PublicKey("59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk");
+    
+    const mintAuthority = {
+      keypair: keypair,
+      mintPublicKey: mintPublicKey
     };
+    
+    console.log(`Mint authority public key (Anchor format): ${mintAuthority.keypair.publicKey.toString()}`);
+    console.log(`Mint public key (hardcoded): ${mintAuthority.mintPublicKey.toString()}`);
+    
+    return mintAuthority;
   } catch (error) {
     console.error("Error loading mint authority:", error);
     throw error;
@@ -166,6 +194,7 @@ export async function mintTokens(walletAddress: string, amount: number = 1000): 
         destinationAddress, // destination token account
         mintAuthority.publicKey, // mint authority
         BigInt(adjustedAmount), // amount with decimals as bigint
+        [mintAuthority.publicKey], // multiSigners (array of publickeys)
         TOKEN_PROGRAM_ID
       )
     );
