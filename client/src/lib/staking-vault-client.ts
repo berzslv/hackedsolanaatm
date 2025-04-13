@@ -63,20 +63,29 @@ export class StakingVaultClient {
   
   /**
    * Get staking information for the current user
+   * @param forceUpdate Force a fresh fetch from the blockchain (bypass cache)
    * @returns Promise with user staking info
    */
-  async getUserStakingInfo(): Promise<StakingInfo> {
+  async getUserStakingInfo(forceUpdate: boolean = false): Promise<StakingInfo> {
     try {
-      console.log(`Fetching real blockchain staking info for: ${this.userWallet.toString()}`);
+      console.log(`Fetching real blockchain staking info for: ${this.userWallet.toString()}, forceUpdate: ${forceUpdate}`);
       
       // This is a temporary approach until we fully integrate with on-chain data through
       // our smart contract's program-derived addresses (PDAs)
       // For now, we'll use our endpoints that already read on-chain token balances
       
+      // Build URL with cache-busting if forceUpdate is true
+      const url = forceUpdate 
+        ? `/api/staking-info/${this.userWallet.toString()}?t=${Date.now()}` 
+        : `/api/staking-info/${this.userWallet.toString()}`;
+      
       // Fetch from the API that reads the actual token balances from on-chain
-      const response = await fetch(`/api/staking-info/${this.userWallet.toString()}`);
+      console.log(`Requesting staking info from: ${url}`);
+      const response = await fetch(url);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch staking info');
+        console.error(`Error response from staking info endpoint: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to fetch staking info: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
@@ -115,17 +124,26 @@ export class StakingVaultClient {
   
   /**
    * Get global staking statistics
+   * @param forceUpdate Force a fresh fetch from the blockchain (bypass cache)
    * @returns Promise with staking stats
    */
-  async getStakingStats(): Promise<StakingStats> {
+  async getStakingStats(forceUpdate: boolean = false): Promise<StakingStats> {
     try {
-      console.log('Fetching real staking statistics from blockchain');
+      console.log(`Fetching real staking statistics from blockchain, forceUpdate: ${forceUpdate}`);
+      
+      // Build URL with cache-busting if forceUpdate is true
+      const url = forceUpdate 
+        ? `/api/staking-stats?t=${Date.now()}` 
+        : `/api/staking-stats`;
       
       // Fetch global statistics from the token analytics endpoint
       // This endpoint reads actual token data from the blockchain
-      const response = await fetch('/api/staking-stats');
+      console.log(`Requesting staking stats from: ${url}`);
+      const response = await fetch(url);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch staking statistics');
+        console.error(`Error response from staking stats endpoint: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to fetch staking statistics: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
@@ -136,9 +154,9 @@ export class StakingVaultClient {
       
       // Build stats with real data
       const stakingStats: StakingStats = {
-        totalStaked: stats.totalStaked || 250000,
-        rewardPool: stats.rewardPool || 50000,
-        stakersCount: stats.stakersCount || 85,
+        totalStaked: stats.totalStaked || 0,
+        rewardPool: stats.rewardPool || 0,
+        stakersCount: stats.stakersCount || 0,
         currentAPY: stats.currentAPY || 125
       };
       

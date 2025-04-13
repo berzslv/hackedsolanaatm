@@ -1,7 +1,7 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 import { Program } from '@coral-xyz/anchor';
-import { BN } from 'bn.js';
+import BN from 'bn.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getMintAuthority } from './token-utils';
@@ -74,8 +74,8 @@ export async function getStakingVaultProgram(): Promise<any> {
       console.log("Creating Anchor program with Program ID:", programId.toString());
       
       try {
-        // Create the program with proper error handling
-        const program = new Program(idl, programId, provider);
+        // Create the program with proper error handling - pass the provider first, then programId
+        const program = new Program(idl, provider, programId);
         
         // Basic validation to ensure we have the expected structure
         if (!program || !program.account) {
