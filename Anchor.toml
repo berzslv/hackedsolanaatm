@@ -9,8 +9,8 @@ staking_vault = "EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm"
 referral_tracker = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk"
 
 [programs.localnet]
-staking_vault = "programs/staking_vault"
-referral_tracker = "programs/referral_tracker"
+staking_vault = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+referral_tracker = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [registry]
 url = "https://api.apr.dev"

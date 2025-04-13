@@ -3,7 +3,7 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 use solana_program::{program::invoke_signed, system_instruction};
 use std::convert::TryFrom;
 
-declare_id!("Gg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnH");
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 // Constants for fee distribution
 const REFERRER_FEE_PERCENT: u8 = 5; // 5% to referrer
