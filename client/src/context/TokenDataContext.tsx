@@ -148,7 +148,7 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       totalReferrals: 0,
       totalEarnings: 0,
       weeklyRank: null,
-      recentActivity: [] as ReferralActivity[]
+      recentActivity: []
     },
     referrersLeaderboard: mockReferrersLeaderboard,
     stakersLeaderboard: mockStakersLeaderboard,
@@ -223,7 +223,7 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           totalReferrals: 0,
           totalEarnings: 0,
           weeklyRank: null,
-          recentActivity: [] as ReferralActivity[]
+          recentActivity: []
         };
         
         try {
@@ -244,7 +244,7 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 transaction: activity.transaction || '',
                 amount: activity.amount || 0,
                 reward: activity.reward || 0
-              } as ReferralActivity))
+              }))
             };
           }
         } catch (e) {
@@ -383,7 +383,7 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               totalReferrals: 0,
               totalEarnings: 0,
               weeklyRank: null,
-              recentActivity: [] as ReferralActivity[]
+              recentActivity: []
             };
             
             try {
@@ -404,7 +404,7 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     transaction: activity.transaction || '',
                     amount: activity.amount || 0,
                     reward: activity.reward || 0
-                  } as ReferralActivity))
+                  }))
                 };
               }
             } catch (e) {
@@ -466,7 +466,7 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           totalReferrals: 0,
           totalEarnings: 0,
           weeklyRank: null,
-          recentActivity: [] as ReferralActivity[]
+          recentActivity: []
         }
       }));
     }
