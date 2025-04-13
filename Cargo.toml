@@ -13,6 +13,9 @@ spl-token = "3.5.0"
 spl-associated-token-account = "1.1.2"
 thiserror = "1.0.48"
 
+# The versions above are known to work with Anchor 0.26.0
+# Do not modify these versions unless you're sure they're compatible
+
 [profile.release]
 overflow-checks = true
 lto = "fat"
