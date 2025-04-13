@@ -9,6 +9,7 @@ import { getMintAuthority } from './token-utils';
 // Program information
 const PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm'; // Your deployed program from Solana Playground
 const TOKEN_MINT_ADDRESS = '12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5';
+const IDL_PATH = path.resolve('./idl/staking_vault.json');
 
 // Models for staking data
 export interface StakingUserInfo {
@@ -40,42 +41,46 @@ export async function getStakingVaultProgram(): Promise<any> {
     const mintAuthority = getMintAuthority();
     const wallet = new anchor.Wallet(mintAuthority.keypair);
     
-    // Create the provider
+    // Create the provider with correct options
     const provider = new anchor.AnchorProvider(
       connection,
       wallet,
-      { preflightCommitment: 'processed' }
+      { 
+        preflightCommitment: 'processed',
+        commitment: 'processed',
+        skipPreflight: true // Add skipPreflight for better error handling
+      }
     );
     
     // Set the provider globally
     anchor.setProvider(provider);
     
-    // Try to read IDL from multiple possible locations
+    // Load IDL from our local file
     let idl;
     try {
-      // Use the IDL file we created for your deployed contract
-      const idlPath = './idl/staking_vault.json';
-      const resolvedPath = path.resolve(idlPath);
-      console.log(`Trying to load IDL from ${resolvedPath}`);
-      const idlFile = fs.readFileSync(resolvedPath, 'utf8');
-      console.log(`Successfully loaded IDL from ${resolvedPath}`);
+      console.log(`Trying to load IDL from ${IDL_PATH}`);
+      const idlFile = fs.readFileSync(IDL_PATH, 'utf8');
+      console.log(`Successfully loaded IDL from ${IDL_PATH}`);
       idl = JSON.parse(idlFile);
     } catch (e) {
       console.error("Failed to load IDL file:", e);
       throw new Error("Could not load IDL file for the staking vault");
     }
     
-    // Initialize the program with the IDL
     try {
-      // Rather than using the IDL's metadata address which might be causing issues,
-      // we'll use the PROGRAM_ID constant directly
+      // Create the program ID from the constant
       const programId = new PublicKey(PROGRAM_ID);
       
       console.log("Creating Anchor program with Program ID:", programId.toString());
       
       try {
-        // Create the program with proper error handling
-        const program = new Program(idl, programId, provider);
+        // This is the correct way to create a program 
+        // new Program(idl, programId, provider)
+        return new Program(
+          idl,
+          programId,
+          provider
+        );
         
         // Basic validation to ensure we have the expected structure
         if (!program || !program.account) {
