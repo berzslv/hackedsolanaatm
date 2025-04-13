@@ -171,12 +171,29 @@ export async function getUserStakingInfo(walletAddress: string): Promise<Staking
       program.programId
     );
     
+    console.log(`Looking up stake account at address: ${userStakePda.toString()} for wallet: ${walletAddress}`);
+    
     // Fetch the user's stake data from the blockchain using our deployed contract
     let userStakeAccount;
     try {
       // Using real contract from IDL, fetch the user stake account
       userStakeAccount = await program.account.userStake.fetch(userStakePda);
       console.log('Retrieved user stake account from blockchain:', userStakeAccount);
+      
+      // Validate that the stake account belongs to the specified wallet
+      const ownerAddress = userStakeAccount.owner.toString();
+      if (ownerAddress !== walletAddress) {
+        console.warn(`Mismatch between requested wallet ${walletAddress} and stake account owner ${ownerAddress}`);
+        // If there's a mismatch, return zeros since this isn't the right account
+        return {
+          amountStaked: 0,
+          pendingRewards: 0,
+          stakedAt: new Date(),
+          lastClaimAt: null,
+          timeUntilUnlock: null,
+          estimatedAPY: 125 // Default APY
+        };
+      }
     } catch (e) {
       console.log('User has no stake account, returning default values:', e);
       // No stake account found, return zeros

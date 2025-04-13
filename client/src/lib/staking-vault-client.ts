@@ -32,6 +32,12 @@ export class StakingVaultClient {
   private tokenMint: PublicKey;
   private programId: PublicKey;
   
+  // Caching properties
+  private cachedStakingInfo: StakingInfo | null = null;
+  private cachedStakingStats: StakingStats | null = null;
+  private lastStakingInfoUpdate: number | null = null;
+  private lastStakingStatsUpdate: number | null = null;
+  
   /**
    * Constructor for StakingVaultClient
    * @param connection Solana connection
@@ -68,16 +74,20 @@ export class StakingVaultClient {
    */
   async getUserStakingInfo(forceUpdate: boolean = false): Promise<StakingInfo> {
     try {
-      console.log(`Fetching real blockchain staking info for: ${this.userWallet.toString()}, forceUpdate: ${forceUpdate}`);
+      // Always force update after cache expiration (30 seconds) or if explicitly requested
+      const now = Date.now();
+      const cacheExpired = this.lastStakingInfoUpdate && 
+        (now - this.lastStakingInfoUpdate > 30 * 1000);
+        
+      if (forceUpdate || cacheExpired || !this.cachedStakingInfo) {
+        console.log(`Fetching fresh blockchain staking info for: ${this.userWallet.toString()}`);
+      } else if (this.cachedStakingInfo) {
+        console.log("Using cached staking info from memory");
+        return this.cachedStakingInfo;
+      }
       
-      // This is a temporary approach until we fully integrate with on-chain data through
-      // our smart contract's program-derived addresses (PDAs)
-      // For now, we'll use our endpoints that already read on-chain token balances
-      
-      // Build URL with cache-busting if forceUpdate is true
-      const url = forceUpdate 
-        ? `/api/staking-info/${this.userWallet.toString()}?t=${Date.now()}` 
-        : `/api/staking-info/${this.userWallet.toString()}`;
+      // Build URL with cache-busting to always get fresh data from the server
+      const url = `/api/staking-info/${this.userWallet.toString()}?t=${Date.now()}`;
       
       // Fetch from the API that reads the actual token balances from on-chain
       console.log(`Requesting staking info from: ${url}`);
