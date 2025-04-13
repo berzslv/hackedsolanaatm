@@ -66,8 +66,9 @@ export async function getStakingVaultProgram(): Promise<any> {
     
     // Initialize the program with the IDL
     try {
-      // Get the program ID
-      const programId = new PublicKey(PROGRAM_ID);
+      // Get the program ID directly from the IDL's metadata 
+      // This ensures perfect formatting compatibility
+      const programId = new PublicKey(idl.metadata.address);
       
       console.log("Creating Anchor program with Program ID:", programId.toString());
       
