@@ -27,6 +27,7 @@ export interface StakingVaultInfo {
   stakersCount: number;
   currentAPY: number;
   stakingVaultAddress: string;
+  programId?: string; // Optional program ID for the contract
 }
 
 /**
@@ -388,37 +389,16 @@ export async function getUserStakingInfo(walletAddress: string): Promise<Staking
   } catch (error) {
     console.error('Error getting user staking info from contract:', error);
     
-    // In case of error, we use the local data calculations which are based on deterministic factors
-    // but simulate real on-chain data
-    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
-    const walletPubkey = new PublicKey(walletAddress);
-    
-    // Generate deterministic but realistic staking data from wallet address
-    const walletSeed = walletPubkey.toBuffer()[0] + walletPubkey.toBuffer()[31];
-    const amountStaked = Math.floor(100 + (walletSeed * 50));
-    const stakedDays = Math.floor(1 + (walletSeed % 7)); // 1-7 days
-    const stakedAt = new Date(Date.now() - (stakedDays * 24 * 60 * 60 * 1000));
-    const lastClaimAt = new Date(Date.now() - (Math.floor(1 + (walletSeed % 4)) * 60 * 60 * 1000)); // 1-4 hours ago
-    
-    // Calculate days left in locking period, if any
-    const lockPeriodDays = 7; // 7-day lock period
-    const daysPassed = stakedDays;
-    const daysLeft = Math.max(0, lockPeriodDays - daysPassed);
-    const timeUntilUnlock = daysLeft > 0 ? (daysLeft * 24 * 60 * 60 * 1000) : null;
-    
-    // Calculate pending rewards using a formula similar to the smart contract
-    const baseAPY = 120; // 120% APY
-    const timeStaked = Date.now() - stakedAt.getTime();
-    const timeStakedDays = timeStaked / (24 * 60 * 60 * 1000);
-    const pendingRewards = Math.floor(amountStaked * (baseAPY/100) * (timeStakedDays / 365));
+    // Return zeros if we can't find staking info for this wallet
+    console.log(`No staking info found for wallet ${walletAddress} - returning zeros`);
     
     return {
-      amountStaked,
-      pendingRewards,
-      stakedAt,
-      lastClaimAt,
-      timeUntilUnlock,
-      estimatedAPY: baseAPY + (walletSeed % 10), // Small variation in APY
+      amountStaked: 0,
+      pendingRewards: 0,
+      stakedAt: new Date(),
+      lastClaimAt: null,
+      timeUntilUnlock: null,
+      estimatedAPY: 120, // Default APY from program
     };
   }
 }
@@ -555,7 +535,8 @@ export async function getStakingVaultInfo(): Promise<StakingVaultInfo> {
       rewardPool,
       stakersCount,
       currentAPY,
-      stakingVaultAddress: stakingVaultPda.toString()
+      stakingVaultAddress: stakingVaultPda.toString(),
+      programId: stakingVaultPda.toString() // Include the program ID
     };
   } catch (error) {
     console.error('Error getting staking vault info from contract:', error);
@@ -565,12 +546,16 @@ export async function getStakingVaultInfo(): Promise<StakingVaultInfo> {
     const mintAuthority = getMintAuthority();
     const stakingVaultAddress = mintAuthority.keypair.publicKey.toString();
     
+    // Use PROGRAM_ID constant for the program ID
+    const programId = PROGRAM_ID;
+    
     return {
       totalStaked: 25000000, // 25 million HATM tokens
       rewardPool: 3750000, // 3.75 million HATM tokens reserved for rewards
       stakersCount: 9542, // Number of active stakers
       currentAPY: 125.4, // Current APY in percentage
-      stakingVaultAddress
+      stakingVaultAddress,
+      programId
     };
   }
 }

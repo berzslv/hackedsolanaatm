@@ -1162,26 +1162,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Import the staking vault utilities that interact with the smart contract
       const stakingVaultUtils = await import('./staking-vault-utils');
-      const tokenUtils = await import('./token-utils');
-      const mintAuthority = tokenUtils.getMintAuthority();
       
-      // For testing purposes, we'll use the mint authority's staking account
-      // In a production environment, we would use the actual user's wallet
-      // But for now, we need to see the data using the authority account
+      // Use the real user's wallet address - no mocking
+      console.log(`Getting staking info for actual wallet: ${walletAddress}`);
       
-      // If using the user's wallet address directly doesn't show staking data, 
-      // then temporarily use the mint authority address to show staking data
-      const mintAuthorityAddress = mintAuthority.keypair.publicKey.toString();
-      console.log(`Using mint authority address (${mintAuthorityAddress}) for staking info instead of wallet (${walletAddress})`);
+      // Get user staking information directly from the smart contract for this specific wallet
+      const userStakingInfo = await stakingVaultUtils.getUserStakingInfo(walletAddress);
       
-      // Get user staking information for the mint authority account (for testing)
-      const userStakingInfo = await stakingVaultUtils.getUserStakingInfo(mintAuthorityAddress);
+      // Get the staking vault address from the vault info
+      const vaultInfo = await stakingVaultUtils.getStakingVaultInfo();
+      const stakingVaultAddress = vaultInfo.stakingVaultAddress;
       
-      // Get the staking vault address
-      const stakingVaultAddress = mintAuthority.keypair.publicKey.toString();
-      
-      // IMPORTANT: We're temporarily showing the mint authority's staking data
-      // to all users for testing purposes. In production, each user would see their own data.
+      // Return the actual on-chain data for this user - no mocking
       const stakingResponse = {
         amountStaked: userStakingInfo.amountStaked,
         pendingRewards: userStakingInfo.pendingRewards,
@@ -1193,7 +1185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       // Add debug logging
-      console.log("Staking info for", walletAddress, "(showing mint authority's data):", JSON.stringify(stakingResponse, null, 2));
+      console.log("Real staking info for", walletAddress, ":", JSON.stringify(stakingResponse, null, 2));
       
       return res.json({
         success: true,
