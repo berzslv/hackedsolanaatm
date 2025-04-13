@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
-use solana_program::{program::invoke_signed, system_instruction};
 use std::convert::TryFrom;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
@@ -31,7 +30,7 @@ pub mod staking_vault {
         staking_vault.stakers_count = 0;
         staking_vault.current_apy_basis_points = APY_BASIS_POINTS;
         staking_vault.last_compound_time = Clock::get()?.unix_timestamp;
-        
+
         Ok(())
     }
 
@@ -48,7 +47,7 @@ pub mod staking_vault {
             to: ctx.accounts.token_vault.to_account_info(),
             authority: ctx.accounts.user.to_account_info(),
         };
-        
+
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
         token::transfer(cpi_ctx, amount)?;
@@ -61,7 +60,7 @@ pub mod staking_vault {
         let user_stake_info = &mut ctx.accounts.user_stake_info;
         if user_stake_info.amount == 0 {
             staking_vault.stakers_count = staking_vault.stakers_count.checked_add(1).ok_or(ErrorCode::MathOverflow)?;
-            
+
             // Initialize user staking account
             user_stake_info.authority = ctx.accounts.user.key();
             user_stake_info.staking_vault = staking_vault.key();
@@ -107,23 +106,23 @@ pub mod staking_vault {
         // Check if early unstake applies
         let mut unstake_amount = amount;
         let stake_duration = now.checked_sub(user_stake_info.stake_start_time).ok_or(ErrorCode::MathOverflow)?;
-        
+
         if stake_duration < MINIMUM_STAKE_DURATION {
             // Calculate early unstake fee (5%)
             let fee_amount = amount.checked_mul(EARLY_UNSTAKE_FEE_BASIS_POINTS).ok_or(ErrorCode::MathOverflow)?
                              .checked_div(10000).ok_or(ErrorCode::MathOverflow)?;
-            
+
             // Reduce the amount to be returned to the user
             unstake_amount = amount.checked_sub(fee_amount).ok_or(ErrorCode::MathOverflow)?;
-            
+
             // Keep 4% in reward pool
             let burn_portion = fee_amount.checked_mul(4).ok_or(ErrorCode::MathOverflow)?
                               .checked_div(5).ok_or(ErrorCode::MathOverflow)?;
             let marketing_portion = fee_amount.checked_sub(burn_portion).ok_or(ErrorCode::MathOverflow)?;
-            
+
             // Add burn portion to reward pool
             staking_vault.reward_pool = staking_vault.reward_pool.checked_add(burn_portion).ok_or(ErrorCode::MathOverflow)?;
-            
+
             msg!("Early unstake fee applied: {} tokens ({}%)", fee_amount, EARLY_UNSTAKE_FEE_BASIS_POINTS / 100);
             msg!("Fee breakdown: {} tokens to reward pool, {} tokens to marketing", burn_portion, marketing_portion);
         }
@@ -156,14 +155,14 @@ pub mod staking_vault {
         let staking_vault = &mut ctx.accounts.staking_vault;
         let user_stake_info = &mut ctx.accounts.user_stake_info;
         let now = Clock::get()?.unix_timestamp;
-        
+
         // Calculate pending rewards
         let pending_rewards = calculate_rewards(user_stake_info, staking_vault.current_apy_basis_points, now)?;
         require!(pending_rewards > 0, ErrorCode::NoRewardsToClaim);
-        
+
         // Update last claim time
         user_stake_info.last_claim_time = now;
-        
+
         // Transfer rewards from vault to user
         let vault_seeds = &[
             staking_vault.to_account_info().key.as_ref(),
@@ -176,11 +175,11 @@ pub mod staking_vault {
             to: ctx.accounts.user_token_account.to_account_info(),
             authority: ctx.accounts.vault_authority.to_account_info(),
         };
-        
+
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, vault_signer);
         token::transfer(cpi_ctx, pending_rewards)?;
-        
+
         msg!("Claimed {} reward tokens", pending_rewards);
         Ok(())
     }
@@ -188,22 +187,22 @@ pub mod staking_vault {
     // Add rewards to the staking pool (from buy/sell tax)
     pub fn add_rewards(ctx: Context<AddRewards>, amount: u64) -> Result<()> {
         require!(amount > 0, ErrorCode::ZeroAmount);
-        
+
         // Transfer tokens from user to vault
         let cpi_accounts = Transfer {
             from: ctx.accounts.user_token_account.to_account_info(),
             to: ctx.accounts.token_vault.to_account_info(),
             authority: ctx.accounts.user.to_account_info(),
         };
-        
+
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
         token::transfer(cpi_ctx, amount)?;
-        
+
         // Update reward pool
         let staking_vault = &mut ctx.accounts.staking_vault;
         staking_vault.reward_pool = staking_vault.reward_pool.checked_add(amount).ok_or(ErrorCode::MathOverflow)?;
-        
+
         msg!("Added {} tokens to the reward pool", amount);
         Ok(())
     }
@@ -212,18 +211,18 @@ pub mod staking_vault {
     pub fn compound_rewards(ctx: Context<CompoundRewards>) -> Result<()> {
         let staking_vault = &mut ctx.accounts.staking_vault;
         let now = Clock::get()?.unix_timestamp;
-        
+
         // Check if it's time to compound
         let time_since_last_compound = now.checked_sub(staking_vault.last_compound_time).ok_or(ErrorCode::MathOverflow)?;
         require!(time_since_last_compound >= COMPOUND_FREQUENCY, ErrorCode::TooEarlyToCompound);
-        
+
         // Update last compound time
         staking_vault.last_compound_time = now;
-        
+
         // Calculate new APY based on staking volume
         let new_apy = calculate_dynamic_apy(staking_vault.total_staked)?;
         staking_vault.current_apy_basis_points = new_apy;
-        
+
         msg!("Compounded rewards at timestamp {}", now);
         msg!("New APY set to {}%", new_apy as f64 / 100.0);
         Ok(())
@@ -236,21 +235,21 @@ fn calculate_rewards(user_stake_info: &UserStakeInfo, apy_basis_points: u64, cur
     if user_stake_info.amount == 0 {
         return Ok(0);
     }
-    
+
     // Calculate time since last claim (in seconds)
     let time_since_last_claim = current_time.checked_sub(user_stake_info.last_claim_time)
         .ok_or(ErrorCode::MathOverflow)?
         .max(0); // Ensure non-negative
-    
+
     // Calculate rewards per second
     let rewards_per_second = user_stake_info.amount
         .checked_mul(apy_basis_points).ok_or(ErrorCode::MathOverflow)?
         .checked_div(REWARDS_PER_SECOND_DENOMINATOR).ok_or(ErrorCode::MathOverflow)?;
-    
+
     // Calculate total rewards
     let rewards = rewards_per_second
         .checked_mul(time_since_last_claim as u64).ok_or(ErrorCode::MathOverflow)?;
-    
+
     Ok(rewards)
 }
 
@@ -259,25 +258,25 @@ fn calculate_dynamic_apy(total_staked: u64) -> Result<u64> {
     if total_staked == 0 {
         return Ok(APY_BASIS_POINTS); // Default APY
     }
-    
+
     // Total staked in millions (with 1 decimal place precision)
     let total_staked_millions = total_staked
         .checked_div(100000).ok_or(ErrorCode::MathOverflow)?; // Divide by 1M / 10
-    
+
     // Base APY: 125%
     let base_apy = 12500u64;
-    
+
     // Reduction factor: 0.5% per 1M tokens staked
     let reduction = total_staked_millions
         .checked_mul(50).ok_or(ErrorCode::MathOverflow)?; // 0.5% = 50 basis points
-    
+
     // Calculate new APY (minimum 50%)
     let new_apy = if reduction >= base_apy {
         5000u64 // Minimum 50% APY
     } else {
         base_apy.checked_sub(reduction).ok_or(ErrorCode::MathOverflow)?
     };
-    
+
     Ok(new_apy)
 }
 
@@ -286,30 +285,30 @@ fn calculate_dynamic_apy(total_staked: u64) -> Result<u64> {
 pub struct Initialize<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
-    
+
     #[account(
         init,
         payer = authority,
         space = 8 + StakingVault::LEN
     )]
     pub staking_vault: Account<'info, StakingVault>,
-    
+
     pub token_mint: Account<'info, Mint>,
-    
+
     #[account(
         mut,
         constraint = token_vault.mint == token_mint.key(),
         constraint = token_vault.owner == vault_authority.key(),
     )]
     pub token_vault: Account<'info, TokenAccount>,
-    
+
     /// CHECK: PDA used to sign token transfers
     #[account(
         seeds = [staking_vault.key().as_ref()],
         bump = vault_authority_bump,
     )]
     pub vault_authority: UncheckedAccount<'info>,
-    
+
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -318,14 +317,14 @@ pub struct Initialize<'info> {
 pub struct Stake<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    
+
     #[account(
         mut,
         has_one = token_mint,
         has_one = token_vault,
     )]
     pub staking_vault: Account<'info, StakingVault>,
-    
+
     #[account(
         init_if_needed,
         payer = user,
@@ -334,22 +333,22 @@ pub struct Stake<'info> {
         bump,
     )]
     pub user_stake_info: Account<'info, UserStakeInfo>,
-    
+
     pub token_mint: Account<'info, Mint>,
-    
+
     #[account(
         mut,
         constraint = token_vault.mint == token_mint.key(),
     )]
     pub token_vault: Account<'info, TokenAccount>,
-    
+
     #[account(
         mut,
         constraint = user_token_account.mint == token_mint.key(),
         constraint = user_token_account.owner == user.key(),
     )]
     pub user_token_account: Account<'info, TokenAccount>,
-    
+
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -358,45 +357,45 @@ pub struct Stake<'info> {
 pub struct Unstake<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    
+
     #[account(
         mut,
         has_one = token_mint,
         has_one = token_vault,
     )]
     pub staking_vault: Account<'info, StakingVault>,
-    
+
     #[account(
         mut,
         seeds = [b"user-stake", staking_vault.key().as_ref(), user.key().as_ref()],
         bump,
-        has_one = authority @ ErrorCode::Unauthorized,
+        constraint = user_stake_info.authority == user.key() @ ErrorCode::Unauthorized,
         has_one = staking_vault,
     )]
     pub user_stake_info: Account<'info, UserStakeInfo>,
-    
+
     pub token_mint: Account<'info, Mint>,
-    
+
     #[account(
         mut,
         constraint = token_vault.mint == token_mint.key(),
     )]
     pub token_vault: Account<'info, TokenAccount>,
-    
+
     #[account(
         mut,
         constraint = user_token_account.mint == token_mint.key(),
         constraint = user_token_account.owner == user.key(),
     )]
     pub user_token_account: Account<'info, TokenAccount>,
-    
+
     /// CHECK: PDA used to sign token transfers
     #[account(
         seeds = [staking_vault.key().as_ref()],
         bump = staking_vault.vault_authority_bump,
     )]
     pub vault_authority: UncheckedAccount<'info>,
-    
+
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -405,45 +404,45 @@ pub struct Unstake<'info> {
 pub struct ClaimRewards<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    
+
     #[account(
         mut,
         has_one = token_mint,
         has_one = token_vault,
     )]
     pub staking_vault: Account<'info, StakingVault>,
-    
+
     #[account(
         mut,
         seeds = [b"user-stake", staking_vault.key().as_ref(), user.key().as_ref()],
         bump,
-        has_one = authority @ ErrorCode::Unauthorized,
+        constraint = user_stake_info.authority == user.key() @ ErrorCode::Unauthorized,
         has_one = staking_vault,
     )]
     pub user_stake_info: Account<'info, UserStakeInfo>,
-    
+
     pub token_mint: Account<'info, Mint>,
-    
+
     #[account(
         mut,
         constraint = token_vault.mint == token_mint.key(),
     )]
     pub token_vault: Account<'info, TokenAccount>,
-    
+
     #[account(
         mut,
         constraint = user_token_account.mint == token_mint.key(),
         constraint = user_token_account.owner == user.key(),
     )]
     pub user_token_account: Account<'info, TokenAccount>,
-    
+
     /// CHECK: PDA used to sign token transfers
     #[account(
         seeds = [staking_vault.key().as_ref()],
         bump = staking_vault.vault_authority_bump,
     )]
     pub vault_authority: UncheckedAccount<'info>,
-    
+
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -452,25 +451,25 @@ pub struct ClaimRewards<'info> {
 pub struct AddRewards<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    
+
     #[account(mut)]
     pub staking_vault: Account<'info, StakingVault>,
-    
+
     pub token_mint: Account<'info, Mint>,
-    
+
     #[account(
         mut,
         constraint = token_vault.mint == token_mint.key(),
     )]
     pub token_vault: Account<'info, TokenAccount>,
-    
+
     #[account(
         mut,
         constraint = user_token_account.mint == token_mint.key(),
         constraint = user_token_account.owner == user.key(),
     )]
     pub user_token_account: Account<'info, TokenAccount>,
-    
+
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -479,10 +478,10 @@ pub struct AddRewards<'info> {
 pub struct CompoundRewards<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    
+
     #[account(mut)]
     pub staking_vault: Account<'info, StakingVault>,
-    
+
     pub system_program: Program<'info, System>,
 }
 
@@ -520,19 +519,19 @@ impl UserStakeInfo {
 pub enum ErrorCode {
     #[msg("Amount must be greater than zero")]
     ZeroAmount,
-    
+
     #[msg("Arithmetic operation overflow")]
     MathOverflow,
-    
+
     #[msg("Insufficient staked amount")]
     InsufficientStakedAmount,
-    
+
     #[msg("No rewards to claim")]
     NoRewardsToClaim,
-    
+
     #[msg("Too early to compound rewards")]
     TooEarlyToCompound,
-    
+
     #[msg("Unauthorized")]
     Unauthorized,
 }
