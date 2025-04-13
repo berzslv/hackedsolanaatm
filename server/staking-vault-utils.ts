@@ -79,7 +79,7 @@ export async function getStakingVaultProgram(): Promise<any> {
         // In Anchor 0.26.0 the constructor looks like: Program(idl, address, provider)
         const program = new Program(
           idl,
-          programId.toString(),  // Program ID as string
+          programId,  // Program ID as PublicKey
           provider
         );
         
@@ -256,13 +256,31 @@ export async function getUserStakingInfo(walletAddress: string): Promise<Staking
     // Convert BN or BN-like objects properly
     let amountStakedBN;
     try {
+      console.log("RAW amountStaked:", JSON.stringify(userStakeAccount.amountStaked));
+      
       // Try to handle as BN or convert from BN-like object
       if (userStakeAccount.amountStaked && typeof userStakeAccount.amountStaked === 'object') {
-        console.log("RAW amountStaked", userStakeAccount.amountStaked);
-        amountStakedBN = new BN(userStakeAccount.amountStaked.toString());
+        // Check for specific properties of BN objects
+        if (userStakeAccount.amountStaked._bn) {
+          // For serialized BN objects
+          console.log("Found BN._bn property:", userStakeAccount.amountStaked._bn);
+          amountStakedBN = new BN(userStakeAccount.amountStaked._bn);
+        } else if (userStakeAccount.amountStaked.words) {
+          // For BN objects from @coral-xyz/anchor
+          console.log("Found BN.words property:", userStakeAccount.amountStaked.words);
+          amountStakedBN = new BN(userStakeAccount.amountStaked);
+        } else {
+          // Generic object conversion
+          console.log("Using generic toString conversion for object");
+          amountStakedBN = new BN(userStakeAccount.amountStaked.toString());
+        }
       } else {
+        // Number or string conversion
+        console.log("Using simple conversion for primitive value:", userStakeAccount.amountStaked);
         amountStakedBN = new BN(userStakeAccount.amountStaked || 0);
       }
+      
+      console.log("Converted amountStakedBN:", amountStakedBN.toString());
     } catch (e) {
       console.error("Error converting amountStaked to BN:", e);
       amountStakedBN = new BN(0); // Fallback value
@@ -270,13 +288,31 @@ export async function getUserStakingInfo(walletAddress: string): Promise<Staking
     
     let stakedAtBN;
     try {
+      console.log("RAW stakedAt:", JSON.stringify(userStakeAccount.stakedAt));
+      
       // Try to handle as BN or convert from BN-like object
       if (userStakeAccount.stakedAt && typeof userStakeAccount.stakedAt === 'object') {
-        console.log("RAW stakedAt", userStakeAccount.stakedAt);
-        stakedAtBN = new BN(userStakeAccount.stakedAt.toString());
+        // Check for specific properties of BN objects
+        if (userStakeAccount.stakedAt._bn) {
+          // For serialized BN objects
+          console.log("Found BN._bn property:", userStakeAccount.stakedAt._bn);
+          stakedAtBN = new BN(userStakeAccount.stakedAt._bn);
+        } else if (userStakeAccount.stakedAt.words) {
+          // For BN objects from @coral-xyz/anchor
+          console.log("Found BN.words property:", userStakeAccount.stakedAt.words);
+          stakedAtBN = new BN(userStakeAccount.stakedAt);
+        } else {
+          // Generic object conversion
+          console.log("Using generic toString conversion for object");
+          stakedAtBN = new BN(userStakeAccount.stakedAt.toString());
+        }
       } else {
+        // Number or string conversion
+        console.log("Using simple conversion for primitive value:", userStakeAccount.stakedAt);
         stakedAtBN = new BN(userStakeAccount.stakedAt || Math.floor(Date.now() / 1000));
       }
+      
+      console.log("Converted stakedAtBN:", stakedAtBN.toString());
     } catch (e) {
       console.error("Error converting stakedAt to BN:", e);
       stakedAtBN = new BN(Math.floor(Date.now() / 1000)); // Fallback to current time
@@ -284,13 +320,31 @@ export async function getUserStakingInfo(walletAddress: string): Promise<Staking
     
     let lastClaimAtBN;
     try {
+      console.log("RAW lastClaimAt:", JSON.stringify(userStakeAccount.lastClaimAt));
+      
       // Try to handle as BN or convert from BN-like object
       if (userStakeAccount.lastClaimAt && typeof userStakeAccount.lastClaimAt === 'object') {
-        console.log("RAW lastClaimAt", userStakeAccount.lastClaimAt);
-        lastClaimAtBN = new BN(userStakeAccount.lastClaimAt.toString());
+        // Check for specific properties of BN objects
+        if (userStakeAccount.lastClaimAt._bn) {
+          // For serialized BN objects
+          console.log("Found BN._bn property:", userStakeAccount.lastClaimAt._bn);
+          lastClaimAtBN = new BN(userStakeAccount.lastClaimAt._bn);
+        } else if (userStakeAccount.lastClaimAt.words) {
+          // For BN objects from @coral-xyz/anchor
+          console.log("Found BN.words property:", userStakeAccount.lastClaimAt.words);
+          lastClaimAtBN = new BN(userStakeAccount.lastClaimAt);
+        } else {
+          // Generic object conversion
+          console.log("Using generic toString conversion for object");
+          lastClaimAtBN = new BN(userStakeAccount.lastClaimAt.toString());
+        }
       } else {
+        // Number or string conversion
+        console.log("Using simple conversion for primitive value:", userStakeAccount.lastClaimAt);
         lastClaimAtBN = new BN(userStakeAccount.lastClaimAt || 0);
       }
+      
+      console.log("Converted lastClaimAtBN:", lastClaimAtBN.toString());
     } catch (e) {
       console.error("Error converting lastClaimAt to BN:", e);
       lastClaimAtBN = new BN(0); // Fallback value
@@ -422,12 +476,31 @@ export async function getStakingVaultInfo(): Promise<StakingVaultInfo> {
     // Convert BN-like objects to proper BN instances if needed
     let totalStakedBN;
     try {
+      console.log("Raw totalStaked value:", JSON.stringify(stakingVaultAccount.totalStaked));
+      
       // Try to handle as BN or convert from BN-like object
       if (stakingVaultAccount.totalStaked && typeof stakingVaultAccount.totalStaked === 'object') {
-        totalStakedBN = new BN(stakingVaultAccount.totalStaked.toString());
+        // Check for specific properties of BN objects
+        if (stakingVaultAccount.totalStaked._bn) {
+          // For serialized BN objects
+          console.log("Found BN._bn property:", stakingVaultAccount.totalStaked._bn);
+          totalStakedBN = new BN(stakingVaultAccount.totalStaked._bn);
+        } else if (stakingVaultAccount.totalStaked.words) {
+          // For BN objects from @coral-xyz/anchor
+          console.log("Found BN.words property:", stakingVaultAccount.totalStaked.words);
+          totalStakedBN = new BN(stakingVaultAccount.totalStaked);
+        } else {
+          // Generic object conversion
+          console.log("Using generic toString conversion for object");
+          totalStakedBN = new BN(stakingVaultAccount.totalStaked.toString());
+        }
       } else {
+        // Number or string conversion
+        console.log("Using simple conversion for primitive value:", stakingVaultAccount.totalStaked);
         totalStakedBN = new BN(stakingVaultAccount.totalStaked || 0);
       }
+      
+      console.log("Converted totalStakedBN:", totalStakedBN.toString());
     } catch (e) {
       console.error("Error converting totalStaked to BN:", e);
       totalStakedBN = new BN(100000); // Fallback value
@@ -435,12 +508,31 @@ export async function getStakingVaultInfo(): Promise<StakingVaultInfo> {
     
     let rewardPoolBN;
     try {
+      console.log("Raw rewardPool value:", JSON.stringify(stakingVaultAccount.rewardPool));
+      
       // Try to handle as BN or convert from BN-like object
       if (stakingVaultAccount.rewardPool && typeof stakingVaultAccount.rewardPool === 'object') {
-        rewardPoolBN = new BN(stakingVaultAccount.rewardPool.toString());
+        // Check for specific properties of BN objects
+        if (stakingVaultAccount.rewardPool._bn) {
+          // For serialized BN objects
+          console.log("Found BN._bn property:", stakingVaultAccount.rewardPool._bn);
+          rewardPoolBN = new BN(stakingVaultAccount.rewardPool._bn);
+        } else if (stakingVaultAccount.rewardPool.words) {
+          // For BN objects from @coral-xyz/anchor
+          console.log("Found BN.words property:", stakingVaultAccount.rewardPool.words);
+          rewardPoolBN = new BN(stakingVaultAccount.rewardPool);
+        } else {
+          // Generic object conversion
+          console.log("Using generic toString conversion for object");
+          rewardPoolBN = new BN(stakingVaultAccount.rewardPool.toString());
+        }
       } else {
+        // Number or string conversion
+        console.log("Using simple conversion for primitive value:", stakingVaultAccount.rewardPool);
         rewardPoolBN = new BN(stakingVaultAccount.rewardPool || 0);
       }
+      
+      console.log("Converted rewardPoolBN:", rewardPoolBN.toString());
     } catch (e) {
       console.error("Error converting rewardPool to BN:", e);
       rewardPoolBN = new BN(50000); // Fallback value
