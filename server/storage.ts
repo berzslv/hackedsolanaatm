@@ -895,4 +895,5 @@ export class DatabaseStorage implements IStorage {
 }
 
 // Use DatabaseStorage for persistence
-export const storage = new DatabaseStorage();
+// Now using MemStorage instead of DatabaseStorage since all data is stored on-chain
+export const storage = new MemStorage();
