@@ -75,7 +75,7 @@ export async function getStakingVaultProgram(): Promise<any> {
       
       try {
         // Create the program with proper error handling
-        const program = new Program(idl, programId.toString(), provider);
+        const program = new Program(idl, programId, provider);
         
         // Basic validation to ensure we have the expected structure
         if (!program || !program.account) {

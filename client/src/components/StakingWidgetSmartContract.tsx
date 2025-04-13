@@ -300,6 +300,11 @@ const StakingWidgetSmartContract: React.FC = () => {
       setTimeout(async () => {
         try {
           console.log("Refreshing data after claiming rewards...");
+          // Force refresh vault client data directly
+          if (stakingClient) {
+            await stakingClient.forceRefreshAllData();
+          }
+          // Then refresh the context data
           await refreshAllData(true);
           console.log("Data refresh complete after claiming rewards");
         } catch (error) {
