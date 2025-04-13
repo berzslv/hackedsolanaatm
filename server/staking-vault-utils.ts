@@ -1,9 +1,7 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 import { Program } from '@coral-xyz/anchor';
-// import BN from 'bn.js';
-
-import { BN } from '@coral-xyz/anchor';
+// Using native BigInt instead of BN.js for numerical values
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -95,10 +93,10 @@ export async function getStakingVaultProgram(): Promise<any> {
         console.log("Successfully created Anchor program");
         return program;
       } catch (e) {
-        // If we encounter the specific error, create a program object manually
-        console.error("Error creating program with Anchor, creating manual program", e);
+        // If we encounter the specific error, create a manual program implementation
+        console.error("Error creating program with Anchor, using manual implementation", e);
 
-        // Create a compatible program object with basic functionality
+        // Create a simplified program object without BN dependencies
         return {
           programId,
           provider,
@@ -106,7 +104,8 @@ export async function getStakingVaultProgram(): Promise<any> {
           account: {
             stakingVault: {
               fetch: async () => {
-                // Return a basic compatible object
+                console.log("Using manual stakingVault.fetch implementation with BigInt");
+                // Return a compatible object using BigInt instead of BN
                 return {
                   authority: provider.publicKey,
                   tokenMint: new PublicKey(TOKEN_MINT_ADDRESS),
@@ -118,6 +117,7 @@ export async function getStakingVaultProgram(): Promise<any> {
                 };
               },
               all: async () => {
+                console.log("Using manual stakingVault.all implementation with BigInt");
                 return [{
                   publicKey: programId,
                   account: {
@@ -133,8 +133,9 @@ export async function getStakingVaultProgram(): Promise<any> {
               }
             },
             userStake: {
-              fetch: async () => {
-                // Return a basic user stake account
+              fetch: async (userPda) => {
+                console.log("Using manual userStake.fetch implementation with BigInt for:", userPda?.toString());
+                // Return a basic user stake account with BigInt values
                 return {
                   owner: provider.publicKey,
                   amountStaked: BigInt(1000),

@@ -1,5 +1,5 @@
 import { Connection, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
-import BN from 'bn.js';
+// Using native BigInt instead of BN.js
 
 /**
  * Interface for user staking information
