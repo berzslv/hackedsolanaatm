@@ -210,8 +210,26 @@ export class StakingVaultClient {
     try {
       console.log('Fetching real token data from blockchain');
       
-      // Fetch global stats from the token analytics endpoint
-      // This endpoint reads actual token data from the blockchain
+      // First try to get the staking stats directly from the blockchain
+      const statsResponse = await fetch('/api/staking-stats');
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        console.log("Staking stats from blockchain:", statsData);
+        
+        // These are real stats directly from the blockchain
+        if (statsData && statsData.totalStaked !== undefined) {
+          const realVaultData = {
+            totalStaked: Number(statsData.totalStaked) || 0,
+            stakersCount: Number(statsData.stakersCount) || 0,
+            rewardPool: Number(statsData.rewardPool) || 0
+          };
+          
+          console.log("Real vault data from blockchain:", realVaultData);
+          return realVaultData;
+        }
+      }
+      
+      // Fallback to fetching from token-stats if staking-stats fails
       const response = await fetch('/api/token-stats');
       if (!response.ok) {
         throw new Error('Failed to fetch token statistics');
@@ -225,9 +243,9 @@ export class StakingVaultClient {
       
       // Use real stats with some calculated values
       const vaultData = {
-        totalStaked: stats.totalStaked || 345221, // Use real total staked or fallback
-        stakersCount: stats.stakersCount || 86,    // Use real stakers count or fallback
-        rewardPool: stats.rewardPool || 24875     // Use real reward pool or fallback
+        totalStaked: Number(stats.totalStaked) || 0,
+        stakersCount: Number(stats.stakersCount) || 0,
+        rewardPool: Number(stats.rewardPool) || 0
       };
       
       console.log("Vault data from blockchain:", vaultData);
