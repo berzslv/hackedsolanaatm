@@ -74,8 +74,8 @@ export async function getStakingVaultProgram(): Promise<any> {
       console.log("Creating Anchor program with Program ID:", programId.toString());
       
       try {
-        // Create the program with proper error handling - pass the provider first, then programId
-        const program = new Program(idl, provider, programId);
+        // Create the program with proper error handling
+        const program = new Program(idl, programId.toString(), provider);
         
         // Basic validation to ensure we have the expected structure
         if (!program || !program.account) {
