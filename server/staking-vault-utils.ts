@@ -76,15 +76,15 @@ export async function getStakingVaultProgram(): Promise<any> {
       try {
         // This is the correct way to create a program 
         // new Program(idl, programId, provider)
-        return new Program(
+        const program = new Program(
           idl,
           programId,
           provider
         );
         
         // Basic validation to ensure we have the expected structure
-        if (!program || !program.account) {
-          throw new Error("Invalid program object created - missing account property");
+        if (!program) {
+          throw new Error("Invalid program object created");
         }
         
         console.log("Successfully created Anchor program");
