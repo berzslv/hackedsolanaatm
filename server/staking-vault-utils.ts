@@ -80,24 +80,39 @@ export async function getStakingVaultProgram(): Promise<any> {
         // Convert program ID string to PublicKey
         const programPublicKey = new PublicKey(programId.toString());
 
-        // Create the program with proper PublicKey handling
+        // Create the program with simpler type handling
         const program = new Program(
           idl,
           programPublicKey,
           provider,
           undefined,
           (value) => {
-            if (typeof value === 'object') {
-              if (value instanceof PublicKey) {
+            if (!value) return value;
+            
+            // Handle PublicKey instances
+            if (value instanceof PublicKey) {
+              return value;
+            }
+            
+            // Handle string representations of public keys
+            if (typeof value === 'string' && value.length === 44) {
+              try {
+                return new PublicKey(value);
+              } catch (e) {
                 return value;
               }
-              if (value._bn) {
-                return new anchor.BN(value._bn.toString());
+            }
+            
+            // Handle BN-like objects more carefully
+            if (typeof value === 'object') {
+              if (value.type === 'BigNumber' || value._hex) {
+                return new anchor.BN(value.toString());
               }
-              if (value.toBase58) {
-                return new PublicKey(value.toBase58());
+              if (value.toNumber) {
+                return new anchor.BN(value.toNumber().toString());
               }
             }
+            
             return value;
           }
         );
