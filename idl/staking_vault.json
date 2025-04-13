@@ -6,21 +6,12 @@
       "name": "initialize",
       "accounts": [
         {
-          "name": "stakingVault",
+          "name": "authority",
           "isMut": true,
-          "isSigner": false,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "type": "string",
-                "value": "staking-vault"
-              }
-            ]
-          }
+          "isSigner": true
         },
         {
-          "name": "authority",
+          "name": "stakingVault",
           "isMut": true,
           "isSigner": true
         },
@@ -35,6 +26,11 @@
           "isSigner": false
         },
         {
+          "name": "vaultAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
@@ -43,17 +39,12 @@
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
         }
       ],
       "args": [
         {
-          "name": "rewardPoolAmount",
-          "type": "u64"
+          "name": "vaultBump",
+          "type": "u8"
         },
         {
           "name": "initialApyBasisPoints",
@@ -65,42 +56,19 @@
       "name": "stake",
       "accounts": [
         {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "stakingVault",
           "isMut": true,
-          "isSigner": false,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "type": "string",
-                "value": "staking-vault"
-              }
-            ]
-          }
+          "isSigner": false
         },
         {
           "name": "userStake",
           "isMut": true,
-          "isSigner": false,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "type": "string",
-                "value": "user-stake"
-              },
-              {
-                "kind": "account",
-                "type": "publicKey",
-                "path": "user"
-              }
-            ]
-          }
-        },
-        {
-          "name": "user",
-          "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "userTokenAccount",
@@ -119,11 +87,6 @@
         },
         {
           "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
           "isMut": false,
           "isSigner": false
         }
@@ -139,42 +102,19 @@
       "name": "unstake",
       "accounts": [
         {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "stakingVault",
           "isMut": true,
-          "isSigner": false,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "type": "string",
-                "value": "staking-vault"
-              }
-            ]
-          }
+          "isSigner": false
         },
         {
           "name": "userStake",
           "isMut": true,
-          "isSigner": false,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "type": "string",
-                "value": "user-stake"
-              },
-              {
-                "kind": "account",
-                "type": "publicKey",
-                "path": "user"
-              }
-            ]
-          }
-        },
-        {
-          "name": "user",
-          "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "userTokenAccount",
@@ -184,6 +124,11 @@
         {
           "name": "tokenVault",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAuthority",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -201,6 +146,10 @@
         {
           "name": "amount",
           "type": "u64"
+        },
+        {
+          "name": "vaultBump",
+          "type": "u8"
         }
       ]
     },
@@ -208,42 +157,19 @@
       "name": "claimRewards",
       "accounts": [
         {
+          "name": "user",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
           "name": "stakingVault",
           "isMut": true,
-          "isSigner": false,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "type": "string",
-                "value": "staking-vault"
-              }
-            ]
-          }
+          "isSigner": false
         },
         {
           "name": "userStake",
           "isMut": true,
-          "isSigner": false,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "type": "string",
-                "value": "user-stake"
-              },
-              {
-                "kind": "account",
-                "type": "publicKey",
-                "path": "user"
-              }
-            ]
-          }
-        },
-        {
-          "name": "user",
-          "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "userTokenAccount",
@@ -253,6 +179,11 @@
         {
           "name": "tokenVault",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAuthority",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -266,35 +197,67 @@
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "vaultBump",
+          "type": "u8"
+        }
+      ]
     },
     {
       "name": "updateApy",
       "accounts": [
         {
-          "name": "stakingVault",
-          "isMut": true,
-          "isSigner": false,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "type": "string",
-                "value": "staking-vault"
-              }
-            ]
-          }
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true
         },
         {
-          "name": "authority",
+          "name": "stakingVault",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         }
       ],
       "args": [
         {
           "name": "newApyBasisPoints",
           "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "addToRewardPool",
+      "accounts": [
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "stakingVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "adminTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
         }
       ]
     }
@@ -379,6 +342,6 @@
     }
   ],
   "metadata": {
-    "address": "2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap"
+    "address": "EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm"
   }
 }

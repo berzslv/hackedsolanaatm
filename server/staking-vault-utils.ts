@@ -6,7 +6,7 @@ import * as path from 'path';
 import { getMintAuthority } from './token-utils';
 
 // Program information
-const PROGRAM_ID = '2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap'; // From Anchor.toml configuration
+const PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm'; // Your deployed program from Solana Playground
 const TOKEN_MINT_ADDRESS = '12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5';
 
 // Models for staking data
