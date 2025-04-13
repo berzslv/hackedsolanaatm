@@ -19,6 +19,7 @@ default = []
 anchor-lang = { workspace = true }
 anchor-spl = { workspace = true }
 solana-program = { workspace = true }
+solana-address-lookup-table-interface = { version = "1.16.18", features = ["full"] }
 spl-token = { workspace = true }
 spl-associated-token-account = { workspace = true }
 thiserror = { workspace = true }

@@ -18,13 +18,7 @@ export const SolanaWalletProvider: FC<{ children: React.ReactNode }> = ({ childr
   const network = 'mainnet-beta' as WalletAdapterNetwork;
   
   // Get connection endpoint for the network
-  const endpoint = useMemo(() => 
-    clusterApiUrl(network, {
-      commitment: 'confirmed',
-      wsEndpoint: clusterApiUrl(network).replace('https', 'wss')
-    }), 
-    [network]
-  );
+  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
   
   // Initialize wallet adapters
   const wallets = useMemo(
