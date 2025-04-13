@@ -43,8 +43,8 @@ export class StakingVaultClient {
     this.userWallet = userWallet;
     this.tokenMint = new PublicKey(tokenMint);
     
-    // Program ID from Anchor.toml
-    this.programId = new PublicKey('Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS');
+    // Program ID of the deployed contract
+    this.programId = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
   }
   
   /**

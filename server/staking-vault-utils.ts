@@ -30,7 +30,7 @@ export interface StakingVaultInfo {
 /**
  * Get the Anchor Program for the Staking Vault
  */
-export async function getStakingVaultProgram(): Promise<Program> {
+export async function getStakingVaultProgram(): Promise<any> {
   try {
     // Connect to Solana devnet
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
@@ -52,180 +52,38 @@ export async function getStakingVaultProgram(): Promise<Program> {
     // Try to read IDL from multiple possible locations
     let idl;
     try {
-      // Try different possible locations for the IDL file
-      const possiblePaths = [
-        './target/idl/staking_vault.json',
-        './target/types/staking_vault.json',
-        './staking_vault.json',
-        './programs/staking-vault/staking_vault.json',
-        './idl/staking_vault.json'  // Special directory for you to add your own IDL
-      ];
-      
-      let idlFile = null;
-      let loadedPath = null;
-      
-      for (const idlPath of possiblePaths) {
-        try {
-          const resolvedPath = path.resolve(idlPath);
-          idlFile = fs.readFileSync(resolvedPath, 'utf8');
-          loadedPath = resolvedPath;
-          break;
-        } catch (err) {
-          // Continue to the next path
-        }
-      }
-      
-      if (idlFile) {
-        console.log(`Successfully loaded IDL from ${loadedPath}`);
-        idl = JSON.parse(idlFile);
-      } else {
-        throw new Error("Could not find IDL file in any of the expected locations");
-      }
+      // Use the IDL file we created for your deployed contract
+      const idlPath = './idl/staking_vault.json';
+      const resolvedPath = path.resolve(idlPath);
+      console.log(`Trying to load IDL from ${resolvedPath}`);
+      const idlFile = fs.readFileSync(resolvedPath, 'utf8');
+      console.log(`Successfully loaded IDL from ${resolvedPath}`);
+      idl = JSON.parse(idlFile);
     } catch (e) {
-      console.warn("Could not load staking vault IDL from file, using placeholder:", e);
-      // Create a placeholder IDL
-      idl = {
-        version: '0.1.0',
-        name: 'staking_vault',
-        instructions: [
-          {
-            name: 'initialize',
-            accounts: [],
-            args: []
-          },
-          {
-            name: 'stake',
-            accounts: [],
-            args: []
-          },
-          {
-            name: 'unstake',
-            accounts: [],
-            args: []
-          },
-          {
-            name: 'claimRewards',
-            accounts: [],
-            args: []
-          }
-        ],
-        accounts: [
-          {
-            name: 'stakingVault',
-            type: {
-              kind: 'struct',
-              fields: [
-                {
-                  name: 'authority',
-                  type: 'publicKey'
-                },
-                {
-                  name: 'tokenMint',
-                  type: 'publicKey'
-                },
-                {
-                  name: 'tokenVault',
-                  type: 'publicKey'
-                },
-                {
-                  name: 'totalStaked',
-                  type: 'u64'
-                },
-                {
-                  name: 'rewardPool',
-                  type: 'u64'
-                },
-                {
-                  name: 'stakersCount',
-                  type: 'u32'
-                },
-                {
-                  name: 'currentApyBasisPoints',
-                  type: 'u32'
-                }
-              ]
-            }
-          },
-          {
-            name: 'userStake',
-            type: {
-              kind: 'struct',
-              fields: [
-                {
-                  name: 'owner',
-                  type: 'publicKey'
-                },
-                {
-                  name: 'amountStaked',
-                  type: 'u64'
-                },
-                {
-                  name: 'stakedAt',
-                  type: 'i64'
-                },
-                {
-                  name: 'lastClaimAt',
-                  type: 'i64'
-                }
-              ]
-            }
-          }
-        ]
-      };
+      console.error("Failed to load IDL file:", e);
+      throw new Error("Could not load IDL file for the staking vault");
     }
     
     // Initialize the program with the IDL
     try {
-      // Here we're setting up the program with the IDL you've provided
+      // Get the program ID
       const programId = new PublicKey(PROGRAM_ID);
       
       console.log("Creating Anchor program with Program ID:", programId.toString());
-      // Using the real IDL structure that matches your deployed contract
-      return new Program(idl, programId, provider);
+      
+      // Create and return the program
+      const program = new Program(idl, programId, provider);
+      
+      // Basic validation to ensure we have the expected structure
+      if (!program || !program.account) {
+        throw new Error("Invalid program object created - missing account property");
+      }
+      
+      console.log("Successfully created Anchor program");
+      return program;
     } catch (error) {
       console.error('Error creating program:', error);
-      
-      // If there's an error, we'll still create a Program object but with enhanced type casting
-      // to ensure we have the expected interface
-      const program = new Program(idl, new PublicKey(PROGRAM_ID), provider);
-      
-      // Enhance the program with specific account types matching our IDL structure
-      return {
-        ...program,
-        account: {
-          ...program.account,
-          stakingVault: {
-            ...program.account.stakingVault,
-            fetch: async (address: PublicKey) => {
-              try {
-                return await program.account.stakingVault.fetch(address);
-              } catch (e) {
-                console.error('Error fetching stakingVault account:', e);
-                throw e;
-              }
-            },
-            all: async () => {
-              try {
-                return await program.account.stakingVault.all();
-              } catch (e) {
-                console.error('Error fetching all stakingVault accounts:', e);
-                return [];
-              }
-            }
-          },
-          userStake: {
-            ...program.account.userStake,
-            fetch: async (address: PublicKey) => {
-              try {
-                return await program.account.userStake.fetch(address);
-              } catch (e) {
-                console.error('Error fetching userStake account:', e);
-                throw e;
-              }
-            }
-          }
-        }
-      } as unknown as Program;
+      throw error;
     }
   } catch (error) {
     console.error('Failed to initialize staking vault program:', error);
