@@ -4,9 +4,8 @@ seeds = false
 skip-lint = false
 
 [programs.devnet]
-# This is where the deployed program ID will go once you deploy to devnet/mainnet
-# It's currently set to our mint authority which simulates a program ID
-staking_vault = "2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap"
+# Using the deployed program ID from Solana Playground
+staking_vault = "EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm"
 referral_tracker = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk"
 
 [programs.localnet]
