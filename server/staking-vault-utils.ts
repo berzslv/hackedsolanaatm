@@ -89,30 +89,34 @@ export async function getStakingVaultProgram(): Promise<any> {
           (value) => {
             if (!value) return value;
             
-            // Handle PublicKey instances
             if (value instanceof PublicKey) {
               return value;
             }
-            
-            // Handle string representations of public keys
+
+            if (typeof value === 'object') {
+              // Handle BN objects
+              if (value._bn) {
+                return new anchor.BN(value._bn);
+              }
+              // Handle raw numbers
+              if (typeof value.toNumber === 'function') {
+                return new anchor.BN(value.toNumber());
+              }
+              // Handle hex strings
+              if (value._hex) {
+                return new anchor.BN(value._hex.slice(2), 16);
+              }
+            }
+
+            // Handle string public keys
             if (typeof value === 'string' && value.length === 44) {
               try {
                 return new PublicKey(value);
-              } catch (e) {
+              } catch {
                 return value;
               }
             }
-            
-            // Handle BN-like objects more carefully
-            if (typeof value === 'object') {
-              if (value.type === 'BigNumber' || value._hex) {
-                return new anchor.BN(value.toString());
-              }
-              if (value.toNumber) {
-                return new anchor.BN(value.toNumber().toString());
-              }
-            }
-            
+
             return value;
           }
         );
