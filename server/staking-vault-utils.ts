@@ -2,6 +2,9 @@ import * as anchor from '@coral-xyz/anchor';
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 import { Program } from '@coral-xyz/anchor';
 // import BN from 'bn.js';
+
+import { BN } from '@coral-xyz/anchor';
+
 import * as fs from 'fs';
 import * as path from 'path';
 import { getMintAuthority } from './token-utils';
@@ -77,18 +80,23 @@ export async function getStakingVaultProgram(): Promise<any> {
         // Convert program ID string to PublicKey
         const programPublicKey = new PublicKey(programId.toString());
 
-        // Create the program with explicit BN conversion handling
+        // Create the program with proper PublicKey handling
         const program = new Program(
           idl,
           programPublicKey,
           provider,
           undefined,
           (value) => {
-            // Handle conversion to native BigInt
-            if (typeof value === 'object' && value._bn) {
-              return BigInt(value._bn.toString());
-            } else if (typeof value === 'object' && value.toString) {
-              return BigInt(value.toString());
+            if (typeof value === 'object') {
+              if (value instanceof PublicKey) {
+                return value;
+              }
+              if (value._bn) {
+                return new anchor.BN(value._bn.toString());
+              }
+              if (value.toBase58) {
+                return new PublicKey(value.toBase58());
+              }
             }
             return value;
           }
