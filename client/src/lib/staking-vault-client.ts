@@ -11,6 +11,8 @@ interface StakingInfo {
   lastClaimAt: Date;
   estimatedAPY: number;
   timeUntilUnlock: number | null;
+  walletTokenBalance?: number; // Added to include wallet balance when available
+  dataSource?: string; // Added to track data source (external, default, etc.)
 }
 
 /**
@@ -104,7 +106,12 @@ export class StakingVaultClient {
       // Extract staking info from API response
       const stakingInfo = data.success && data.stakingInfo ? data.stakingInfo : data;
       
-      // Convert to the proper format with actual on-chain data
+      // Log the data source if available (external or default)
+      if (stakingInfo.dataSource) {
+        console.log(`Using ${stakingInfo.dataSource} data source for staking info`);
+      }
+      
+      // Convert to the proper format with actual on-chain or external data
       const formattedInfo = {
         amountStaked: stakingInfo.amountStaked !== undefined ? Number(stakingInfo.amountStaked) : 0,
         pendingRewards: stakingInfo.pendingRewards !== undefined ? Number(stakingInfo.pendingRewards) : 0,
@@ -112,6 +119,8 @@ export class StakingVaultClient {
         lastClaimAt: new Date(stakingInfo.lastCompoundAt || Date.now()),
         estimatedAPY: stakingInfo.estimatedAPY || 125,
         timeUntilUnlock: stakingInfo.timeUntilUnlock || null,
+        walletTokenBalance: stakingInfo.walletTokenBalance, // Include wallet balance if available
+        dataSource: stakingInfo.dataSource || 'default', // Track data source for debugging
       };
       
       console.log("Formatted on-chain staking data:", formattedInfo);
@@ -132,6 +141,7 @@ export class StakingVaultClient {
         lastClaimAt: new Date(),
         estimatedAPY: 125,
         timeUntilUnlock: null,
+        dataSource: 'error', // Indicate this is fallback data due to an error
       };
     }
   }
