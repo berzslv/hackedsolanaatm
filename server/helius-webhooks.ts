@@ -34,8 +34,17 @@ function verifyWebhookSignature(req: Request): boolean {
     return true;
   }
 
+  // First check if using x-api-key header (our configuration)
+  const apiKey = req.headers['x-api-key'] as string;
+  if (apiKey) {
+    console.log('Verifying webhook using x-api-key');
+    return apiKey === WEBHOOK_SECRET;
+  }
+
+  // Fallback to standard Helius signature verification if available
   const signature = req.headers['x-helius-signature'] as string;
   if (!signature) {
+    console.warn('No authentication headers found in webhook request');
     return false;
   }
 
@@ -65,18 +74,60 @@ export function handleStakeEvent(req: Request, res: Response) {
     // Process each transaction in the webhook
     for (const tx of transactions) {
       // Find the stake instruction in the transaction
-      // This is simplified - you would need to adjust based on your contract's actual instruction format
       const stakeInstruction = tx.instructions?.find((instr: any) => 
         instr.programId === 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm' && 
-        instr.data.startsWith('stake')
+        (instr.data?.startsWith('stake') || 
+         (instr.parsed?.type === 'stake'))
       );
       
-      if (!stakeInstruction) continue;
+      if (!stakeInstruction) {
+        console.log('No stake instruction found in transaction');
+        continue;
+      }
       
-      // Extract staker wallet address and amount from accounts or parsed data
-      // This is a simplified example - adjust according to your contract's actual data structure
-      const stakerWallet = tx.accountData.find((acc: any) => acc.account === tx.feePayer)?.owner || '';
-      const amountStaked = parseFloat(stakeInstruction.parsed?.info?.amount || '0') / 1e9; // Adjust decimals
+      // Extract staker wallet address from feePayer or user account
+      let stakerWallet = '';
+      
+      // Try to get it from accountData first
+      if (tx.accountData && Array.isArray(tx.accountData)) {
+        const accountData = tx.accountData.find((acc: any) => acc.account === tx.feePayer);
+        if (accountData) {
+          stakerWallet = accountData.owner;
+        }
+      }
+      
+      // If not found, try to get it from user account in instruction
+      if (!stakerWallet && stakeInstruction.accounts) {
+        const userAccount = stakeInstruction.accounts.find((acc: any) => acc.name === 'user');
+        if (userAccount) {
+          stakerWallet = userAccount.pubkey;
+        }
+      }
+      
+      // Last resort: use feePayer directly
+      if (!stakerWallet) {
+        stakerWallet = tx.feePayer;
+      }
+      
+      // Extract amount from parsed data or data string
+      let amountStaked = 0;
+      
+      // Try to get it from parsed data first
+      if (stakeInstruction.parsed?.info?.amount) {
+        amountStaked = parseFloat(stakeInstruction.parsed.info.amount) / 1e9; // Convert from lamports to SOL
+      } 
+      // If not found, try to extract from data string (e.g. "stake:1000000")
+      else if (stakeInstruction.data && typeof stakeInstruction.data === 'string') {
+        const dataParts = stakeInstruction.data.split(':');
+        if (dataParts.length > 1) {
+          amountStaked = parseFloat(dataParts[1]) / 1e9;
+        }
+      }
+      
+      if (!stakerWallet || amountStaked <= 0) {
+        console.log(`Skipping invalid stake data: wallet=${stakerWallet}, amount=${amountStaked}`);
+        continue;
+      }
       
       // Store staking data
       stakingDataStore.set(stakerWallet, {

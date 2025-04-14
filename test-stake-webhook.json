@@ -1,0 +1,52 @@
+[
+  {
+    "type": "PROGRAM",
+    "timestamp": 1744622000,
+    "signature": "5rjd7oDvXHLUCPVRxrEV4y7yTbuhxJwwzKgiwTr6Ly8KShGWd3ZqkuQ4zUNWLDmezvqVSjLRG1ZvKdUQBUMQ8fTt",
+    "feePayer": "9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX",
+    "instructions": [
+      {
+        "programId": "EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm",
+        "data": "stake:1000000000",
+        "accounts": [
+          {
+            "name": "user",
+            "pubkey": "9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX"
+          },
+          {
+            "name": "stakingVault",
+            "pubkey": "EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm"
+          },
+          {
+            "name": "userStakeInfo",
+            "pubkey": "3ZPsAHDhsvwJyuBdZLQQC6PqGPxL7xP4GcJG8cddVXvw"
+          },
+          {
+            "name": "tokenMint",
+            "pubkey": "12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5"
+          },
+          {
+            "name": "tokenVault",
+            "pubkey": "2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap"
+          },
+          {
+            "name": "userTokenAccount",
+            "pubkey": "GsSxwRZ9PEib5YJA4ky8ZmJvAJqbQ5Z1Lm5UM5K5XXL7"
+          }
+        ],
+        "parsed": {
+          "type": "stake",
+          "info": {
+            "amount": "1000000000"
+          }
+        }
+      }
+    ],
+    "accountData": [
+      {
+        "account": "9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX",
+        "owner": "9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX"
+      }
+    ]
+  }
+]
