@@ -44,13 +44,57 @@ const StakingWidget = () => {
     
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/staking-info/${publicKey.toString()}`);
-      const data = await response.json();
+      // First try the Railway service for staking data
+      const railwayUrl = 'https://hackedpolling-production.up.railway.app';
+      const railwayResponse = await fetch(`${railwayUrl}/api/staking-data/${publicKey.toString()}`);
+      const railwayData = await railwayResponse.json();
       
-      if (response.ok && data.success) {
-        setStakingInfo(data.stakingInfo);
+      if (railwayResponse.ok && railwayData && railwayData.walletAddress) {
+        // Process Railway staking data to format we need
+        const stakingData = {
+          amountStaked: railwayData.stakingData?.amountStaked || 0,
+          pendingRewards: railwayData.stakingData?.pendingRewards || 0,
+          stakedAt: railwayData.stakingData?.lastUpdateTime || new Date().toISOString(),
+          lastCompoundAt: railwayData.stakingData?.lastUpdateTime || new Date().toISOString(),
+          estimatedAPY: 120, // Hardcoded for now, should come from global stats
+          timeUntilUnlock: null // Not implemented in Railway service yet
+        };
+        setStakingInfo(stakingData);
+        console.log("Using staking data from Railway service:", stakingData);
       } else {
-        console.error('Error fetching staking info:', data.error);
+        // Fallback to our API endpoint
+        console.log("No staking data from Railway service, trying local API...");
+        const response = await fetch(`/api/staking-info/${publicKey.toString()}`);
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+          setStakingInfo(data.stakingInfo);
+          console.log("Using staking data from local API:", data.stakingInfo);
+        } else {
+          console.error('Error fetching staking info:', data?.error);
+          
+          // Try fetching global token data from Railway
+          try {
+            const tokenResponse = await fetch(`${railwayUrl}/api/token-balance/${publicKey.toString()}`);
+            const tokenData = await tokenResponse.json();
+            
+            if (tokenResponse.ok && tokenData) {
+              // Create empty staking info with just wallet balance
+              const emptyStakingInfo = {
+                amountStaked: 0,
+                pendingRewards: 0,
+                stakedAt: new Date().toISOString(),
+                lastCompoundAt: new Date().toISOString(),
+                estimatedAPY: 120,
+                timeUntilUnlock: null
+              };
+              setStakingInfo(emptyStakingInfo);
+              console.log("Using empty staking data with token balance:", tokenData.balance);
+            }
+          } catch (err) {
+            console.error('Failed to fetch token balance from Railway:', err);
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to fetch staking info:', error);
