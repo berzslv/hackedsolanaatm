@@ -1,5 +1,6 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { externalStakingCache } from './external-staking-cache';
+import { stakingDataStore } from './helius-webhooks';
 
 // Program and token IDs
 const STAKING_PROGRAM_ID = new PublicKey("EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm");
@@ -123,6 +124,24 @@ function processStakingEvent(
         stakedAt: currentData.amountStaked === 0 ? new Date() : currentData.stakedAt,
         lastUpdateTime: new Date()
       });
+      
+      // Also update the Helius webhook data store
+      const existingHeliusStake = stakingDataStore.get(walletAddress);
+      if (existingHeliusStake) {
+        stakingDataStore.set(walletAddress, {
+          ...existingHeliusStake,
+          amountStaked: existingHeliusStake.amountStaked + amount,
+          lastUpdateTime: new Date()
+        });
+      } else {
+        stakingDataStore.set(walletAddress, {
+          walletAddress,
+          amountStaked: amount,
+          pendingRewards: 0,
+          stakedAt: new Date(),
+          lastUpdateTime: new Date()
+        });
+      }
       break;
       
     case 'unstake':
@@ -131,6 +150,16 @@ function processStakingEvent(
         amountStaked: Math.max(0, currentData.amountStaked - amount),
         lastUpdateTime: new Date()
       });
+      
+      // Also update the Helius webhook data store
+      const existingHeliusUnstake = stakingDataStore.get(walletAddress);
+      if (existingHeliusUnstake) {
+        stakingDataStore.set(walletAddress, {
+          ...existingHeliusUnstake,
+          amountStaked: Math.max(0, existingHeliusUnstake.amountStaked - amount),
+          lastUpdateTime: new Date()
+        });
+      }
       break;
       
     case 'claim':
@@ -139,6 +168,16 @@ function processStakingEvent(
         pendingRewards: 0, // Reset pending rewards after claim
         lastUpdateTime: new Date()
       });
+      
+      // Also update the Helius webhook data store
+      const existingHeliusClaim = stakingDataStore.get(walletAddress);
+      if (existingHeliusClaim) {
+        stakingDataStore.set(walletAddress, {
+          ...existingHeliusClaim,
+          pendingRewards: 0,
+          lastUpdateTime: new Date()
+        });
+      }
       break;
   }
   

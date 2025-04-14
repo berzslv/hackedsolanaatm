@@ -20,7 +20,8 @@ interface TokenTransferData {
 }
 
 // Simple in-memory storage (replace with database in production)
-const stakingDataStore = new Map<string, StakingData>();
+// Export this Map so it can be accessed from other modules
+export const stakingDataStore = new Map<string, StakingData>();
 const tokenTransferStore: TokenTransferData[] = [];
 
 // Configure webhook secret (should match the one set in Helius)
