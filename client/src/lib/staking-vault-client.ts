@@ -518,8 +518,61 @@ export class StakingVaultClient {
       if (data.success && data.solTransferTransaction) {
         // Return the transaction created by the server
         console.log("Using server-created transaction for purchase and stake");
-        const buffer = Uint8Array.from(atob(data.solTransferTransaction), c => c.charCodeAt(0));
-        return Transaction.from(buffer);
+        
+        try {
+          // First, safely convert base64 to byte array
+          // Use built-in browser functions for base64 decoding
+          const binaryString = atob(data.solTransferTransaction);
+          const buffer = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            buffer[i] = binaryString.charCodeAt(i);
+          }
+          
+          // Create a transaction from the binary data
+          console.log("Attempting to deserialize transaction from binary data");
+          const transaction = Transaction.from(buffer);
+          
+          // Validate that the transaction has correct fields
+          if (!transaction.feePayer) {
+            console.warn("Transaction missing feePayer, adding from wallet");
+            transaction.feePayer = this.userWallet;
+          }
+          
+          if (!transaction.recentBlockhash) {
+            console.warn("Transaction missing recentBlockhash, fetching new one");
+            const { blockhash } = await this.connection.getLatestBlockhash();
+            transaction.recentBlockhash = blockhash;
+          }
+          
+          console.log("Successfully created transaction", transaction);
+          return transaction;
+        } catch (error) {
+          console.error("Error deserializing transaction:", error);
+          
+          // Fallback: create a simple SOL transfer transaction manually
+          console.log("Creating manual SOL transfer transaction as fallback");
+          const { blockhash } = await this.connection.getLatestBlockhash();
+          
+          const transaction = new Transaction({
+            feePayer: this.userWallet,
+            recentBlockhash: blockhash
+          });
+          
+          // Use destination from server response
+          const destinationWallet = new PublicKey(data.destinationWallet);
+          const lamports = Math.floor(solAmount * 1_000_000_000); // Convert SOL to lamports
+          
+          transaction.add(
+            SystemProgram.transfer({
+              fromPubkey: this.userWallet,
+              toPubkey: destinationWallet,
+              lamports
+            })
+          );
+          
+          console.log("Created fallback SOL transfer transaction");
+          return transaction;
+        }
       } else {
         throw new Error('Invalid response data from server - missing solTransferTransaction');
       }

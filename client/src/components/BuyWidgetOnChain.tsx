@@ -246,12 +246,11 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
           description: "Please confirm the transaction in your wallet to purchase and stake tokens",
         });
         
-        // Compile message and create versioned transaction
-        const message = transaction.compileMessage();
-        const versionedTransaction = new VersionedTransaction(message);
+        console.log("Transaction received from StakingVaultClient:", transaction);
         
         // Send transaction using wallet adapter
-        const signature = await sendTransaction(versionedTransaction);
+        // Note: wallet adapter accepts both legacy and versioned transactions
+        const signature = await sendTransaction(transaction);
         
         toast({
           title: "Transaction sent!",

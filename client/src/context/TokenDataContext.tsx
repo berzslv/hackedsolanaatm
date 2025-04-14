@@ -301,9 +301,9 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     setTokenData(prev => ({
       ...prev,
-      refreshTokenBalance
+      refreshTokenBalance // This stays the same across renders
     }));
-  }, [connected, publicKey]);
+  }, []);
   
   // Fetch real token balance and staking info when wallet connected
   useEffect(() => {
