@@ -1,0 +1,21 @@
+[package]
+name = "referral-staking"
+version = "0.1.0"
+description = "Combined referral and staking system for HATM token"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "referral_staking"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.28.0"
+anchor-spl = "0.28.0"
+solana-program = "1.16.0"

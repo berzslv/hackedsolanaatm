@@ -1,594 +1,573 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { useCombinedSmartContract, StakingInfo, StakingVaultInfo } from '@/lib/combined-smart-contract-client';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { AlertCircle, ArrowLeftRight, Clock, CheckCircle, Leaf } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
-import { useSolana } from "@/context/SolanaContext";
-import { useTokenData } from "@/context/TokenDataContext";
-import { Connection, VersionedTransaction, Transaction, clusterApiUrl, MessageV0 } from "@solana/web3.js";
-import { StakingVaultClient } from "@/lib/staking-vault-client";
+import { Loader2, RefreshCw, Info, ArrowUpRight, Wallet, Lock, Receipt, Coins } from 'lucide-react';
 
-interface StakingInfo {
-  amountStaked: number;
-  pendingRewards: number;
-  stakedAt: Date;
-  lastClaimAt: Date;
-  estimatedAPY: number;
-  timeUntilUnlock: number | null;
-}
-
-interface StakingStats {
-  totalStaked: number;
-  rewardPool: number;
-  stakersCount: number;
-  currentAPY: number;
-}
-
-// Correct token mint address
-const TOKEN_MINT_ADDRESS = "12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5";
-
-const StakingWidgetSmartContract: React.FC = () => {
-  const { connected, publicKey, signTransaction, sendTransaction, balance, refreshBalance } = useSolana();
-  const { 
-    userTokenBalance, 
-    userStakedBalance, 
-    userPendingRewards,
-    currentAPY,
-    totalStaked,
-    stakersCount,
-    rewardPool,
-    refreshTokenBalance 
-  } = useTokenData();
-  const [stakeAmount, setStakeAmount] = useState<string>("");
-  const [unstakeAmount, setUnstakeAmount] = useState<string>("");
+export default function StakingWidgetSmartContract() {
+  const { connected, publicKey } = useWallet();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('stake');
+  const [stakeAmount, setStakeAmount] = useState('');
+  const [unstakeAmount, setUnstakeAmount] = useState('');
+  const [stakePercent, setStakePercent] = useState(10);
+  const [unstakePercent, setUnstakePercent] = useState(10);
   const [loading, setLoading] = useState(false);
-  const [stakeError, setStakeError] = useState<string | null>(null);
-  const [unstakeError, setUnstakeError] = useState<string | null>(null);
-  const [stakingInfo, setStakingInfo] = useState<StakingInfo | null>(null);
-  const [stakingStats, setStakingStats] = useState<StakingStats | null>(null);
-  const [stakingClient, setStakingClient] = useState<StakingVaultClient | null>(null);
-  const [infoLoading, setInfoLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [userInfo, setUserInfo] = useState<StakingInfo | null>(null);
+  const [vaultInfo, setVaultInfo] = useState<StakingVaultInfo | null>(null);
   
-  // Initialize staking client
+  const {
+    stakeTokens,
+    unstakeTokens,
+    claimRewards,
+    compoundRewards,
+    getUserStakingInfo,
+    getVaultInfo,
+    error
+  } = useCombinedSmartContract();
+  
+  // Effect to fetch user and vault info when connected
   useEffect(() => {
     if (connected && publicKey) {
-      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
-      const client = new StakingVaultClient(connection, publicKey, TOKEN_MINT_ADDRESS);
-      setStakingClient(client);
-      
-      // Initialize client
-      client.initialize().catch(console.error);
+      fetchUserAndVaultInfo();
+    } else {
+      setUserInfo(null);
+      setVaultInfo(null);
     }
   }, [connected, publicKey]);
   
-  // Load user staking info and global stats
-  useEffect(() => {
-    if (!stakingClient || !connected || !publicKey) return;
+  const fetchUserAndVaultInfo = async () => {
+    if (!connected || !publicKey) return;
     
-    setInfoLoading(true);
-    
-    const loadData = async () => {
-      try {
-        console.log("[StakingWidget] Loading staking data with token balance:", userTokenBalance);
-        
-        // Fetch user staking info
-        const userInfo = await stakingClient.getUserStakingInfo(true);
-        setStakingInfo(userInfo);
-        console.log("[StakingWidget] User staking info loaded:", userInfo);
-        
-        // Fetch global staking stats
-        const stats = await stakingClient.getStakingStats(true);
-        setStakingStats(stats);
-        console.log("[StakingWidget] Global staking stats loaded:", stats);
-        
-        // Update token balance using TokenDataContext
-        console.log("[StakingWidget] Refreshing token balance from context");
-        await refreshTokenBalance();
-      } catch (error: any) {
-        console.error("[StakingWidget] Failed to load staking data", error);
-      } finally {
-        setInfoLoading(false);
-      }
-    };
-    
-    // Load data once on component mount
-    loadData();
-    
-    // No automatic interval - only refresh after actions
-  }, [stakingClient, connected, publicKey, refreshTokenBalance]);
-  
-  // Refresh data function that can be called after transactions
-  const refreshAllData = async (forced = true) => {
+    setRefreshing(true);
     try {
-      console.log("Refreshing all staking data...");
+      const userStakingInfo = await getUserStakingInfo();
+      const vaultData = await getVaultInfo();
       
-      // First refresh token balance
-      await refreshTokenBalance();
-      console.log("Token balance refreshed");
-      
-      if (!stakingClient) return;
-      
-      // Then get updated staking info with forced server update
-      const userInfo = await stakingClient.getUserStakingInfo(forced);
-      console.log("Updated staking info received:", userInfo);
-      setStakingInfo(userInfo);
-      
-      // Get updated global stats
-      const stats = await stakingClient.getStakingStats(forced);
-      console.log("Updated staking stats received:", stats);
-      setStakingStats(stats);
-      
-      console.log("All data refreshed successfully!");
-    } catch (refreshError) {
-      console.error("Error refreshing data:", refreshError);
+      setUserInfo(userStakingInfo);
+      setVaultInfo(vaultData);
+    } catch (err) {
+      console.error("Error fetching staking data:", err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch staking data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
     }
   };
   
-  const handleMaxStake = () => {
-    setStakeAmount(userTokenBalance.toString());
+  const handleStakePercentChange = (value: number[]) => {
+    const percent = value[0];
+    setStakePercent(percent);
+    
+    // Calculate token amount based on wallet balance 
+    // For now we'll use a mock balance of 10,000
+    const walletBalance = 10000;
+    const amount = (walletBalance * percent) / 100;
+    setStakeAmount(amount.toString());
   };
   
-  const handleMaxUnstake = () => {
-    if (stakingInfo) {
-      setUnstakeAmount(stakingInfo.amountStaked.toString());
+  const handleUnstakePercentChange = (value: number[]) => {
+    const percent = value[0];
+    setUnstakePercent(percent);
+    
+    if (userInfo) {
+      const amount = (userInfo.amountStaked * percent) / 100;
+      setUnstakeAmount(amount.toString());
     }
   };
   
   const handleStake = async () => {
-    if (!stakingClient || !sendTransaction || !publicKey) return;
+    if (!stakeAmount || parseFloat(stakeAmount) <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid amount to stake",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    setStakeError(null);
     setLoading(true);
-    
     try {
-      const amount = parseInt(stakeAmount);
-      if (isNaN(amount) || amount <= 0) {
-        setStakeError("Please enter a valid amount to stake");
-        setLoading(false);
-        return;
-      }
+      const success = await stakeTokens(parseFloat(stakeAmount));
       
-      if (amount > userTokenBalance) {
-        setStakeError("Insufficient token balance");
-        setLoading(false);
-        return;
-      }
-      
-      // Create the transaction
-      const transaction = await stakingClient.createStakeTransaction(amount);
-      console.log("Created stake transaction:", transaction);
-      
-      // Convert to VersionedTransaction for wallet
-      const message = transaction.compileMessage();
-      const versionedTransaction = new VersionedTransaction(message);
-      
-      // Send the transaction - will automatically be signed by wallet
-      const signature = await sendTransaction(versionedTransaction);
-      console.log("Stake transaction sent:", signature);
-
-      // Call the confirm-staking endpoint to update database
-      try {
-        const confirmResponse = await fetch('/api/confirm-staking', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            walletAddress: publicKey.toString(),
-            amount: amount,
-            transactionSignature: signature
-          }),
+      if (success) {
+        toast({
+          title: "Success",
+          description: `Successfully staked ${stakeAmount} HATM tokens`,
         });
-
-        const confirmData = await confirmResponse.json();
-        if (!confirmResponse.ok) {
-          console.warn("Staking confirmation issue:", confirmData);
-        } else {
-          console.log("Staking confirmed in database:", confirmData);
-        }
-      } catch (confirmError: any) {
-        console.error("Error confirming stake:", confirmError);
+        
+        // Refresh data
+        await fetchUserAndVaultInfo();
+        
+        // Reset form
+        setStakeAmount('');
+        setStakePercent(10);
+      } else {
+        toast({
+          title: "Error",
+          description: error || "Failed to stake tokens. Please try again.",
+          variant: "destructive",
+        });
       }
-      
-      // Reset input
-      setStakeAmount("");
-      
-      // Wait for confirmation and refresh data
-      setTimeout(async () => {
-        try {
-          console.log("Refreshing data after staking transaction...");
-          // Force refresh vault client data directly
-          if (stakingClient) {
-            await stakingClient.forceRefreshAllData();
-          }
-          // Then refresh the context data
-          await refreshAllData(true);
-          console.log("Data refresh complete after staking");
-        } catch (error) {
-          console.error("Error refreshing after stake:", error);
-        } finally {
-          setLoading(false);
-        }
-      }, 6000);
-    } catch (error: any) {
-      console.error("Staking failed", error);
-      setStakeError("Staking failed: " + (error.message || "Unknown error"));
+    } catch (err) {
+      console.error("Error staking tokens:", err);
+      toast({
+        title: "Error",
+        description: "Transaction failed. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
     }
   };
   
   const handleUnstake = async () => {
-    if (!stakingClient || !sendTransaction || !publicKey) return;
+    if (!unstakeAmount || parseFloat(unstakeAmount) <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid amount to unstake",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    setUnstakeError(null);
+    if (!userInfo || parseFloat(unstakeAmount) > userInfo.amountStaked) {
+      toast({
+        title: "Insufficient balance",
+        description: "You don't have enough staked tokens",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
-    
     try {
-      const amount = parseInt(unstakeAmount);
-      if (isNaN(amount) || amount <= 0) {
-        setUnstakeError("Please enter a valid amount to unstake");
-        setLoading(false);
-        return;
+      const success = await unstakeTokens(parseFloat(unstakeAmount));
+      
+      if (success) {
+        toast({
+          title: "Success",
+          description: `Successfully unstaked ${unstakeAmount} HATM tokens`,
+        });
+        
+        // Refresh data
+        await fetchUserAndVaultInfo();
+        
+        // Reset form
+        setUnstakeAmount('');
+        setUnstakePercent(10);
+      } else {
+        toast({
+          title: "Error",
+          description: error || "Failed to unstake tokens. Please try again.",
+          variant: "destructive",
+        });
       }
-      
-      if (!stakingInfo || amount > stakingInfo.amountStaked) {
-        setUnstakeError("Insufficient staked balance");
-        setLoading(false);
-        return;
-      }
-      
-      // Create transaction
-      const transaction = await stakingClient.createUnstakeTransaction(amount);
-      
-      // Convert to VersionedTransaction for wallet
-      const message = transaction.compileMessage();
-      const versionedTransaction = new VersionedTransaction(message);
-      
-      // Send transaction
-      const signature = await sendTransaction(versionedTransaction);
-      console.log("Unstake transaction sent:", signature);
-      
-      // Reset input
-      setUnstakeAmount("");
-      
-      // Wait for confirmation and refresh data
-      setTimeout(async () => {
-        try {
-          console.log("Refreshing data after unstaking transaction...");
-          // Force refresh vault client data directly
-          if (stakingClient) {
-            await stakingClient.forceRefreshAllData();
-          }
-          // Then refresh the context data
-          await refreshAllData(true);
-          console.log("Data refresh complete after unstaking");
-        } catch (error) {
-          console.error("Error refreshing after unstake:", error);
-        } finally {
-          setLoading(false);
-        }
-      }, 6000);
-    } catch (error: any) {
-      console.error("Unstaking failed", error);
-      setUnstakeError("Unstaking failed: " + (error.message || "Unknown error"));
+    } catch (err) {
+      console.error("Error unstaking tokens:", err);
+      toast({
+        title: "Error",
+        description: "Transaction failed. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
     }
   };
   
-  const handleClaimRewards = async () => {
-    if (!stakingClient || !sendTransaction || !publicKey) return;
+  const handleClaim = async () => {
+    if (!userInfo || userInfo.pendingRewards <= 0) {
+      toast({
+        title: "No rewards",
+        description: "You don't have any rewards to claim",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setLoading(true);
-    
     try {
-      // Create claim rewards transaction
-      const transaction = await stakingClient.createClaimRewardsTransaction();
+      const success = await claimRewards();
       
-      // Convert to VersionedTransaction for wallet
-      const message = transaction.compileMessage();
-      const versionedTransaction = new VersionedTransaction(message);
-      
-      // Send transaction
-      const signature = await sendTransaction(versionedTransaction);
-      console.log("Claim rewards transaction sent:", signature);
-      
-      // Wait for confirmation and refresh data
-      setTimeout(async () => {
-        try {
-          console.log("Refreshing data after claiming rewards...");
-          // Force refresh vault client data directly
-          if (stakingClient) {
-            await stakingClient.forceRefreshAllData();
-          }
-          // Then refresh the context data
-          await refreshAllData(true);
-          console.log("Data refresh complete after claiming rewards");
-        } catch (error) {
-          console.error("Error refreshing after claim:", error);
-        } finally {
-          setLoading(false);
-        }
-      }, 6000);
-    } catch (error: any) {
-      console.error("Claiming rewards failed", error);
+      if (success) {
+        toast({
+          title: "Success",
+          description: `Successfully claimed ${userInfo.pendingRewards} HATM tokens`,
+        });
+        
+        // Refresh data
+        await fetchUserAndVaultInfo();
+      } else {
+        toast({
+          title: "Error",
+          description: error || "Failed to claim rewards. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Error claiming rewards:", err);
+      toast({
+        title: "Error",
+        description: "Transaction failed. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
     }
   };
   
-  const formatTokenAmount = (amount: number) => {
-    return amount.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  const handleCompound = async () => {
+    if (!userInfo || userInfo.pendingRewards <= 0) {
+      toast({
+        title: "No rewards",
+        description: "You don't have any rewards to compound",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const success = await compoundRewards();
+      
+      if (success) {
+        toast({
+          title: "Success",
+          description: `Successfully compounded ${userInfo.pendingRewards} HATM tokens`,
+        });
+        
+        // Refresh data
+        await fetchUserAndVaultInfo();
+      } else {
+        toast({
+          title: "Error",
+          description: error || "Failed to compound rewards. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Error compounding rewards:", err);
+      toast({
+        title: "Error",
+        description: "Transaction failed. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
   
-  if (!connected) {
-    return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Token Staking</CardTitle>
-          <CardDescription>Stake your tokens to earn rewards</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-40">
-            <p className="text-center text-muted-foreground">
-              Connect your wallet to access staking features
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Format number with commas and 2 decimal places
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  };
   
-  return (
-    <Card className="w-full mb-4">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-xl font-bold">HackATM Token Staking</CardTitle>
-        <CardDescription>Stake your tokens to earn up to 125% APY</CardDescription>
-      </CardHeader>
+  const formatLockTime = (timeInMs: number | null) => {
+    if (!timeInMs) return 'Unlocked';
+    
+    const now = Date.now();
+    const unlockTime = now + timeInMs;
+    
+    return formatDistanceToNow(unlockTime, { addSuffix: true });
+  };
+  
+  const isPenaltyWarning = userInfo?.timeUntilUnlock ? true : false;
+  
+  // Calculate early withdrawal penalty if applicable
+  const calculatePenalty = (amount: number) => {
+    if (!vaultInfo || !isPenaltyWarning) return 0;
+    
+    const penaltyRate = vaultInfo.earlyUnstakePenalty / 10000; // Convert basis points to decimal
+    return amount * penaltyRate;
+  };
+  
+  const renderConnectedContent = () => (
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="stake">Stake</TabsTrigger>
+        <TabsTrigger value="unstake">Unstake</TabsTrigger>
+      </TabsList>
       
-      <CardContent className="space-y-6">
-        {/* Staking Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-slate-900 p-3 rounded-lg">
-            <p className="text-xs text-muted-foreground">Total Staked</p>
-            {infoLoading ? (
-              <Skeleton className="h-7 w-full mt-1" />
-            ) : (
-              <p className="font-bold">{formatTokenAmount(stakingStats?.totalStaked || 0)} HATM</p>
-            )}
+      <TabsContent value="stake" className="pt-4">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <Label htmlFor="stake-amount">Stake Amount</Label>
+              <span className="text-xs text-muted-foreground">
+                Balance: 10,000 HATM
+              </span>
+            </div>
+            <Input
+              id="stake-amount"
+              type="number"
+              placeholder="Enter amount"
+              value={stakeAmount}
+              onChange={(e) => setStakeAmount(e.target.value)}
+            />
           </div>
           
-          <div className="bg-slate-900 p-3 rounded-lg">
-            <p className="text-xs text-muted-foreground">APY</p>
-            {infoLoading ? (
-              <Skeleton className="h-7 w-full mt-1" />
-            ) : (
-              <p className="font-bold">{stakingStats?.currentAPY || 125}%</p>
-            )}
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <Label>Percentage</Label>
+              <span className="text-xs">{stakePercent}%</span>
+            </div>
+            <Slider
+              value={[stakePercent]}
+              onValueChange={handleStakePercentChange}
+              min={1}
+              max={100}
+              step={1}
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>1%</span>
+              <span>50%</span>
+              <span>100%</span>
+            </div>
           </div>
           
-          <div className="bg-slate-900 p-3 rounded-lg">
-            <p className="text-xs text-muted-foreground">Reward Pool</p>
-            {infoLoading ? (
-              <Skeleton className="h-7 w-full mt-1" />
-            ) : (
-              <p className="font-bold">{formatTokenAmount(stakingStats?.rewardPool || 0)} HATM</p>
-            )}
-          </div>
+          <Button 
+            onClick={handleStake} 
+            className="w-full"
+            disabled={loading || !stakeAmount || parseFloat(stakeAmount) <= 0}
+          >
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Coins className="mr-2 h-4 w-4" />}
+            Stake HATM
+          </Button>
           
-          <div className="bg-slate-900 p-3 rounded-lg">
-            <p className="text-xs text-muted-foreground">Stakers</p>
-            {infoLoading ? (
-              <Skeleton className="h-7 w-full mt-1" />
-            ) : (
-              <p className="font-bold">{stakingStats?.stakersCount || 0}</p>
-            )}
+          <div className="rounded-md bg-muted p-3 text-sm">
+            <div className="flex justify-between mb-1">
+              <span>Staking Period:</span>
+              <span className="font-medium">7 days</span>
+            </div>
+            <div className="flex justify-between mb-1">
+              <span>Early Unstake Fee:</span>
+              <span className="font-medium">{vaultInfo ? (vaultInfo.earlyUnstakePenalty / 100).toFixed(2) : '0'}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Annual Yield:</span>
+              <span className="font-medium text-primary">{vaultInfo ? vaultInfo.currentAPY.toFixed(2) : '0'}% APY</span>
+            </div>
           </div>
         </div>
-        
-        {/* User Staking Stats */}
-        <div className="bg-slate-800 rounded-lg p-4">
-          <h3 className="text-md font-medium mb-3">Your Staking Position</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Staked Balance</p>
-              {infoLoading ? (
-                <Skeleton className="h-6 w-full" />
-              ) : (
-                <p className="font-semibold text-lg">{formatTokenAmount(stakingInfo?.amountStaked || 0)} HATM</p>
-              )}
-            </div>
-            
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Pending Rewards</p>
-              {infoLoading ? (
-                <Skeleton className="h-6 w-full" />
-              ) : (
-                <div className="flex justify-between items-center">
-                  <p className="font-semibold text-lg">{formatTokenAmount(stakingInfo?.pendingRewards || 0)} HATM</p>
-                  {(stakingInfo?.pendingRewards || 0) > 0 && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={handleClaimRewards} 
-                      disabled={loading || (stakingInfo?.pendingRewards || 0) <= 0}
-                    >
-                      Claim
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Lock Status</p>
-              {infoLoading ? (
-                <Skeleton className="h-6 w-full" />
-              ) : (
-                <div className="flex items-center text-lg">
-                  {stakingInfo?.timeUntilUnlock ? (
-                    <>
-                      <Clock className="mr-2 h-4 w-4" />
-                      <span className="text-yellow-500">
-                        {formatDistanceToNow(new Date(Date.now() + (stakingInfo.timeUntilUnlock || 0)), { addSuffix: true })}
-                      </span>
-                    </>
-                  ) : (
-                    stakingInfo?.amountStaked ? (
-                      <>
-                        <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                        <span className="text-green-500">Unlocked</span>
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground">Not staked</span>
-                    )
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {stakingInfo?.amountStaked ? (
-            <div className="mt-4 space-y-1">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-muted-foreground">Estimated APY</span>
-                <span className="font-medium">{stakingInfo?.estimatedAPY || 125}%</span>
-              </div>
-              <Progress 
-                value={stakingInfo?.estimatedAPY || 0} 
-                max={125} 
-                className="h-2"
-              />
-            </div>
-          ) : null}
-        </div>
-        
-        {/* Stake & Unstake Forms */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Stake Form */}
-          <div className="space-y-4">
-            <h3 className="text-md font-medium">Stake Tokens</h3>
-            
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm text-muted-foreground">Available Balance</span>
-              <span className="text-sm font-medium">{formatTokenAmount(userTokenBalance)} HATM</span>
-            </div>
-            
-            <div className="flex space-x-2">
-              <div className="relative flex-grow">
-                <Input
-                  type="number"
-                  placeholder="Amount to stake"
-                  value={stakeAmount}
-                  onChange={(e) => setStakeAmount(e.target.value)}
-                  disabled={loading}
-                  className="pr-16"
-                />
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="absolute right-1 top-1/2 -translate-y-1/2"
-                  onClick={handleMaxStake}
-                  disabled={loading || userTokenBalance <= 0}
-                >
-                  MAX
-                </Button>
-              </div>
-              <Button 
-                variant="default" 
-                onClick={handleStake}
-                disabled={loading || !stakeAmount || parseInt(stakeAmount) <= 0}
-              >
-                {loading ? 'Staking...' : 'Stake'}
-              </Button>
-            </div>
-            
-            {stakeError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{stakeError}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-          
-          {/* Unstake Form */}
-          <div className="space-y-4">
-            <h3 className="text-md font-medium">Unstake Tokens</h3>
-            
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm text-muted-foreground">Staked Balance</span>
-              <span className="text-sm font-medium">
-                {formatTokenAmount(stakingInfo?.amountStaked || 0)} HATM
+      </TabsContent>
+      
+      <TabsContent value="unstake" className="pt-4">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <Label htmlFor="unstake-amount">Unstake Amount</Label>
+              <span className="text-xs text-muted-foreground">
+                Staked: {userInfo ? formatNumber(userInfo.amountStaked) : '0'} HATM
               </span>
             </div>
             
-            <div className="flex space-x-2">
-              <div className="relative flex-grow">
-                <Input
-                  type="number"
-                  placeholder="Amount to unstake"
-                  value={unstakeAmount}
-                  onChange={(e) => setUnstakeAmount(e.target.value)}
-                  disabled={loading}
-                  className="pr-16"
-                />
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="absolute right-1 top-1/2 -translate-y-1/2"
-                  onClick={handleMaxUnstake}
-                  disabled={loading || !stakingInfo?.amountStaked}
+            {isPenaltyWarning && (
+              <div className="flex items-center mb-2 p-2 text-xs border rounded-md border-yellow-200 bg-yellow-50 text-yellow-800">
+                <Info className="h-3 w-3 mr-2 flex-shrink-0" />
+                <span>
+                  Early unstaking will incur a {vaultInfo ? (vaultInfo.earlyUnstakePenalty / 100).toFixed(2) : '0'}% fee. 
+                  Tokens unlock {userInfo?.timeUntilUnlock ? formatLockTime(userInfo.timeUntilUnlock) : ''}
+                </span>
+              </div>
+            )}
+            
+            <Input
+              id="unstake-amount"
+              type="number"
+              placeholder="Enter amount"
+              value={unstakeAmount}
+              onChange={(e) => setUnstakeAmount(e.target.value)}
+              disabled={!userInfo || userInfo.amountStaked <= 0}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <Label>Percentage</Label>
+              <span className="text-xs">{unstakePercent}%</span>
+            </div>
+            <Slider
+              value={[unstakePercent]}
+              onValueChange={handleUnstakePercentChange}
+              min={1}
+              max={100}
+              step={1}
+              disabled={!userInfo || userInfo.amountStaked <= 0}
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>1%</span>
+              <span>50%</span>
+              <span>100%</span>
+            </div>
+          </div>
+          
+          {isPenaltyWarning && parseFloat(unstakeAmount) > 0 && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span>Unstake amount:</span>
+                <span>{formatNumber(parseFloat(unstakeAmount))} HATM</span>
+              </div>
+              <div className="flex justify-between text-sm text-destructive">
+                <span>Early unstake fee:</span>
+                <span>-{formatNumber(calculatePenalty(parseFloat(unstakeAmount)))} HATM</span>
+              </div>
+              <Separator className="my-1" />
+              <div className="flex justify-between font-medium">
+                <span>You will receive:</span>
+                <span>{formatNumber(parseFloat(unstakeAmount) - calculatePenalty(parseFloat(unstakeAmount)))} HATM</span>
+              </div>
+            </div>
+          )}
+          
+          <Button 
+            onClick={handleUnstake} 
+            className="w-full"
+            variant={isPenaltyWarning ? "destructive" : "default"}
+            disabled={loading || !unstakeAmount || parseFloat(unstakeAmount) <= 0 || !userInfo || parseFloat(unstakeAmount) > userInfo.amountStaked}
+          >
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowUpRight className="mr-2 h-4 w-4" />}
+            Unstake HATM
+          </Button>
+          
+          <div className="space-y-2 pt-4">
+            <Label className="text-base font-semibold">Your Rewards</Label>
+            <div className="rounded-md bg-muted p-3">
+              <div className="flex justify-between mb-2">
+                <span>Pending Rewards:</span>
+                <span className="font-medium">{userInfo ? formatNumber(userInfo.pendingRewards) : '0'} HATM</span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={handleClaim}
+                  disabled={loading || !userInfo || userInfo.pendingRewards <= 0}
                 >
-                  MAX
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Claim
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={handleCompound}
+                  disabled={loading || !userInfo || userInfo.pendingRewards <= 0}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Compound
                 </Button>
               </div>
-              <Button 
-                variant="default" 
-                onClick={handleUnstake}
-                disabled={loading || !unstakeAmount || parseInt(unstakeAmount) <= 0 || !stakingInfo?.amountStaked}
-              >
-                {loading ? 'Unstaking...' : 'Unstake'}
-              </Button>
             </div>
-            
-            {unstakeError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{unstakeError}</AlertDescription>
-              </Alert>
-            )}
-            
-            {stakingInfo?.timeUntilUnlock && (
-              <Alert>
-                <Clock className="h-4 w-4" />
-                <AlertTitle>Early unstaking fee</AlertTitle>
-                <AlertDescription>
-                  Unstaking before the 7-day lock period will incur a 25% fee. Your tokens will be unlocked {formatDistanceToNow(new Date(Date.now() + stakingInfo.timeUntilUnlock), { addSuffix: true })}.
-                </AlertDescription>
-              </Alert>
-            )}
           </div>
         </div>
+      </TabsContent>
+    </Tabs>
+  );
+  
+  return (
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle className="text-xl font-bold">HATM Staking</CardTitle>
+            <CardDescription>Earn rewards by staking your HATM tokens</CardDescription>
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={fetchUserAndVaultInfo} disabled={refreshing || !connected}>
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Refresh staking data</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </CardHeader>
+      
+      <CardContent>
+        {!connected ? (
+          <div className="text-center p-6 space-y-4">
+            <Wallet className="h-12 w-12 mx-auto text-muted-foreground" />
+            <div>
+              <h3 className="font-medium text-lg">Connect Wallet</h3>
+              <p className="text-muted-foreground">Connect your wallet to start staking</p>
+            </div>
+            <WalletMultiButton className="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded" />
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <div className="text-sm text-muted-foreground mb-1">Your Staked</div>
+                <div className="text-2xl font-bold">
+                  {userInfo ? formatNumber(userInfo.amountStaked) : '0'} HATM
+                </div>
+              </div>
+              <Badge variant="outline" className="flex items-center gap-1">
+                <Lock className="h-3 w-3" />
+                {userInfo?.timeUntilUnlock ? formatLockTime(userInfo.timeUntilUnlock) : 'Unlocked'}
+              </Badge>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-muted rounded-lg p-3">
+                <div className="text-xs text-muted-foreground mb-1">APY</div>
+                <div className="text-lg font-semibold">{vaultInfo ? vaultInfo.currentAPY.toFixed(2) : '0'}%</div>
+              </div>
+              <div className="bg-muted rounded-lg p-3">
+                <div className="text-xs text-muted-foreground mb-1">Pending Rewards</div>
+                <div className="text-lg font-semibold">{userInfo ? formatNumber(userInfo.pendingRewards) : '0'}</div>
+              </div>
+            </div>
+            
+            {renderConnectedContent()}
+          </>
+        )}
       </CardContent>
       
-      <CardFooter className="pt-0">
-        <Button
-          variant="outline" 
-          size="sm"
-          className="ml-auto"
-          onClick={() => refreshAllData(true)}
-          disabled={loading || infoLoading}
-        >
-          Refresh Data
-        </Button>
-      </CardFooter>
+      {vaultInfo && (
+        <CardFooter className="block border-t pt-4">
+          <div className="text-xs text-muted-foreground mb-1">Total Staked</div>
+          <div className="flex justify-between items-center">
+            <span className="font-medium">{formatNumber(vaultInfo.totalStaked)} HATM</span>
+            <Badge variant="outline" className="text-xs">
+              {vaultInfo.stakersCount} Stakers
+            </Badge>
+          </div>
+          <Progress 
+            value={vaultInfo.totalStaked > 0 ? Math.min((vaultInfo.totalStaked / 1000000) * 100, 100) : 0} 
+            className="h-1 mt-2" 
+          />
+        </CardFooter>
+      )}
     </Card>
   );
-};
-
-export default StakingWidgetSmartContract;
+}
