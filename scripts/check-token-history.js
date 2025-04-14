@@ -5,8 +5,8 @@
 
 const { Connection, PublicKey } = require("@solana/web3.js");
 
-// Configuration - CHANGE YOUR TOKEN MINT AND WALLET HERE
-const YOUR_TOKEN_MINT = new PublicKey("12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5");
+// Configuration - CORRECT TOKEN MINT FOR YOUR PROJECT
+const YOUR_TOKEN_MINT = new PublicKey("59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk");
 const YOUR_WALLET = "9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX"; // Your wallet address
 const NETWORK = "devnet"; // Use "devnet" or "mainnet-beta"
 

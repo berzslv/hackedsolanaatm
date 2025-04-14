@@ -19,7 +19,7 @@ const {
 
 // Configuration
 const MINT_AUTHORITY = "2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap";
-const TOKEN_MINT = new PublicKey("12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5");
+const TOKEN_MINT = new PublicKey("59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk");
 const STAKING_PROGRAM_ID = new PublicKey("EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm");
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const NETWORK = "devnet"; // Use "devnet" or "mainnet-beta"
