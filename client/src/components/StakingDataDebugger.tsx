@@ -11,9 +11,11 @@ const RAILWAY_URL = 'https://hackedpolling-production.up.railway.app';
 
 interface StakingInfo {
   walletAddress: string;
-  amountStaked?: number;
-  pendingRewards?: number;
-  lastUpdateTime?: string;
+  stakeData?: {
+    amountStaked: number;
+    pendingRewards: number;
+    lastUpdateTime: string;
+  };
   events?: any[];
 }
 
@@ -129,16 +131,16 @@ export default function StakingDataDebugger() {
                     <div>Events Count:</div>
                     <div>{stakingData.events?.length || 0}</div>
                     
-                    {stakingData.stakingData && (
+                    {stakingData.stakeData && (
                       <>
                         <div>Amount Staked:</div>
-                        <div>{stakingData.stakingData.amountStaked || 0}</div>
+                        <div>{stakingData.stakeData.amountStaked || 0}</div>
                         
                         <div>Pending Rewards:</div>
-                        <div>{stakingData.stakingData.pendingRewards || 0}</div>
+                        <div>{stakingData.stakeData.pendingRewards || 0}</div>
                         
                         <div>Last Update:</div>
-                        <div>{new Date(stakingData.stakingData.lastUpdateTime).toLocaleString()}</div>
+                        <div>{new Date(stakingData.stakeData.lastUpdateTime).toLocaleString()}</div>
                       </>
                     )}
                     
