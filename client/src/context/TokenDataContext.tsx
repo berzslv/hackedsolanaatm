@@ -9,6 +9,13 @@ interface ReferralActivity {
   reward: number;
 }
 
+interface ReferralActivity {
+  date: string;
+  transaction: string;
+  amount: number;
+  reward: number;
+}
+
 interface ReferralStats {
   totalReferrals: number;
   totalEarnings: number;
@@ -49,13 +56,15 @@ interface TokenDataContextType {
 const TokenDataContext = createContext<TokenDataContextType | undefined>(undefined);
 
 // Hook for consuming the context
-export const useTokenData = () => {
+function useTokenDataHook() {
   const context = useContext(TokenDataContext);
   if (!context) {
     throw new Error('useTokenData must be used within a TokenDataProvider');
   }
   return context;
-};
+}
+
+export const useTokenData = useTokenDataHook;
 
 // Sample data for demonstration
 const mockReferrersLeaderboard: Leaderboard = {

@@ -248,9 +248,17 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
         
         console.log("Transaction received from StakingVaultClient:", transaction);
         
+        // Make sure we have all the required imports
+        const { VersionedTransaction } = await import('@solana/web3.js');
+        
+        // Create a versioned transaction from the legacy transaction
+        console.log("Creating versioned transaction");
+        const message = transaction.compileMessage();
+        const versionedTx = new VersionedTransaction(message);
+        console.log("Successfully created versioned transaction");
+        
         // Send transaction using wallet adapter
-        // Note: wallet adapter accepts both legacy and versioned transactions
-        const signature = await sendTransaction(transaction);
+        const signature = await sendTransaction(versionedTx as any);
         
         toast({
           title: "Transaction sent!",
