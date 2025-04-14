@@ -8,6 +8,18 @@ import { z } from "zod";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 
+// Import Helius webhook handlers
+import { 
+  handleStakeEvent,
+  handleUnstakeEvent,
+  handleTokenTransfer,
+  handleClaimEvent,
+  getStakingInfo as getHeliusStakingInfo,
+  getTokenTransfers,
+  getReferralStats as getHeliusReferralStats,
+  getGlobalStats
+} from './helius-webhooks';
+
 // Solana imports for airdrop functionality
 import {
   Connection,
@@ -1842,6 +1854,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details: error instanceof Error ? error.message : String(error)
       });
     }
+  });
+  
+  // =================================================================
+  // HELIUS WEBHOOK ENDPOINTS
+  // =================================================================
+  
+  // Webhook endpoint for Stake events
+  app.post("/api/webhooks/stake", handleStakeEvent);
+  
+  // Webhook endpoint for Unstake events
+  app.post("/api/webhooks/unstake", handleUnstakeEvent);
+  
+  // Webhook endpoint for Token Transfers
+  app.post("/api/webhooks/token-transfer", handleTokenTransfer);
+  
+  // Webhook endpoint for Claim Rewards events
+  app.post("/api/webhooks/claim", handleClaimEvent);
+  
+  // API endpoint to get staking info from Helius data
+  app.get("/api/helius/staking/:walletAddress", (req, res) => {
+    getHeliusStakingInfo(req, res);
+  });
+  
+  // API endpoint to get token transfers from Helius data
+  app.get("/api/helius/transfers/:walletAddress", (req, res) => {
+    getTokenTransfers(req, res);
+  });
+  
+  // API endpoint to get referral stats from Helius data
+  app.get("/api/helius/referrals/:walletAddress", (req, res) => {
+    getHeliusReferralStats(req, res);
+  });
+  
+  // API endpoint to get global staking stats from Helius data
+  app.get("/api/helius/global-stats", (req, res) => {
+    getGlobalStats(req, res);
   });
   
   const httpServer = createServer(app);

@@ -335,7 +335,10 @@ export function getGlobalStats(req: Request, res: Response) {
   try {
     // Calculate total staked tokens
     let totalStaked = 0;
-    for (const stake of stakingDataStore.values()) {
+    
+    // Convert Map iterator to array to avoid compatibility issues
+    const stakeValues = Array.from(stakingDataStore.values());
+    for (const stake of stakeValues) {
       totalStaked += stake.amountStaked;
     }
     
