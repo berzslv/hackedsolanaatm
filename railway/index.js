@@ -131,59 +131,80 @@ async function callSolanaRpc(method, params = []) {
   }
 }
 
-// Polling function to get transactions for monitored wallets
+// Polling function to get all token transactions
 async function pollTransactions() {
   console.log(`[${new Date().toISOString()}] Polling for transactions...`);
   
-  // Load wallets to monitor
-  const walletsData = loadData(WALLETS_TO_MONITOR_FILE);
-  if (!walletsData || !walletsData.wallets || !walletsData.wallets.length) {
-    console.log('No wallets to monitor');
-    return;
-  }
-
-  // Get signatures for each wallet
-  for (const wallet of walletsData.wallets) {
-    try {
-      console.log(`Checking transactions for wallet: ${wallet}`);
-      
-      // Get recent signatures for this wallet
-      const signatures = await callSolanaRpc('getSignaturesForAddress', [wallet, { limit: 10 }]);
-      
-      if (!signatures || !signatures.length) {
-        console.log(`No recent transactions found for wallet: ${wallet}`);
-        continue;
-      }
-      
-      // Process each signature
-      for (const sigInfo of signatures) {
-        const signature = sigInfo.signature;
-        
-        // Skip if we've already seen this transaction
-        if (seenTransactions.has(signature)) {
-          continue;
-        }
-        
-        console.log(`Found new transaction: ${signature}`);
-        seenTransactions.add(signature);
-        
-        // Get transaction details
-        const txData = await callSolanaRpc('getTransaction', [signature, { encoding: 'jsonParsed' }]);
-        
-        if (!txData) {
-          console.log(`Could not retrieve transaction data for ${signature}`);
-          continue;
-        }
-        
-        // Process the transaction
-        await processTransaction(txData, signature, wallet);
-      }
-    } catch (error) {
-      console.error(`Error polling transactions for wallet ${wallet}:`, error.message);
+  try {
+    // First, let's get transactions for the token mint directly
+    // This will capture all token creations, transfers, etc.
+    console.log(`Checking transactions for token mint: ${TOKEN_MINT}`);
+    const tokenSignatures = await callSolanaRpc('getSignaturesForAddress', [TOKEN_MINT, { limit: 20 }]);
+    
+    if (tokenSignatures && tokenSignatures.length > 0) {
+      console.log(`Found ${tokenSignatures.length} token mint transactions`);
+      await processSignatures(tokenSignatures);
+    } else {
+      console.log('No recent transactions found for token mint');
     }
+    
+    // Next, let's check for staking program interactions
+    console.log(`Checking transactions for staking program: ${STAKING_PROGRAM_ID}`);
+    const stakingSignatures = await callSolanaRpc('getSignaturesForAddress', [STAKING_PROGRAM_ID, { limit: 20 }]);
+    
+    if (stakingSignatures && stakingSignatures.length > 0) {
+      console.log(`Found ${stakingSignatures.length} staking program transactions`);
+      await processSignatures(stakingSignatures);
+    } else {
+      console.log('No recent transactions found for staking program');
+    }
+    
+    // Additionally, check monitored wallets if any exist
+    const walletsData = loadData(WALLETS_TO_MONITOR_FILE);
+    if (walletsData && walletsData.wallets && walletsData.wallets.length > 0) {
+      console.log(`Also checking ${walletsData.wallets.length} monitored wallets`);
+      
+      for (const wallet of walletsData.wallets) {
+        // Get recent signatures for this wallet
+        const walletSignatures = await callSolanaRpc('getSignaturesForAddress', [wallet, { limit: 10 }]);
+        
+        if (walletSignatures && walletSignatures.length > 0) {
+          console.log(`Found ${walletSignatures.length} transactions for wallet ${wallet}`);
+          await processSignatures(walletSignatures, wallet);
+        }
+      }
+    }
+    
+    console.log(`[${new Date().toISOString()}] Polling complete`);
+  } catch (error) {
+    console.error(`Error in transaction polling:`, error.message);
   }
-  
-  console.log(`[${new Date().toISOString()}] Polling complete`);
+}
+
+// Process a batch of signatures
+async function processSignatures(signatures, wallet = null) {
+  for (const sigInfo of signatures) {
+    const signature = sigInfo.signature;
+    
+    // Skip if we've already seen this transaction
+    if (seenTransactions.has(signature)) {
+      continue;
+    }
+    
+    console.log(`Processing new transaction: ${signature}`);
+    seenTransactions.add(signature);
+    
+    // Get transaction details
+    const txData = await callSolanaRpc('getTransaction', [signature, { encoding: 'jsonParsed' }]);
+    
+    if (!txData) {
+      console.log(`Could not retrieve transaction data for ${signature}`);
+      continue;
+    }
+    
+    // Process the transaction
+    await processTransaction(txData, signature, wallet);
+  }
 }
 
 // Process a transaction
@@ -482,6 +503,15 @@ app.get('/api/token-transfers', (req, res) => {
     return res.status(500).json({ error: 'Error loading token transfers data' });
   }
   
+  // Optional wallet filter
+  const { wallet } = req.query;
+  if (wallet) {
+    const filteredTransfers = tokenTransfers.transfers.filter(t => 
+      t.fromWallet === wallet || t.toWallet === wallet
+    );
+    return res.status(200).json({ transfers: filteredTransfers });
+  }
+  
   return res.status(200).json(tokenTransfers);
 });
 
@@ -591,6 +621,53 @@ app.post('/api/poll-now', async (req, res) => {
   }
 });
 
+// Get total token stats
+app.get('/api/token-stats', async (req, res) => {
+  try {
+    // Get token transfers
+    const tokenTransfers = loadData(TOKEN_TRANSFERS_FILE);
+    if (!tokenTransfers) {
+      return res.status(500).json({ error: 'Error loading token transfers data' });
+    }
+    
+    // Get staking data
+    const stakingData = loadData(STAKING_DATA_FILE);
+    if (!stakingData) {
+      return res.status(500).json({ error: 'Error loading staking data' });
+    }
+    
+    // Calculate stats
+    const stats = {
+      totalTransactions: tokenTransfers.transfers.length,
+      uniqueWallets: new Set(),
+      totalStaked: 0,
+      lastUpdate: new Date().toISOString()
+    };
+    
+    // Count unique wallets
+    tokenTransfers.transfers.forEach(transfer => {
+      if (transfer.fromWallet !== 'unknown') stats.uniqueWallets.add(transfer.fromWallet);
+      if (transfer.toWallet !== 'unknown') stats.uniqueWallets.add(transfer.toWallet);
+    });
+    
+    // Calculate total staked
+    if (stakingData.stakingData) {
+      Object.values(stakingData.stakingData).forEach(data => {
+        stats.totalStaked += data.amountStaked || 0;
+      });
+    }
+    
+    return res.status(200).json({
+      ...stats,
+      uniqueWallets: Array.from(stats.uniqueWallets),
+      uniqueWalletsCount: stats.uniqueWallets.size
+    });
+  } catch (error) {
+    console.error('Error getting token stats:', error.message);
+    return res.status(500).json({ error: 'Error calculating token stats' });
+  }
+});
+
 // Root endpoint
 app.get('/', (req, res) => {
   return res.status(200).json({
@@ -600,7 +677,12 @@ app.get('/', (req, res) => {
       '/api/token-transfers',
       '/api/staking-data',
       '/api/staking-data/:walletAddress',
-      '/webhook/transaction'
+      '/api/token-balance/:walletAddress',
+      '/api/token-stats',
+      '/api/monitored-wallets',
+      '/api/add-wallet',
+      '/api/remove-wallet',
+      '/api/poll-now'
     ]
   });
 });
