@@ -13,8 +13,8 @@
 
 import { apiRequest } from './queryClient';
 
-// Replace with your actual Railway service URL once deployed
-const RAILWAY_SERVICE_URL = 'https://your-railway-app-url.railway.app';
+// Your actual Railway service URL
+const RAILWAY_SERVICE_URL = 'https://hackedpolling-production.up.railway.app';
 
 // ----- Types ----- //
 
