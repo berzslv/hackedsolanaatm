@@ -1,14 +1,25 @@
 import { cn } from "@/lib/utils";
+import React from "react";
 
 interface GradientTextProps {
-  children: React.ReactNode;
   className?: string;
+  children: React.ReactNode;
+  as?: React.ElementType;
 }
 
-export function GradientText({ children, className }: GradientTextProps) {
+export const GradientText = ({
+  className,
+  children,
+  as: Component = "span",
+}: GradientTextProps) => {
   return (
-    <span className={cn("bg-gradient-to-r from-primary to-secondary inline-block text-transparent bg-clip-text", className)}>
+    <Component
+      className={cn(
+        "bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent",
+        className
+      )}
+    >
       {children}
-    </span>
+    </Component>
   );
-}
+};
