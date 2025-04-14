@@ -61,6 +61,7 @@ const Header = () => {
           <NavigationLink href="/#referral">Referral</NavigationLink>
           <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
           <NavigationLink href="/#faq">FAQ</NavigationLink>
+          <Link href="/dashboard" className="text-foreground/80 hover:text-primary transition-colors">Dashboard</Link>
           <button onClick={() => setShowWhitepaper(true)} className="text-foreground/80 hover:text-primary transition-colors">Whitepaper</button>
           <WhitepaperDialog open={showWhitepaper} onOpenChange={setShowWhitepaper} />
         </div>
@@ -93,6 +94,7 @@ const Header = () => {
             <NavigationLink href="/#referral">Referral</NavigationLink>
             <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
             <NavigationLink href="/#faq">FAQ</NavigationLink>
+            <Link href="/dashboard" className="text-foreground/80 hover:text-primary py-2 transition-colors z-10 block">Dashboard</Link>
             <button onClick={() => setShowWhitepaper(true)} className="text-foreground/80 hover:text-primary py-2 transition-colors z-10 text-left w-full">Whitepaper</button>
             {/* Mobile wallet button */}
             <div className="sm:hidden w-full z-10">
