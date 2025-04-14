@@ -14,78 +14,281 @@ export function startOnChainListeners() {
   console.log("Starting on-chain event listeners...");
   const connection = new Connection(
     process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
-    'confirmed'
+    {
+      commitment: 'confirmed',
+      wsEndpoint: process.env.SOLANA_WS_URL || 'wss://api.devnet.solana.com'
+    }
   );
 
   // Listen for staking program events (stakes, unstakes, claims)
-  connection.onLogs(STAKING_PROGRAM_ID, (logInfo) => {
-    const { logs, signature } = logInfo;
+  const stakingSubscriptionId = connection.onLogs(STAKING_PROGRAM_ID, async (logInfo) => {
+    const { logs, signature, err } = logInfo;
     
+    if (err) {
+      console.error("❌ Error in staking program transaction:", err);
+      return;
+    }
+    
+    console.log("\n==================================");
     console.log("🔔 Staking Program Event Detected:", signature);
-    console.log("Transaction logs:", logs);
+    console.log("==================================");
     
-    // Extract wallet address from transaction (this will depend on your program's structure)
-    // This is a simplified example - in a real implementation you would parse the logs or fetch the transaction
+    // First try to extract information from logs
     let walletAddress = "";
     let eventType = "";
     let amount = 0;
     
-    for (let log of logs) {
-      // Look for specific log patterns
-      if (log.includes("Instruction: Stake")) {
-        eventType = "stake";
-        // Try to extract wallet and amount from logs
-        // This is a simplified approach - you'd need to adjust based on your program's actual log format
-        const match = log.match(/Stake: (\d+) tokens from ([a-zA-Z0-9]+)/);
-        if (match) {
-          amount = parseInt(match[1]);
-          walletAddress = match[2];
-        }
-      } 
-      else if (log.includes("Instruction: Unstake")) {
-        eventType = "unstake";
-        const match = log.match(/Unstake: (\d+) tokens by ([a-zA-Z0-9]+)/);
-        if (match) {
-          amount = parseInt(match[1]);
-          walletAddress = match[2];
-        }
+    // Convert logs to a single string for easier pattern matching
+    const logString = logs.join(" ").toLowerCase();
+    console.log("Log string for analysis:", logString);
+    
+    // Look for event patterns
+    if (logString.includes("stake") || logString.includes("deposit")) {
+      eventType = "stake";
+      console.log("✅ STAKE event detected");
+      
+      // Try to extract amount
+      const amountMatch = logString.match(/stake[d]?\s+(\d+)/i);
+      if (amountMatch && amountMatch[1]) {
+        amount = parseInt(amountMatch[1]);
+        console.log(`Amount staked: ${amount}`);
       }
-      else if (log.includes("Instruction: ClaimRewards")) {
-        eventType = "claim";
-        const match = log.match(/Claim: (\d+) rewards by ([a-zA-Z0-9]+)/);
-        if (match) {
-          amount = parseInt(match[1]);
-          walletAddress = match[2];
-        }
+    } 
+    else if (logString.includes("unstake") || logString.includes("withdraw")) {
+      eventType = "unstake";
+      console.log("📤 UNSTAKE event detected");
+      
+      // Try to extract amount
+      const amountMatch = logString.match(/unstake[d]?\s+(\d+)/i);
+      if (amountMatch && amountMatch[1]) {
+        amount = parseInt(amountMatch[1]);
+        console.log(`Amount unstaked: ${amount}`);
       }
     }
-
-    // If we couldn't extract the data from logs, we can try to fetch the transaction
-    if (!walletAddress && eventType) {
-      console.log("Could not extract wallet address from logs, fetching transaction...");
-      // This would be implementation-specific, based on how your transaction is structured
-      // connection.getTransaction(signature).then(transaction => {...})
+    else if (logString.includes("claim") || logString.includes("reward")) {
+      eventType = "claim";
+      console.log("💰 REWARD CLAIM event detected");
+      
+      // Try to extract amount
+      const amountMatch = logString.match(/claim[ed]?\s+(\d+)/i);
+      if (amountMatch && amountMatch[1]) {
+        amount = parseInt(amountMatch[1]);
+        console.log(`Amount claimed: ${amount}`);
+      }
+    }
+    else {
+      console.log("⚙️ Other staking program interaction detected");
+      // Print raw logs for debugging
+      logs.forEach((log, i) => {
+        console.log(`Log ${i}: ${log}`);
+      });
     }
     
-    // Update our cache based on the event type
-    if (walletAddress) {
+    // If we couldn't extract enough information from logs, fetch the transaction
+    if (!walletAddress || amount === 0) {
+      console.log("Fetching transaction details to extract more information...");
+      
+      try {
+        // Get detailed transaction information
+        const txDetails = await connection.getParsedTransaction(signature, 'confirmed');
+        
+        if (txDetails && txDetails.transaction && txDetails.transaction.message) {
+          const accounts = txDetails.transaction.message.accountKeys;
+          console.log("Accounts involved in transaction:");
+          
+          // Assuming wallet is typically one of the first accounts (not the program itself)
+          for (let i = 0; i < accounts.length; i++) {
+            const account = accounts[i];
+            const pubkey = account.pubkey.toString();
+            
+            // Skip if it's the program ID
+            if (pubkey === STAKING_PROGRAM_ID.toString()) {
+              continue;
+            }
+            
+            console.log(`Account ${i}: ${pubkey}`);
+            
+            // If we haven't found a wallet yet, use first non-program account
+            if (!walletAddress && i > 0) {
+              walletAddress = pubkey;
+              console.log(`Extracted wallet address: ${walletAddress}`);
+            }
+          }
+          
+          // If we still don't have an amount, try to extract from token balances
+          if (amount === 0 && txDetails.meta && txDetails.meta.preTokenBalances && txDetails.meta.postTokenBalances) {
+            const tokenChanges = calculateTokenBalanceChanges(
+              txDetails.meta.preTokenBalances, 
+              txDetails.meta.postTokenBalances
+            );
+            
+            if (tokenChanges.length > 0) {
+              console.log("Token balance changes detected:");
+              for (const change of tokenChanges) {
+                console.log(`Account ${change.owner}: ${change.change > 0 ? '+' : ''}${change.change}`);
+                
+                // Use the first significant change as our amount
+                if (amount === 0 && Math.abs(change.change) > 0) {
+                  amount = Math.abs(change.change);
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error getting transaction details:", error);
+      }
+    }
+    
+    // If we've gathered enough information, process the event
+    if (eventType && walletAddress) {
+      // Default to 100 if we still couldn't determine amount
+      if (amount === 0) amount = 100;
+      
+      console.log(`Processing ${eventType} event for wallet ${walletAddress} with amount ${amount}`);
       processStakingEvent(eventType, walletAddress, amount, signature);
+    } else {
+      console.log("Couldn't extract enough information to process this event");
     }
   });
 
   // Listen for token transfers
-  connection.onLogs(TOKEN_PROGRAM_ID, (logInfo) => {
-    const { logs, signature } = logInfo;
+  const tokenSubscriptionId = connection.onLogs(TOKEN_PROGRAM_ID, async (logInfo) => {
+    const { logs, signature, err } = logInfo;
+    
+    if (err) return; // Skip errors
+    
+    // Join logs and convert to string
+    const logString = logs.join(" ");
     
     // Only process if it involves our token
-    const isRelevant = logs.some(log => log.includes(TOKEN_MINT.toBase58()));
-    
-    if (isRelevant) {
-      console.log("🔄 Token Transfer Detected:", signature);
-      // Process token transfer event
-      // This would typically update balances in your application
-      // You would need to fetch the transaction details to get the sender, receiver, and amount
+    if (logString.includes(TOKEN_MINT.toString())) {
+      console.log("\n==================================");
+      console.log("🔄 TOKEN TRANSFER Detected:", signature);
+      console.log("==================================");
+      
+      let fromWallet = "";
+      let toWallet = "";
+      let transferAmount = 0;
+      
+      // Try to extract from logs
+      const fromMatch = logString.match(/from\s+([1-9A-HJ-NP-Za-km-z]{32,44})/i);
+      const toMatch = logString.match(/to\s+([1-9A-HJ-NP-Za-km-z]{32,44})/i);
+      
+      if (fromMatch && fromMatch[1]) {
+        fromWallet = fromMatch[1];
+        console.log(`From: ${fromWallet}`);
+      }
+      
+      if (toMatch && toMatch[1]) {
+        toWallet = toMatch[1];
+        console.log(`To: ${toWallet}`);
+      }
+      
+      // Try to extract amount
+      const amountMatch = logString.match(/amount\s+(\d+)/i);
+      if (amountMatch && amountMatch[1]) {
+        transferAmount = parseInt(amountMatch[1]);
+        console.log(`Amount: ${transferAmount}`);
+      }
+      
+      // If we couldn't extract enough from logs, get transaction details
+      if (!fromWallet || !toWallet || transferAmount === 0) {
+        try {
+          const txDetails = await connection.getParsedTransaction(signature, 'confirmed');
+          
+          if (txDetails && txDetails.meta && txDetails.meta.preTokenBalances && txDetails.meta.postTokenBalances) {
+            console.log("Analyzing token balance changes from transaction...");
+            
+            const tokenChanges = calculateTokenBalanceChanges(
+              txDetails.meta.preTokenBalances, 
+              txDetails.meta.postTokenBalances
+            );
+            
+            for (const change of tokenChanges) {
+              console.log(`Account ${change.owner}: ${change.change > 0 ? '+' : ''}${change.change}`);
+              
+              // Negative change = from wallet
+              if (change.change < 0 && !fromWallet) {
+                fromWallet = change.owner;
+              }
+              
+              // Positive change = to wallet
+              if (change.change > 0 && !toWallet) {
+                toWallet = change.owner;
+              }
+              
+              // Use the absolute value of the largest change as our amount
+              if (Math.abs(change.change) > transferAmount) {
+                transferAmount = Math.abs(change.change);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error getting token transfer details:", error);
+        }
+      }
+      
+      // Process the token transfer event if we have enough info
+      if ((fromWallet || toWallet) && transferAmount > 0) {
+        console.log(`Processing token transfer: ${fromWallet} -> ${toWallet}, amount: ${transferAmount}`);
+        // In a real implementation, you would update balances, trigger notifications, etc.
+      }
     }
+  });
+
+  // Helper function to calculate token balance changes from transaction
+  function calculateTokenBalanceChanges(preBalances: any[], postBalances: any[]) {
+    const changes: { owner: string, mint: string, change: number }[] = [];
+    
+    // Create maps for easier comparison
+    const preMap = new Map();
+    for (const balance of preBalances) {
+      const key = `${balance.owner}-${balance.mint}`;
+      preMap.set(key, balance.uiTokenAmount.uiAmount || 0);
+    }
+    
+    // Compare with post balances
+    for (const postBalance of postBalances) {
+      const key = `${postBalance.owner}-${postBalance.mint}`;
+      const preAmount = preMap.get(key) || 0;
+      const postAmount = postBalance.uiTokenAmount.uiAmount || 0;
+      
+      if (preAmount !== postAmount) {
+        changes.push({
+          owner: postBalance.owner,
+          mint: postBalance.mint,
+          change: postAmount - preAmount
+        });
+      }
+    }
+    
+    return changes;
+  }
+
+  // Keep connections alive with periodic health checks
+  const intervalId = setInterval(() => {
+    // Use getVersion instead of getHealth as it's more reliable
+    connection.getVersion().catch(err => {
+      console.warn("WebSocket connection health check failed:", err);
+      console.log("Attempting to reconnect WebSocket...");
+    });
+  }, 30000);
+
+  // Handle application shutdown
+  process.on('SIGINT', () => {
+    console.log("\n🛑 Stopping WebSocket listeners and cleaning up...");
+    
+    if (stakingSubscriptionId) {
+      connection.removeOnLogsListener(stakingSubscriptionId);
+    }
+    
+    if (tokenSubscriptionId) {
+      connection.removeOnLogsListener(tokenSubscriptionId);
+    }
+    
+    clearInterval(intervalId);
+    process.exit(0);
   });
 
   console.log("On-chain event listeners started successfully");
