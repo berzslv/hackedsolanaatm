@@ -70,6 +70,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // External service integration - endpoint for staking data provider
+  // This will be called by your external service to provide staking data
+  app.post("/api/external/staking-data", async (req, res) => {
+    try {
+      // Define expected structure for staking data from external service
+      const { 
+        walletAddress,
+        amountStaked,
+        pendingRewards,
+        stakedAt,
+        lastUpdateTime,
+        estimatedAPY,
+        timeUntilUnlock,
+        apiKey
+      } = req.body;
+      
+      // Basic validation
+      if (!walletAddress || isNaN(amountStaked)) {
+        return res.status(400).json({ error: "Invalid staking data provided" });
+      }
+      
+      // In production, you would validate apiKey here for security
+      // This prevents unauthorized updates to staking data
+      // For now, we'll accept any data
+      
+      console.log(`Received external staking data for wallet: ${walletAddress}`, req.body);
+      
+      // Store in our cache
+      const { externalStakingCache } = await import('./external-staking-cache');
+      externalStakingCache.updateStakingData({
+        walletAddress,
+        amountStaked: Number(amountStaked),
+        pendingRewards: Number(pendingRewards || 0),
+        stakedAt: new Date(stakedAt || Date.now()),
+        lastUpdateTime: new Date(lastUpdateTime || Date.now()),
+        estimatedAPY: Number(estimatedAPY || 120),
+        timeUntilUnlock: timeUntilUnlock ? Number(timeUntilUnlock) : null
+      });
+      
+      return res.json({
+        success: true,
+        message: "Staking data received and stored successfully",
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error("Error processing external staking data:", error);
+      return res.status(500).json({
+        error: "Failed to process external staking data",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
+  // NEW: Get all external staking data (for testing purposes)
+  app.get("/api/external/staking-data", async (req, res) => {
+    try {
+      const { externalStakingCache } = await import('./external-staking-cache');
+      const walletAddresses = externalStakingCache.getAllWalletAddresses();
+      
+      const allData = walletAddresses.map(address => {
+        const data = externalStakingCache.getStakingData(address);
+        return { walletAddress: address, data };
+      });
+      
+      return res.json({
+        success: true,
+        count: allData.length,
+        data: allData
+      });
+    } catch (error) {
+      console.error("Error processing external staking data:", error);
+      return res.status(500).json({
+        error: "Failed to process external staking data",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
 
   // Add a route to transfer tokens between wallets
   app.post("/api/transfer-token", async (req, res) => {
@@ -1151,7 +1229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoint to get staking info directly from blockchain - using smart contract
+  // Endpoint to get staking info - using external data when available
   app.get("/api/staking-info/:walletAddress", async (req, res) => {
     try {
       const { walletAddress } = req.params;
@@ -1160,32 +1238,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Wallet address is required" });
       }
       
-      // Import the staking vault utilities that interact with the smart contract
-      const stakingVaultUtils = await import('./staking-vault-utils');
+      console.log(`Getting staking info for wallet: ${walletAddress}`);
       
-      // Use the real user's wallet address - no mocking
-      console.log(`Getting staking info for actual wallet: ${walletAddress}`);
+      // Get token balance - this works reliably
+      const simpleTokenModule = await import('./simple-token');
+      const tokenBalance = await simpleTokenModule.getTokenBalance(walletAddress);
+      const { keypair: authorityKeypair } = simpleTokenModule.getMintAuthority();
+      const stakingVaultAddress = authorityKeypair.publicKey.toString();
       
-      // Get user staking information directly from the smart contract for this specific wallet
-      const userStakingInfo = await stakingVaultUtils.getUserStakingInfo(walletAddress);
+      // Check if we have data from external provider
+      const { externalStakingCache } = await import('./external-staking-cache');
+      const externalData = externalStakingCache.getStakingData(walletAddress);
       
-      // Get the staking vault address from the vault info
-      const vaultInfo = await stakingVaultUtils.getStakingVaultInfo();
-      const stakingVaultAddress = vaultInfo.stakingVaultAddress;
+      let stakingResponse;
       
-      // Return the actual on-chain data for this user - no mocking
-      const stakingResponse = {
-        amountStaked: userStakingInfo.amountStaked,
-        pendingRewards: userStakingInfo.pendingRewards,
-        stakedAt: userStakingInfo.stakedAt,
-        lastCompoundAt: userStakingInfo.lastClaimAt || new Date(), // Using lastClaimAt for lastCompoundAt
-        estimatedAPY: userStakingInfo.estimatedAPY,
-        timeUntilUnlock: userStakingInfo.timeUntilUnlock,
-        stakingVaultAddress
-      };
+      if (externalData) {
+        console.log(`Using external staking data for ${walletAddress}:`, externalData);
+        
+        // Use data from external source
+        stakingResponse = {
+          amountStaked: externalData.amountStaked,
+          pendingRewards: externalData.pendingRewards,
+          stakedAt: externalData.stakedAt,
+          lastCompoundAt: externalData.lastUpdateTime,
+          estimatedAPY: externalData.estimatedAPY,
+          timeUntilUnlock: externalData.timeUntilUnlock,
+          stakingVaultAddress,
+          walletTokenBalance: tokenBalance,
+          dataSource: 'external',
+          lastUpdated: externalData.timestamp
+        };
+      } else {
+        console.log(`No external staking data available for ${walletAddress}, using zeros`);
+        
+        // No external data, use default values
+        stakingResponse = {
+          amountStaked: 0,
+          pendingRewards: 0,
+          stakedAt: new Date(),
+          lastCompoundAt: new Date(),
+          estimatedAPY: 120, // Default APY
+          timeUntilUnlock: null,
+          stakingVaultAddress,
+          walletTokenBalance: tokenBalance,
+          dataSource: 'default'
+        };
+      }
       
-      // Add debug logging
-      console.log("Real staking info for", walletAddress, ":", JSON.stringify(stakingResponse, null, 2));
+      console.log("Staking info for", walletAddress, ":", JSON.stringify(stakingResponse, null, 2));
       
       return res.json({
         success: true,
