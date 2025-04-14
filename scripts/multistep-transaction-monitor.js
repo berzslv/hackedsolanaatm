@@ -13,7 +13,8 @@ const {
   Connection, 
   PublicKey, 
   clusterApiUrl,
-  LAMPORTS_PER_SOL
+  LAMPORTS_PER_SOL,
+  SystemProgram
 } = require('@solana/web3.js');
 
 // Configuration

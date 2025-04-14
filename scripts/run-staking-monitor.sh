@@ -16,9 +16,9 @@ echo ""
 
 # Identify the JavaScript file to run based on NODE_ENV
 if [ "$NODE_ENV" = "production" ]; then
-  SCRIPT="all-transactions-monitor.js"
+  SCRIPT="multistep-transaction-monitor.js"
 else
-  SCRIPT="all-transactions-monitor.js" # Use same file for development/test
+  SCRIPT="multistep-transaction-monitor.js" # Use same file for development/test
 fi
 
 # Check if Node.js is installed
