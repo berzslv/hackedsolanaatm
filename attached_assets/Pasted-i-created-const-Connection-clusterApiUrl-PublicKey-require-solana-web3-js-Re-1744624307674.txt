@@ -1,0 +1,85 @@
+i created const {
+  Connection,
+  clusterApiUrl,
+  PublicKey,
+} = require('@solana/web3.js');
+
+// Replace with your actual program/token addresses
+const STAKING_PROGRAM_ID = new PublicKey("ReplaceWith_Staking_Program_ID");
+const TOKEN_MINT = new PublicKey("ReplaceWith_Token_Mint");
+
+const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+
+connection.onLogs(STAKING_PROGRAM_ID, (logInfo) => {
+  const { logs, signature } = logInfo;
+  console.log("📦 New Program Interaction:", signature);
+  for (let log of logs) {
+    if (log.includes("Stake")) {
+      console.log("✅ Stake Detected!");
+    } else if (log.includes("Unstake")) {
+      console.log("📤 Unstake Detected!");
+    } else if (log.includes("Claim")) {
+      console.log("💰 Reward Claim Detected!");
+    }
+  }
+}, "confirmed");
+
+connection.onLogs(new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), (logInfo) => {
+  const { logs, signature } = logInfo;
+  for (let log of logs) {
+    if (log.includes(TOKEN_MINT.toBase58())) {
+      console.log("🔄 Token Transfer Detected:", signature);
+    }
+  }
+}, "confirmed");
+
+You now have a real-time listener for on-chain events using zero paid services, and you're only using Solana WebSockets!
+so i need to test this. but it is not working.
+ Step 1: Understanding the Transactions
+Let’s inspect both transactions you sent:
+
+🔍 Tx1: 3eqGiX6V...
+Program ID involved: ATokenGPvbdGVxr1o6fjQ7QhYydwXEf1wFpHP6FyzDru (Associated Token Program)
+
+Token transfer occurred — but no interaction with your staking program or logs like Stake or Unstake.
+
+🔍 Tx2: 2bHfQpsu...
+Again, this is just an SPL token transfer.
+
+No custom logs, no smart contract calls.
+
+❗ Why Your Listener Didn't React
+Your listener is watching program logs, which only appear when a smart contract logs something (via msg!() in Anchor).
+
+These transactions:
+
+Don’t involve your staking program.
+
+Don’t emit any logs for your listener to capture.
+
+Look like direct token transfers — not staking calls.
+
+✅ Step 2: What You Need to Do
+If your staking system is automatic on token buy, then:
+
+The staking logic should live inside the same program as the buy logic.
+
+That program must emit logs like msg!("Stake") when staking happens.
+
+If it’s handled by a different program (say, a custom staking vault), you must:
+
+🔧 Update your listener:
+Make sure it listens to the right program ID (i.e., your staking vault contract):
+
+js
+Copy
+Edit
+const STAKING_PROGRAM_ID = new PublicKey("YOUR_STAKING_PROGRAM_ID");
+🧪 Emit logs in your program:
+In your Anchor smart contract, make sure you have:
+
+rust
+Copy
+Edit
+msg!("Stake: {} tokens from {}", amount, user.key());
+This is what your listener picks up.

@@ -2,6 +2,16 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { runMigrations } from "./db";
+import { startOnChainListeners } from "./on-chain-listener";
+
+// Import and initialize the token program IDs
+import { PublicKey } from "@solana/web3.js";
+const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+
+// Log the token program IDs for reference
+console.log("TOKEN_PROGRAM_ID:", TOKEN_PROGRAM_ID.toString());
+console.log("ASSOCIATED_TOKEN_PROGRAM_ID:", ASSOCIATED_TOKEN_PROGRAM_ID.toString());
 
 const app = express();
 app.use(express.json());
@@ -74,5 +84,12 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start on-chain event listeners after server is up
+    try {
+      startOnChainListeners();
+    } catch (error) {
+      console.error("Failed to start on-chain listeners:", error);
+    }
   });
 })();
