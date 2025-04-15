@@ -142,7 +142,7 @@ const DirectStakingWidget: React.FC = () => {
   
   // Function to handle unstaking
   const handleUnstake = async () => {
-    if (!connected || !publicKey || !signTransaction) {
+    if (!connected || !publicKey || !signTransaction || !sendTransaction) {
       toast({
         title: 'Wallet not connected',
         description: 'Please connect your wallet to unstake tokens',
@@ -171,19 +171,86 @@ const DirectStakingWidget: React.FC = () => {
       });
       return;
     }
+
+    setIsUnstaking(true);
     
-    // TODO: Implement unstaking transaction creation and signing
-    // This would use our direct blockchain interaction to create and submit the transaction
-    toast({
-      title: 'Direct unstaking feature',
-      description: 'Direct blockchain unstaking would be implemented here',
-      variant: 'default'
-    });
+    try {
+      toast({
+        title: 'Processing Unstake Request',
+        description: 'Creating unstake transaction...',
+      });
+      
+      // Create unstake transaction
+      const unstakeResponse = await fetch('/api/unstake', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: publicKey.toString(),
+          amount: unstakeValue
+        }),
+      });
+      
+      if (!unstakeResponse.ok) {
+        const errorData = await unstakeResponse.json();
+        throw new Error(errorData.error || 'Failed to create unstake transaction');
+      }
+      
+      const unstakeData = await unstakeResponse.json();
+      
+      if (unstakeData.success && unstakeData.transaction) {
+        // Deserialize and sign the transaction
+        const txBuffer = Uint8Array.from(atob(unstakeData.transaction), c => c.charCodeAt(0));
+        const transaction = Transaction.from(txBuffer);
+        
+        toast({
+          title: 'Waiting for approval',
+          description: 'Please approve the transaction in your wallet',
+        });
+        
+        // Setup Solana connection
+        const connection = new Connection(clusterApiUrl('devnet'));
+        
+        // Send the transaction to the network
+        const signature = await sendTransaction(transaction, connection);
+        
+        toast({
+          title: 'Transaction submitted',
+          description: 'Waiting for confirmation...',
+        });
+        
+        // Wait for the transaction to confirm
+        await connection.confirmTransaction(signature, 'confirmed');
+        
+        toast({
+          title: 'Unstaking successful',
+          description: `Successfully unstaked ${unstakeValue} tokens`,
+          variant: 'default'
+        });
+        
+        // Update all data
+        refreshAllData();
+        refreshBalance();
+        
+        // Clear the input
+        setUnstakeAmount('');
+      }
+    } catch (error) {
+      console.error('Unstaking error:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to unstake tokens',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsUnstaking(false);
+    }
   };
   
   // Function to handle claiming rewards
   const handleClaimRewards = async () => {
-    if (!connected || !publicKey || !signTransaction) {
+    if (!connected || !publicKey || !signTransaction || !sendTransaction) {
       toast({
         title: 'Wallet not connected',
         description: 'Please connect your wallet to claim rewards',
@@ -203,13 +270,76 @@ const DirectStakingWidget: React.FC = () => {
       return;
     }
     
-    // TODO: Implement rewards claiming transaction creation and signing
-    // This would use our direct blockchain interaction to create and submit the transaction
-    toast({
-      title: 'Direct rewards claiming feature',
-      description: 'Direct blockchain rewards claiming would be implemented here',
-      variant: 'default'
-    });
+    setIsClaiming(true);
+    
+    try {
+      toast({
+        title: 'Processing Claim Request',
+        description: 'Creating claim rewards transaction...',
+      });
+      
+      // Create claim transaction
+      const claimResponse = await fetch('/api/claim-rewards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: publicKey.toString()
+        }),
+      });
+      
+      if (!claimResponse.ok) {
+        const errorData = await claimResponse.json();
+        throw new Error(errorData.error || 'Failed to create claim transaction');
+      }
+      
+      const claimData = await claimResponse.json();
+      
+      if (claimData.success && claimData.transaction) {
+        // Deserialize and sign the transaction
+        const txBuffer = Uint8Array.from(atob(claimData.transaction), c => c.charCodeAt(0));
+        const transaction = Transaction.from(txBuffer);
+        
+        toast({
+          title: 'Waiting for approval',
+          description: 'Please approve the transaction in your wallet',
+        });
+        
+        // Setup Solana connection
+        const connection = new Connection(clusterApiUrl('devnet'));
+        
+        // Send the transaction to the network
+        const signature = await sendTransaction(transaction, connection);
+        
+        toast({
+          title: 'Transaction submitted',
+          description: 'Waiting for confirmation...',
+        });
+        
+        // Wait for the transaction to confirm
+        await connection.confirmTransaction(signature, 'confirmed');
+        
+        toast({
+          title: 'Claim successful',
+          description: `Successfully claimed ${formatNumber(pendingRewards)} tokens`,
+          variant: 'default'
+        });
+        
+        // Update all data
+        refreshAllData();
+        refreshBalance();
+      }
+    } catch (error) {
+      console.error('Claiming error:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to claim rewards',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsClaiming(false);
+    }
   };
   
   // Handle max button click for staking
