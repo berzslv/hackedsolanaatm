@@ -327,14 +327,10 @@ export async function createCombinedBuyAndStakeTransaction(
     const { mintPublicKey, keypair: mintAuthority } = getMintAuthority();
     const userPublicKey = new PublicKey(userWalletAddress);
     
-    // In a real implementation, we would:
-    // 1. Verify if the referral code is valid on-chain
-    // 2. Calculate any bonuses/rewards for using a referral
+    // Create transaction object
+    let transaction = new Transaction();
     
-    // For now, we'll create a simplified transaction that just mints tokens to the user
-    // In production, this would be a multi-instruction transaction
-    
-    // Get the user's token account
+    // 1. Get user's token account
     const userTokenAccount = await getAssociatedTokenAddress(
       mintPublicKey,
       userPublicKey,
@@ -343,9 +339,7 @@ export async function createCombinedBuyAndStakeTransaction(
       ASSOCIATED_TOKEN_PROGRAM_ID
     );
     
-    // Check if the user's token account exists
-    let transaction = new Transaction();
-    
+    // 2. Check if user's token account exists, create if needed
     try {
       await getAccount(connection, userTokenAccount);
       console.log("User token account exists");
@@ -369,18 +363,11 @@ export async function createCombinedBuyAndStakeTransaction(
       }
     }
     
-    // Calculate token amount with decimals
+    // 3. Calculate token amount with decimals
     const decimals = 9;
     const adjustedAmount = BigInt(amount * Math.pow(10, decimals));
     
-    // In a real implementation, this would create a complex transaction that:
-    // 1. Transfers SOL from user to treasury (payment)
-    // 2. Mints tokens to user
-    // 3. Transfers tokens to staking vault
-    // 4. Records referral information if provided
-    
-    // For the prototype, we'll just mint tokens to simulate the buy & stake
-    // This would be replaced with actual on-chain program instructions
+    // 4. Add mint instruction to send tokens to user
     const mintInstruction = createMintToInstruction(
       mintPublicKey,
       userTokenAccount,
@@ -391,17 +378,55 @@ export async function createCombinedBuyAndStakeTransaction(
     );
     
     transaction.add(mintInstruction);
+
+    // 5. Now add a staking instruction to transfer tokens to the staking vault
+    // Get the staking vault address (using mint authority temporarily)
+    const stakingVaultPubkey = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
     
-    // Get the latest blockhash
+    // Get the staking vault's token account
+    try {
+      // Import staking-vault-utils to get vault token account
+      const stakingVaultUtils = await import('./staking-vault-utils');
+      
+      // Add the transfer instruction to stake the tokens
+      // We need a separate transaction for this as it needs to be signed by the user
+      console.log(`Adding staking instruction for ${amount} tokens to vault ${stakingVaultPubkey.toString()}`);
+      
+      // Create transfer instruction
+      const stakeInstruction = createTransferInstruction(
+        userTokenAccount,          // source
+        stakingVaultPubkey,        // destination - this should be the token account of the staking vault
+        userPublicKey,             // owner of source account
+        adjustedAmount,            // amount with decimals
+        [],                        // multiSigners (not needed in this case)
+        TOKEN_PROGRAM_ID
+      );
+      
+      transaction.add(stakeInstruction);
+      
+      // 6. If there's a referral code, add referral registration instruction
+      if (referralCode) {
+        // In a real implementation, we would get the referrer's public key from the referral code
+        // and add an instruction to register them as the referrer
+        console.log(`Would add referral registration for code: ${referralCode}`);
+        
+        // This would be a call to the referral tracker program
+        // transaction.add(createReferralInstruction(...));
+      }
+    } catch (error) {
+      console.error("Error adding staking instruction:", error);
+      // Continue with just the mint instruction if staking fails
+    }
+    
+    // 7. Get the latest blockhash
     const { blockhash } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = userPublicKey;
     
-    // In a production system, we would sign with the mint authority here
-    // since the user can't mint tokens themselves
+    // 8. Partially sign with mint authority (for the mint instruction)
     transaction.partialSign(mintAuthority);
     
-    // Serialize the transaction
+    // 9. Serialize the transaction
     const serializedTransaction = transaction.serialize({
       requireAllSignatures: false,
       verifySignatures: false

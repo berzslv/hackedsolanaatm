@@ -203,7 +203,7 @@ const Header = () => {
             
             {/* Mobile wallet button */}
             <div className="sm:hidden w-full z-10 py-2">
-              <SolanaWalletButton className="w-full justify-center" />
+              <SolanaWalletButton />
             </div>
           </div>
         </nav>

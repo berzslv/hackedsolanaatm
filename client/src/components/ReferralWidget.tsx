@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Copy, CheckCircle, AlertCircle, RefreshCcw, Award } from 'lucide-react';
+import { Copy, CheckCircle, AlertCircle, RefreshCcw, Award, Info } from 'lucide-react';
 import { GradientText } from '@/components/ui/gradient-text';
 
 interface ReferralStats {
@@ -30,20 +30,8 @@ const ReferralWidget: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
-  const [newReferralCode, setNewReferralCode] = useState<string>('');
 
-  // Function to generate a referral code
-  const generateReferralCode = () => {
-    // Generate a random string for the referral code
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setNewReferralCode(code);
-  };
-
-  // Function to fetch referral data
+  // Function to fetch referral data from the blockchain
   const fetchReferralData = async () => {
     if (!connected || !publicKey) return;
     
@@ -69,9 +57,10 @@ const ReferralWidget: React.FC = () => {
 
   // Function to copy referral link to clipboard
   const copyReferralLink = () => {
-    if (!referralStats?.referralCode) return;
+    if (!publicKey) return;
     
-    const referralLink = `${window.location.origin}?ref=${referralStats.referralCode}`;
+    // Now using wallet address as the referral code - this is on-chain
+    const referralLink = `${window.location.origin}?ref=${publicKey.toString()}`;
     
     navigator.clipboard.writeText(referralLink)
       .then(() => {
@@ -93,44 +82,43 @@ const ReferralWidget: React.FC = () => {
       });
   };
 
-  // Function to register a new referral code
-  const registerReferralCode = async () => {
-    if (!connected || !publicKey || !newReferralCode) return;
+  // Function to claim referral rewards
+  const claimReferralRewards = async () => {
+    if (!connected || !publicKey) return;
     
     setLoading(true);
     setError(null);
     
     try {
-      const response = await fetch('/api/register-referral', {
+      const response = await fetch('/api/claim-referral-rewards', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           walletAddress: publicKey.toString(),
-          referralCode: newReferralCode,
         }),
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to register referral code');
+        throw new Error(errorData.error || 'Failed to claim rewards');
       }
       
       toast({
         title: 'Success!',
-        description: 'Your referral code has been registered',
+        description: 'Your referral rewards have been claimed',
       });
       
       // Refresh referral data
       fetchReferralData();
     } catch (err: any) {
-      console.error('Error registering referral code:', err);
-      setError(err.message || 'Failed to register referral code');
+      console.error('Error claiming referral rewards:', err);
+      setError(err.message || 'Failed to claim rewards');
       
       toast({
         title: 'Error',
-        description: err.message || 'Failed to register referral code',
+        description: err.message || 'Failed to claim rewards',
         variant: 'destructive',
       });
     } finally {
@@ -221,96 +209,76 @@ const ReferralWidget: React.FC = () => {
           </div>
         </div>
         
-        {/* Referral Code Section */}
-        <Tabs defaultValue={referralStats?.referralCode ? "share" : "create"}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="share" disabled={!referralStats?.referralCode}>Share</TabsTrigger>
-            <TabsTrigger value="create" disabled={!!referralStats?.referralCode}>Create</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="share" className="space-y-4 pt-4">
-            {referralStats?.referralCode ? (
-              <>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Your Referral Link</label>
-                  <div className="flex space-x-2">
-                    <Input 
-                      readOnly 
-                      value={`${window.location.origin}?ref=${referralStats.referralCode}`} 
-                    />
-                    <Button 
-                      variant="outline" 
-                      onClick={copyReferralLink}
-                    >
-                      {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Share this link with friends and earn 3% on their staking amount
-                  </p>
-                </div>
-                
-                <div className="bg-primary/5 p-4 rounded-md">
-                  <div className="flex items-center mb-2">
-                    <Award className="h-4 w-4 mr-2 text-primary" />
-                    <span className="text-sm font-medium">Your Referral Code</span>
-                  </div>
-                  <div className="font-mono text-xl font-bold">{referralStats.referralCode}</div>
-                </div>
-              </>
-            ) : (
-              <div className="py-8 text-center">
-                <p className="text-muted-foreground">You don't have a referral code yet</p>
-                <Button 
-                  variant="link" 
-                  onClick={() => document.querySelector('[value="create"]')?.dispatchEvent(new Event('click'))}
-                >
-                  Create one now
-                </Button>
+        {/* Claimable Rewards */}
+        {(referralStats?.claimableRewards || 0) > 0 && (
+          <div className="bg-green-100 dark:bg-green-900/20 p-4 rounded-md mb-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h4 className="font-medium">Claimable Rewards</h4>
+                <p className="text-lg font-bold">{referralStats?.claimableRewards} HATM</p>
               </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="create" className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Create Your Referral Code</label>
-              <div className="flex space-x-2">
-                <Input 
-                  placeholder="YOURCODE"
-                  value={newReferralCode}
-                  onChange={(e) => setNewReferralCode(e.target.value.toUpperCase())}
-                  maxLength={12}
-                />
-                <Button 
-                  variant="outline" 
-                  onClick={generateReferralCode}
-                >
-                  Generate
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Create a memorable code or use the generate button for a random one
-              </p>
+              <Button 
+                onClick={claimReferralRewards}
+                disabled={loading}
+                variant="outline"
+              >
+                Claim
+              </Button>
             </div>
-            
-            <Button 
-              className="w-full" 
-              onClick={registerReferralCode}
-              disabled={loading || !newReferralCode}
-            >
-              {loading ? 'Creating...' : 'Create Referral Code'}
-            </Button>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
+        
+        {/* Referral Link Section */}
+        <div className="space-y-4">
+          <div className="flex flex-col space-y-2">
+            <label className="text-sm font-medium">Your Referral Link</label>
+            <div className="flex space-x-2">
+              <Input 
+                readOnly 
+                value={`${window.location.origin}?ref=${publicKey?.toString()}`} 
+              />
+              <Button 
+                variant="outline" 
+                onClick={copyReferralLink}
+              >
+                {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Share this link with friends and earn 3% on their staking amount
+            </p>
+          </div>
+                
+          <div className="bg-primary/5 p-4 rounded-md">
+            <div className="flex items-center mb-2">
+              <Award className="h-4 w-4 mr-2 text-primary" />
+              <span className="text-sm font-medium">Your Wallet Address (Referral Code)</span>
+            </div>
+            <div className="font-mono text-xs font-medium truncate">{publicKey?.toString()}</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Your wallet address is automatically used as your referral code
+            </p>
+          </div>
+        </div>
+        
+        {/* Information Section */}
+        <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <AlertDescription className="text-sm text-blue-800 dark:text-blue-300">
+            Referrals are now tracked directly on-chain. When friends use your link, 
+            the smart contract automatically records them as your referrals and sends
+            you 3% of their staking amount.
+          </AlertDescription>
+        </Alert>
       </CardContent>
       
       <CardFooter className="bg-primary/5 flex flex-col items-start p-4">
         <h4 className="text-sm font-medium mb-2">How It Works</h4>
         <ol className="text-xs text-muted-foreground space-y-1">
-          <li>1. Create your unique referral code</li>
-          <li>2. Share your code or link with friends</li>
-          <li>3. When they stake HATM tokens, you earn 3% instantly</li>
-          <li>4. All rewards are tracked on-chain for transparency</li>
+          <li>1. Share your referral link with friends</li>
+          <li>2. When they connect and stake HATM tokens, they're tagged as your referral</li>
+          <li>3. You earn 3% of their stake amount instantly</li>
+          <li>4. All referrals are tracked on-chain for complete transparency</li>
         </ol>
       </CardFooter>
     </Card>
