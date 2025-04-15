@@ -111,7 +111,7 @@ export const getTokenBalance = async (
 };
 
 /**
- * Get user's staking information by fetching on-chain data
+ * Get user's staking information by fetching on-chain data via server API
  * @param walletAddress The wallet address to get staking info for
  * @param heliusApiKey Optional Helius API key for better RPC
  */
@@ -121,26 +121,27 @@ export const getUserStakingInfo = async (
 ): Promise<StakingUserInfo> => {
   try {
     const connection = getSolanaConnection(heliusApiKey);
-    const walletPubkey = new PublicKey(walletAddress);
     
-    // This is where we would fetch the user's staking account from blockchain
-    // For now, return mock data since actual blockchain fetching requires more setup
-    const stakingInfo: StakingUserInfo = {
-      amountStaked: 1000,
-      pendingRewards: 78.5,
-      stakedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), // 14 days ago
-      lastClaimAt: null,
-      timeUntilUnlock: null, // Already unlocked
-      estimatedAPY: 120, // 120%
-      dataSource: 'default', // Using default data since we haven't implemented actual fetching yet
-    };
+    // Get staking information from server API - this uses real blockchain data
+    const response = await fetch(`/api/staking-info/${walletAddress}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch staking information');
+    }
+    
+    const stakingData = await response.json();
     
     // Also add wallet token balance
     const tokenBalance = await getTokenBalance(walletAddress, connection);
     
+    // Format the response
     return {
-      ...stakingInfo,
-      // Include token balance in the response for convenience
+      amountStaked: stakingData.amountStaked || 0,
+      pendingRewards: stakingData.pendingRewards || 0,
+      stakedAt: new Date(stakingData.stakedAt || Date.now()),
+      lastClaimAt: stakingData.lastClaimAt ? new Date(stakingData.lastClaimAt) : null,
+      timeUntilUnlock: stakingData.timeUntilUnlock || null,
+      estimatedAPY: stakingData.estimatedAPY || 0,
+      dataSource: stakingData.dataSource || 'blockchain',
       walletTokenBalance: tokenBalance
     } as StakingUserInfo;
   } catch (error) {
@@ -160,23 +161,27 @@ export const getUserStakingInfo = async (
 };
 
 /**
- * Get global staking vault statistics
+ * Get global staking vault statistics from blockchain via server API
  */
 export const getStakingVaultInfo = async (
   heliusApiKey?: string
 ): Promise<StakingVaultInfo> => {
   try {
-    const connection = getSolanaConnection(heliusApiKey);
+    // Get staking vault information from server API - this uses real blockchain data
+    const response = await fetch('/api/staking-stats');
+    if (!response.ok) {
+      throw new Error('Failed to fetch staking vault statistics');
+    }
     
-    // This is where we would fetch the staking vault data from blockchain
-    // For now, return mock data since actual blockchain fetching requires more setup
+    const statsData = await response.json();
+    
     return {
-      totalStaked: 1250000,
-      rewardPool: 85000,
-      stakersCount: 328,
-      currentAPY: 120, // 120%
-      stakingVaultAddress: stakingVaultProgramId,
-      lastUpdated: new Date().toISOString(),
+      totalStaked: statsData.totalStaked || 0,
+      rewardPool: statsData.rewardPool || 0,
+      stakersCount: statsData.stakersCount || 0,
+      currentAPY: statsData.currentAPY || 0,
+      stakingVaultAddress: statsData.stakingVaultAddress || stakingVaultProgramId,
+      lastUpdated: statsData.lastUpdated || new Date().toISOString(),
     };
   } catch (error) {
     console.error('Error fetching staking vault info:', error);
