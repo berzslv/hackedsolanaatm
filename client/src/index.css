@@ -103,21 +103,8 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased bg-[#0f0b19] text-white;
     background-attachment: fixed;
-  }
-
-  body.dark {
-    background-image: 
-      radial-gradient(circle at 10% 20%, rgba(20, 241, 149, 0.08) 0%, transparent 30%),
-      radial-gradient(circle at 90% 80%, rgba(153, 69, 255, 0.08) 0%, transparent 30%),
-      linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.3) 100%);
-  }
-
-  body.light {
-    background-image: 
-      radial-gradient(circle at 10% 20%, rgba(20, 241, 149, 0.05) 0%, transparent 30%),
-      radial-gradient(circle at 90% 80%, rgba(153, 69, 255, 0.05) 0%, transparent 30%);
   }
 
   /* CSS Grid Pattern */
@@ -188,21 +175,19 @@
   }
   
   .section-hero {
-    @apply py-20 md:py-24 lg:py-32 bg-gradient-to-b;
-    @apply dark:from-[#1a1432] dark:to-[#121212] from-[#f5f0ff] to-[#fcfcff];
+    @apply py-20 md:py-24 lg:py-32 bg-[#0f0b19] mt-16;
   }
   
   .section-odd {
-    @apply bg-white dark:bg-[#1a1432] border-y border-purple-100/30 dark:border-purple-900/20;
+    @apply bg-[#0f0b19];
   }
   
   .section-even {
-    @apply bg-gray-50/80 dark:bg-[#0c0c11] border-y border-gray-100 dark:border-gray-900;
+    @apply bg-[#0f0b19];
   }
   
   .section-accent {
-    @apply bg-gradient-to-br from-purple-50 to-white dark:from-[#1b1435] dark:to-[#0c0c11];
-    @apply border-y border-purple-100 dark:border-purple-900/20;
+    @apply bg-[#0f0b19];
   }
   
   /* Pattern Elements */
