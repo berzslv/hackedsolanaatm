@@ -7,7 +7,7 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { SolanaProvider } from "@/context/SolanaContext";
 import { ReferralProvider } from "@/context/ReferralContext";
 import NotFound from "@/pages/not-found";
-import Layout from "@/layout/Layout";
+import Header from "@/layout/Header";
 import Home from "@/pages/Home";
 
 function Router() {
@@ -26,9 +26,12 @@ function App() {
         <SolanaProvider>
           <TokenDataProvider>
             <ReferralProvider>
-              <Layout>
-                <Router />
-              </Layout>
+              <div className="flex flex-col min-h-screen">
+                <Header />
+                <main className="flex-1">
+                  <Router />
+                </main>
+              </div>
               <Toaster />
             </ReferralProvider>
           </TokenDataProvider>
