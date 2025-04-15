@@ -51,18 +51,8 @@ pub mod referral_staking {
         user_info.referral_count = 0;
         user_info.total_referral_rewards = 0;
         
-        // Increment referrer's referral count if provided
-        if let Some(ref_pubkey) = referrer {
-            // Find referrer's account PDA
-            let (referrer_account_pda, _) = Pubkey::find_program_address(
-                &[b"user_info", ref_pubkey.as_ref()],
-                ctx.program_id,
-            );
-            
-            // Try to get referrer's account 
-            // In a real implementation, you would need to use a CPI to update the referrer's account
-            // This is simplified for the purpose of this exercise
-        }
+        // In a real implementation, you would use a separate instruction to update referrer's stats
+        // This is just a placeholder - no need to actually update referrer here
         
         Ok(())
     }
@@ -111,20 +101,10 @@ pub mod referral_staking {
         global_state.last_update_time = current_time;
         
         // Add referral rewards if applicable (first stake only)
-        if user_info.staked_amount == amount {
-            if let Some(referrer_pubkey) = user_info.referrer {
-                // Find the referrer's PDA
-                let (referrer_pda, _) = Pubkey::find_program_address(
-                    &[b"user_info", referrer_pubkey.as_ref()],
-                    ctx.program_id,
-                );
-                
-                // We would need a separate function to update the referrer's rewards
-                // This is a simplified implementation
-                
-                // In a real implementation, you would use a CPI to update the referrer's account
-                // msg!("Referral reward would be added to {}", referrer_pubkey);
-            }
+        if user_info.staked_amount == amount && user_info.referrer.is_some() {
+            msg!("Referral reward would be calculated for referrer");
+            // In a real implementation, you would emit an event or use a separate instruction
+            // to update the referrer's rewards. This is just a placeholder.
         }
         
         Ok(())
