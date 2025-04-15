@@ -7,6 +7,7 @@
  * - Get token transfers
  * - Get staking events
  * - Get wallet token balances
+ * - Get referral data and leaderboards
  * 
  * No Anchor or BN.js dependencies required!
  */
@@ -37,9 +38,10 @@ export interface TokenTransfersData {
 
 export interface StakingEvent {
   signature: string;
-  type: 'stake' | 'unstake' | 'claim' | 'reward' | 'unknown';
+  type: 'stake' | 'unstake' | 'claim' | 'compound' | 'register' | 'referral_reward' | 'unknown';
   walletAddress: string;
   amount: number;
+  referrerAddress?: string;
   timestamp: string;
   blockTime: string | null;
 }
@@ -49,7 +51,9 @@ export interface StakingData {
     amountStaked: number;
     pendingRewards: number;
     lastUpdateTime: string;
+    stakedAt: string | null;
     eventCount: number;
+    referrer?: string;
   }>;
   events: StakingEvent[];
   globalStats: {
@@ -60,6 +64,18 @@ export interface StakingData {
   };
 }
 
+export interface EnhancedStakingData {
+  amountStaked: number;
+  pendingRewards: number;
+  lastUpdateTime: string;
+  stakedAt: string | null;
+  eventCount: number;
+  timeUntilUnlock: number | null;
+  isLocked: boolean;
+  estimatedAPY: number;
+  referrer?: string;
+}
+
 export interface WalletStakingData {
   walletAddress: string;
   events: StakingEvent[];
@@ -68,6 +84,38 @@ export interface WalletStakingData {
 export interface TokenBalance {
   walletAddress: string;
   balance: number;
+}
+
+export interface ReferralData {
+  totalReferrals: number;
+  totalEarnings: number;
+  referredUsers: string[];
+  recentActivity: ReferralActivity[];
+  weeklyRank: number | null;
+}
+
+export interface ReferralActivity {
+  date: string;
+  referredUser: string;
+  amount: number;
+}
+
+export interface LeaderboardEntry {
+  walletAddress: string;
+  totalReferrals: number;
+  totalEarnings: number;
+  weeklyRank: number;
+}
+
+export interface GlobalStats {
+  totalStaked: number;
+  stakersCount: number;
+  currentAPY: number;
+  lastUpdated: string;
+  totalReferrals: number;
+  unlock_duration: number; // in seconds
+  early_unstake_penalty: number; // in basis points
+  referral_reward_rate: number; // in basis points
 }
 
 // ----- API Functions ----- //
@@ -170,6 +218,118 @@ export async function getStakingData(): Promise<StakingData> {
         lastUpdated: new Date().toISOString()
       }
     };
+  }
+}
+
+/**
+ * Get enhanced staking data for a wallet with time-until-unlock calculations
+ */
+export async function getEnhancedStakingData(walletAddress: string): Promise<EnhancedStakingData> {
+  try {
+    const response = await fetch(`${RAILWAY_SERVICE_URL}/api/staking-data?wallet=${walletAddress}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching enhanced staking data for wallet ${walletAddress}:`, error);
+    // Return default empty data
+    return {
+      amountStaked: 0,
+      pendingRewards: 0,
+      lastUpdateTime: new Date().toISOString(),
+      stakedAt: null,
+      eventCount: 0,
+      timeUntilUnlock: null,
+      isLocked: false,
+      estimatedAPY: 0
+    };
+  }
+}
+
+/**
+ * Get referral data for a wallet
+ */
+export async function getReferralData(walletAddress: string): Promise<ReferralData> {
+  try {
+    const response = await fetch(`${RAILWAY_SERVICE_URL}/api/referral-data?wallet=${walletAddress}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching referral data for wallet ${walletAddress}:`, error);
+    // Return default empty data
+    return {
+      totalReferrals: 0,
+      totalEarnings: 0,
+      referredUsers: [],
+      recentActivity: [],
+      weeklyRank: null
+    };
+  }
+}
+
+/**
+ * Get leaderboard data
+ */
+export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
+  try {
+    const response = await fetch(`${RAILWAY_SERVICE_URL}/api/leaderboard`);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+    const data = await response.json();
+    return data.leaderboard || [];
+  } catch (error) {
+    console.error('Error fetching leaderboard:', error);
+    return [];
+  }
+}
+
+/**
+ * Get global statistics
+ */
+export async function getGlobalStats(): Promise<GlobalStats> {
+  try {
+    const response = await fetch(`${RAILWAY_SERVICE_URL}/api/global-stats`);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching global stats:', error);
+    // Return default empty data
+    return {
+      totalStaked: 0,
+      stakersCount: 0,
+      currentAPY: 0,
+      lastUpdated: new Date().toISOString(),
+      totalReferrals: 0,
+      unlock_duration: 7 * 24 * 60 * 60, // 7 days in seconds
+      early_unstake_penalty: 1000, // 10% in basis points
+      referral_reward_rate: 300 // 3% in basis points
+    };
+  }
+}
+
+/**
+ * Format duration in a human-readable format
+ */
+export function formatDuration(milliseconds: number | null): string {
+  if (!milliseconds) return 'Unlocked';
+  
+  const seconds = Math.floor(milliseconds / 1000);
+  const days = Math.floor(seconds / (3600 * 24));
+  const hours = Math.floor((seconds % (3600 * 24)) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m`;
+  } else if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  } else {
+    return `${minutes}m`;
   }
 }
 

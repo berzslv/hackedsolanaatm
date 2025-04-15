@@ -47,6 +47,7 @@ if (!fs.existsSync(DATA_DIR)) {
 const TOKEN_TRANSFERS_FILE = join(DATA_DIR, 'token_transfers.json');
 const STAKING_DATA_FILE = join(DATA_DIR, 'staking_data.json');
 const WALLETS_TO_MONITOR_FILE = join(DATA_DIR, 'monitored_wallets.json');
+const REFERRAL_DATA_FILE = join(DATA_DIR, 'referral_data.json');
 
 // Initialize empty data files if they don't exist
 if (!fs.existsSync(TOKEN_TRANSFERS_FILE)) {
@@ -68,6 +69,15 @@ if (!fs.existsSync(STAKING_DATA_FILE)) {
 
 if (!fs.existsSync(WALLETS_TO_MONITOR_FILE)) {
   fs.writeFileSync(WALLETS_TO_MONITOR_FILE, JSON.stringify({ wallets: [] }));
+}
+
+if (!fs.existsSync(REFERRAL_DATA_FILE)) {
+  fs.writeFileSync(REFERRAL_DATA_FILE, JSON.stringify({ 
+    referrals: {}, 
+    referralCodes: {},
+    events: [],
+    leaderboard: []
+  }));
 }
 
 // Track seen transactions
@@ -346,34 +356,94 @@ async function processStakingOperation(txData, signature, wallet) {
     return;
   }
   
-  // Determine operation type from logs
+  // Load referral data as well
+  const referralData = loadData(REFERRAL_DATA_FILE);
+  if (!referralData) {
+    console.error('Could not load referral data');
+    // Continue anyway
+  }
+  
+  // Determine operation type and extract details from logs
   let eventType = 'unknown';
   let amount = 0;
   let walletAddress = wallet;
+  let referralCode = null;
+  let referrerAddress = null;
   
   try {
     if (txData.meta && txData.meta.logMessages) {
       const logs = txData.meta.logMessages;
       const logText = logs.join(' ');
       
-      if (logText.toLowerCase().includes('stake')) {
+      // Enhanced log parsing to detect operation type and details
+      if (logText.includes('Program log: Instruction: stake')) {
         eventType = 'stake';
-      } else if (logText.toLowerCase().includes('unstake')) {
+      } else if (logText.includes('Program log: Instruction: unstake')) {
         eventType = 'unstake';
-      } else if (logText.toLowerCase().includes('claim')) {
+      } else if (logText.includes('Program log: Instruction: claimRewards')) {
         eventType = 'claim';
-      } else if (logText.toLowerCase().includes('reward')) {
-        eventType = 'reward';
+      } else if (logText.includes('Program log: Instruction: compoundRewards')) {
+        eventType = 'compound';
+      } else if (logText.includes('Program log: Instruction: registerUser')) {
+        eventType = 'register';
+        
+        // Try to extract referrer info
+        const referrerMatch = logText.match(/Registered with referrer: ([a-zA-Z0-9]{32,44})/);
+        if (referrerMatch && referrerMatch[1]) {
+          referrerAddress = referrerMatch[1];
+        }
+      } else if (logText.includes('Program log: Instruction: updateReferrerRewards')) {
+        eventType = 'referral_reward';
       }
       
-      // Try to extract amount from logs (simplified)
-      const amountMatch = logText.match(/amount: (\d+)/i);
-      if (amountMatch && amountMatch[1]) {
-        amount = parseInt(amountMatch[1], 10);
+      // Try to extract amount from logs
+      const amountMatch = logText.match(/amount: (\d+)|Processing token transfer.*?amount: (\d+)|Staking amount: (\d+)/i);
+      if (amountMatch) {
+        // Use the first non-undefined capture group
+        amount = parseInt([amountMatch[1], amountMatch[2], amountMatch[3]].find(m => m) || '0', 10);
+      }
+      
+      // Try to extract wallet address if not provided
+      if (!walletAddress) {
+        const walletMatch = logText.match(/owner: ([a-zA-Z0-9]{32,44})|wallet: ([a-zA-Z0-9]{32,44})/i);
+        if (walletMatch) {
+          walletAddress = walletMatch[1] || walletMatch[2];
+        }
+      }
+      
+      // Check for early unstake penalty
+      const penaltyMatch = logText.match(/Early unstake penalty applied: (\d+)/i);
+      if (penaltyMatch && penaltyMatch[1]) {
+        // This is an unstake with penalty
+        console.log(`Early unstake detected with penalty: ${penaltyMatch[1]}`);
+      }
+      
+      // Check for referral rewards
+      const referralRewardMatch = logText.match(/Referral reward: (\d+)/i);
+      if (referralRewardMatch && referralRewardMatch[1]) {
+        const referralReward = parseInt(referralRewardMatch[1], 10);
+        console.log(`Referral reward detected: ${referralReward}`);
+        
+        // Update referrer's data
+        if (referralData && referrerAddress) {
+          updateReferralData(referralData, referrerAddress, walletAddress, referralReward);
+        }
       }
     }
   } catch (error) {
-    console.error('Error determining staking operation type:', error.message);
+    console.error('Error parsing logs for staking operation:', error.message);
+  }
+  
+  // Get transaction accounts to determine the wallet address if not found in logs
+  if (!walletAddress && txData.transaction && txData.transaction.message) {
+    try {
+      const accounts = txData.transaction.message.accountKeys;
+      // The first account is usually the signer/wallet
+      walletAddress = accounts[0]?.pubkey || 'unknown';
+    } catch (error) {
+      console.error('Error getting wallet address from transaction:', error.message);
+      walletAddress = 'unknown';
+    }
   }
   
   // Create staking event record
@@ -382,6 +452,7 @@ async function processStakingOperation(txData, signature, wallet) {
     type: eventType,
     walletAddress,
     amount,
+    referrerAddress,
     timestamp: new Date().toISOString(),
     blockTime: txData.blockTime ? new Date(txData.blockTime * 1000).toISOString() : null
   };
@@ -397,30 +468,163 @@ async function processStakingOperation(txData, signature, wallet) {
   stakingData.events.push(stakingEvent);
   
   // Update wallet-specific staking data
-  if (!stakingData.stakingData[walletAddress]) {
-    stakingData.stakingData[walletAddress] = {
-      amountStaked: 0,
-      pendingRewards: 0,
-      lastUpdateTime: new Date().toISOString(),
-      eventCount: 0
-    };
+  if (walletAddress && walletAddress !== 'unknown') {
+    if (!stakingData.stakingData[walletAddress]) {
+      stakingData.stakingData[walletAddress] = {
+        amountStaked: 0,
+        pendingRewards: 0,
+        lastUpdateTime: new Date().toISOString(),
+        stakedAt: eventType === 'stake' ? new Date().toISOString() : null,
+        eventCount: 0,
+        referrer: referrerAddress
+      };
+    }
+    
+    const walletStakingData = stakingData.stakingData[walletAddress];
+    walletStakingData.eventCount++;
+    walletStakingData.lastUpdateTime = new Date().toISOString();
+    
+    // Update staking amount based on event type
+    if (eventType === 'stake') {
+      walletStakingData.amountStaked += amount;
+      if (!walletStakingData.stakedAt) {
+        walletStakingData.stakedAt = new Date().toISOString();
+      }
+    } else if (eventType === 'unstake') {
+      walletStakingData.amountStaked = Math.max(0, walletStakingData.amountStaked - amount);
+      if (walletStakingData.amountStaked === 0) {
+        walletStakingData.stakedAt = null;
+      }
+    } else if (eventType === 'claim') {
+      walletStakingData.pendingRewards = 0;
+      walletStakingData.lastClaimTime = new Date().toISOString();
+    } else if (eventType === 'compound') {
+      // Compounding adds rewards to staked amount
+      walletStakingData.amountStaked += amount;
+      walletStakingData.pendingRewards = 0;
+    } else if (eventType === 'register' && referrerAddress) {
+      // Set referrer for this wallet
+      walletStakingData.referrer = referrerAddress;
+    }
+    
+    // Add the wallet to monitored wallets if not already
+    const walletsData = loadData(WALLETS_TO_MONITOR_FILE);
+    if (walletsData && !walletsData.wallets.includes(walletAddress)) {
+      walletsData.wallets.push(walletAddress);
+      saveData(WALLETS_TO_MONITOR_FILE, walletsData);
+    }
   }
   
-  const walletStakingData = stakingData.stakingData[walletAddress];
-  walletStakingData.eventCount++;
-  walletStakingData.lastUpdateTime = new Date().toISOString();
-  
-  // Update staking amount based on event type
-  if (eventType === 'stake') {
-    walletStakingData.amountStaked += amount;
-  } else if (eventType === 'unstake') {
-    walletStakingData.amountStaked = Math.max(0, walletStakingData.amountStaked - amount);
-  } else if (eventType === 'claim') {
-    walletStakingData.pendingRewards = 0;
-  }
+  // Update global statistics
+  updateGlobalStats(stakingData);
   
   // Save updated data
   saveData(STAKING_DATA_FILE, stakingData);
+  
+  // Save referral data if updated
+  if (referrerAddress && referralData) {
+    saveData(REFERRAL_DATA_FILE, referralData);
+  }
+}
+
+// Update referral data
+function updateReferralData(referralData, referrerAddress, referredAddress, rewardAmount) {
+  // Make sure the referrals object exists
+  if (!referralData.referrals) {
+    referralData.referrals = {};
+  }
+  
+  // Initialize referrer entry if it doesn't exist
+  if (!referralData.referrals[referrerAddress]) {
+    referralData.referrals[referrerAddress] = {
+      totalReferrals: 0,
+      totalEarnings: 0,
+      referredUsers: [],
+      recentActivity: []
+    };
+  }
+  
+  const referrerData = referralData.referrals[referrerAddress];
+  
+  // Update referrer stats
+  if (!referrerData.referredUsers.includes(referredAddress)) {
+    referrerData.referredUsers.push(referredAddress);
+    referrerData.totalReferrals++;
+  }
+  
+  referrerData.totalEarnings += rewardAmount;
+  
+  // Add activity record
+  referrerData.recentActivity.push({
+    date: new Date().toISOString(),
+    referredUser: referredAddress,
+    amount: rewardAmount
+  });
+  
+  // Limit recent activity to last 10 items
+  if (referrerData.recentActivity.length > 10) {
+    referrerData.recentActivity = referrerData.recentActivity.slice(-10);
+  }
+  
+  // Update leaderboard
+  updateReferralLeaderboard(referralData);
+}
+
+// Update referral leaderboard
+function updateReferralLeaderboard(referralData) {
+  // Create leaderboard data
+  const leaderboardEntries = [];
+  
+  for (const [address, data] of Object.entries(referralData.referrals)) {
+    leaderboardEntries.push({
+      walletAddress: address,
+      totalReferrals: data.totalReferrals,
+      totalEarnings: data.totalEarnings,
+      weeklyRank: 0 // Will be calculated below
+    });
+  }
+  
+  // Sort by total earnings (descending)
+  leaderboardEntries.sort((a, b) => b.totalEarnings - a.totalEarnings);
+  
+  // Assign ranks
+  leaderboardEntries.forEach((entry, index) => {
+    entry.weeklyRank = index + 1;
+  });
+  
+  // Update leaderboard in referral data
+  referralData.leaderboard = leaderboardEntries;
+}
+
+// Update global statistics
+function updateGlobalStats(stakingData) {
+  if (!stakingData.globalStats) {
+    stakingData.globalStats = {
+      totalStaked: 0,
+      stakersCount: 0,
+      currentAPY: 0,
+      lastUpdated: new Date().toISOString()
+    };
+  }
+  
+  // Calculate total staked and stakers count
+  let totalStaked = 0;
+  let stakersCount = 0;
+  
+  for (const [_, data] of Object.entries(stakingData.stakingData)) {
+    if (data.amountStaked > 0) {
+      totalStaked += data.amountStaked;
+      stakersCount++;
+    }
+  }
+  
+  // Update global stats
+  stakingData.globalStats.totalStaked = totalStaked;
+  stakingData.globalStats.stakersCount = stakersCount;
+  stakingData.globalStats.lastUpdated = new Date().toISOString();
+  
+  // APY calculation - use a default value or fetch from contract
+  stakingData.globalStats.currentAPY = 12; // 12% APY as placeholder
 }
 
 // Add a wallet to monitor
@@ -522,207 +726,251 @@ app.get('/api/staking-data', (req, res) => {
     return res.status(500).json({ error: 'Error loading staking data' });
   }
   
+  // Optional wallet filter
+  const { wallet } = req.query;
+  if (wallet) {
+    const walletData = stakingData.stakingData[wallet] || {
+      amountStaked: 0,
+      pendingRewards: 0,
+      lastUpdateTime: new Date().toISOString(),
+      stakedAt: null,
+      eventCount: 0
+    };
+    
+    // Calculate time metrics
+    const stakedAt = walletData.stakedAt ? new Date(walletData.stakedAt) : null;
+    let timeUntilUnlock = null;
+    let isLocked = false;
+    
+    if (stakedAt && walletData.amountStaked > 0) {
+      // 7-day lock period (604800000 ms)
+      const unlockTime = new Date(stakedAt.getTime() + 604800000);
+      const now = new Date();
+      
+      if (unlockTime > now) {
+        timeUntilUnlock = unlockTime.getTime() - now.getTime();
+        isLocked = true;
+      }
+    }
+    
+    // Add calculated fields
+    const enhancedWalletData = {
+      ...walletData,
+      timeUntilUnlock,
+      isLocked,
+      estimatedAPY: stakingData.globalStats.currentAPY
+    };
+    
+    return res.status(200).json(enhancedWalletData);
+  }
+  
   return res.status(200).json(stakingData);
 });
 
-// Endpoint to get wallet-specific staking data
-app.get('/api/staking-data/:walletAddress', (req, res) => {
-  const { walletAddress } = req.params;
+// Get referral data for a wallet
+app.get('/api/referral-data', (req, res) => {
+  const referralData = loadData(REFERRAL_DATA_FILE);
+  if (!referralData) {
+    return res.status(500).json({ error: 'Error loading referral data' });
+  }
   
+  // Optional wallet filter
+  const { wallet } = req.query;
+  if (wallet) {
+    const walletReferralData = referralData.referrals[wallet] || {
+      totalReferrals: 0,
+      totalEarnings: 0,
+      referredUsers: [],
+      recentActivity: []
+    };
+    
+    // Get rank from leaderboard
+    const leaderboardEntry = referralData.leaderboard.find(entry => entry.walletAddress === wallet);
+    const rank = leaderboardEntry ? leaderboardEntry.weeklyRank : null;
+    
+    // Add rank to response
+    const enhancedReferralData = {
+      ...walletReferralData,
+      weeklyRank: rank
+    };
+    
+    return res.status(200).json(enhancedReferralData);
+  }
+  
+  return res.status(200).json(referralData);
+});
+
+// Get leaderboard data
+app.get('/api/leaderboard', (req, res) => {
+  const referralData = loadData(REFERRAL_DATA_FILE);
+  if (!referralData) {
+    return res.status(500).json({ error: 'Error loading referral data' });
+  }
+  
+  return res.status(200).json({ leaderboard: referralData.leaderboard });
+});
+
+// Endpoint to get global statistics
+app.get('/api/global-stats', (req, res) => {
   const stakingData = loadData(STAKING_DATA_FILE);
   if (!stakingData) {
     return res.status(500).json({ error: 'Error loading staking data' });
   }
   
-  // Filter staking events for this wallet
-  const walletEvents = stakingData.events?.filter(event => 
-    event.walletAddress === walletAddress
-  ) || [];
+  const referralData = loadData(REFERRAL_DATA_FILE);
+  const totalReferrals = referralData ? 
+    Object.values(referralData.referrals).reduce((sum, data) => sum + data.totalReferrals, 0) : 0;
   
-  return res.status(200).json({ walletAddress, events: walletEvents });
+  // Combine staking and referral stats
+  const combinedStats = {
+    ...stakingData.globalStats,
+    totalReferrals,
+    unlock_duration: 7 * 24 * 60 * 60, // 7 days in seconds
+    early_unstake_penalty: 1000, // 10% in basis points
+    referral_reward_rate: 300, // 3% in basis points
+  };
+  
+  return res.status(200).json(combinedStats);
 });
 
-// Clear data (for testing)
-app.post('/api/clear-data', (req, res) => {
-  // Check if caller has admin rights
-  const adminKey = req.headers['admin-key'];
-  if (adminKey !== process.env.ADMIN_KEY) {
+// Manually update staking data (for testing/admin)
+app.post('/api/update-staking', (req, res) => {
+  const { apiKey, walletAddress, amountStaked, pendingRewards } = req.body;
+  
+  // Check admin API key
+  if (apiKey !== ADMIN_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   
-  // Clear token transfers
-  saveData(TOKEN_TRANSFERS_FILE, { transfers: [] });
-  
-  // Clear staking data
-  saveData(STAKING_DATA_FILE, { stakingData: {}, events: [] });
-  
-  return res.status(200).json({ success: true, message: 'Data cleared' });
-});
-
-// Get list of monitored wallets
-app.get('/api/monitored-wallets', (req, res) => {
-  const walletsData = loadData(WALLETS_TO_MONITOR_FILE);
-  if (!walletsData) {
-    return res.status(500).json({ error: 'Error loading wallets data' });
+  if (!walletAddress) {
+    return res.status(400).json({ error: 'Wallet address is required' });
   }
-  
-  return res.status(200).json(walletsData);
-});
-
-// Get wallet token balance
-app.get('/api/token-balance/:walletAddress', async (req, res) => {
-  const { walletAddress } = req.params;
   
   try {
-    // Call getTokenAccountsByOwner RPC method
-    const accounts = await callSolanaRpc('getTokenAccountsByOwner', [
-      walletAddress,
-      { mint: TOKEN_MINT },
-      { encoding: 'jsonParsed' }
-    ]);
-    
-    if (!accounts || !accounts.value || accounts.value.length === 0) {
-      return res.status(200).json({ walletAddress, balance: 0 });
-    }
-    
-    let totalBalance = 0;
-    
-    // Sum up balances from all token accounts
-    for (const account of accounts.value) {
-      const parsedInfo = account.account.data.parsed.info;
-      const amount = parsedInfo.tokenAmount.uiAmount || 0;
-      totalBalance += amount;
-    }
-    
-    return res.status(200).json({
-      walletAddress,
-      balance: totalBalance
-    });
-  } catch (error) {
-    console.error(`Error getting token balance for ${walletAddress}:`, error.message);
-    return res.status(500).json({ error: 'Error getting token balance' });
-  }
-});
-
-// Force poll now
-app.post('/api/poll-now', async (req, res) => {
-  // Check if caller has admin rights
-  const adminKey = req.headers['admin-key'];
-  if (adminKey !== ADMIN_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  
-  // Trigger polling
-  try {
-    pollTransactions();
-    return res.status(200).json({ success: true, message: 'Polling started' });
-  } catch (error) {
-    return res.status(500).json({ error: 'Error starting polling' });
-  }
-});
-
-// Get total token stats
-app.get('/api/token-stats', async (req, res) => {
-  try {
-    // Get token transfers
-    const tokenTransfers = loadData(TOKEN_TRANSFERS_FILE);
-    if (!tokenTransfers) {
-      return res.status(500).json({ error: 'Error loading token transfers data' });
-    }
-    
-    // Get staking data
     const stakingData = loadData(STAKING_DATA_FILE);
     if (!stakingData) {
       return res.status(500).json({ error: 'Error loading staking data' });
     }
     
-    // Calculate stats
-    const stats = {
-      totalTransactions: tokenTransfers.transfers.length,
-      uniqueWallets: new Set(),
-      totalStaked: 0,
-      lastUpdate: new Date().toISOString()
-    };
-    
-    // Count unique wallets
-    tokenTransfers.transfers.forEach(transfer => {
-      if (transfer.fromWallet !== 'unknown') stats.uniqueWallets.add(transfer.fromWallet);
-      if (transfer.toWallet !== 'unknown') stats.uniqueWallets.add(transfer.toWallet);
-    });
-    
-    // Calculate total staked
-    if (stakingData.stakingData) {
-      Object.values(stakingData.stakingData).forEach(data => {
-        stats.totalStaked += data.amountStaked || 0;
-      });
+    // Initialize or update wallet data
+    if (!stakingData.stakingData[walletAddress]) {
+      stakingData.stakingData[walletAddress] = {
+        amountStaked: 0,
+        pendingRewards: 0,
+        lastUpdateTime: new Date().toISOString(),
+        stakedAt: null,
+        eventCount: 0
+      };
     }
     
+    const walletData = stakingData.stakingData[walletAddress];
+    
+    // Update fields if provided
+    if (amountStaked !== undefined) {
+      walletData.amountStaked = amountStaked;
+      if (amountStaked > 0 && !walletData.stakedAt) {
+        walletData.stakedAt = new Date().toISOString();
+      } else if (amountStaked === 0) {
+        walletData.stakedAt = null;
+      }
+    }
+    
+    if (pendingRewards !== undefined) {
+      walletData.pendingRewards = pendingRewards;
+    }
+    
+    walletData.lastUpdateTime = new Date().toISOString();
+    walletData.eventCount++;
+    
+    // Update global stats
+    updateGlobalStats(stakingData);
+    
+    // Save updated data
+    saveData(STAKING_DATA_FILE, stakingData);
+    
     return res.status(200).json({
-      ...stats,
-      uniqueWallets: Array.from(stats.uniqueWallets),
-      uniqueWalletsCount: stats.uniqueWallets.size
+      success: true,
+      message: 'Staking data updated successfully',
+      data: walletData
     });
   } catch (error) {
-    console.error('Error getting token stats:', error.message);
-    return res.status(500).json({ error: 'Error calculating token stats' });
+    console.error('Error updating staking data:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Root endpoint
+// Reset data (for testing/admin)
+app.post('/api/reset-data', (req, res) => {
+  const { apiKey, dataType } = req.body;
+  
+  // Check admin API key
+  if (apiKey !== ADMIN_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    if (dataType === 'staking' || dataType === 'all') {
+      fs.writeFileSync(STAKING_DATA_FILE, JSON.stringify({ 
+        stakingData: {}, 
+        events: [],
+        globalStats: {
+          totalStaked: 0,
+          stakersCount: 0,
+          currentAPY: 0,
+          lastUpdated: new Date().toISOString()
+        }
+      }));
+    }
+    
+    if (dataType === 'transfers' || dataType === 'all') {
+      fs.writeFileSync(TOKEN_TRANSFERS_FILE, JSON.stringify({ transfers: [] }));
+    }
+    
+    if (dataType === 'wallets' || dataType === 'all') {
+      fs.writeFileSync(WALLETS_TO_MONITOR_FILE, JSON.stringify({ wallets: [] }));
+    }
+    
+    if (dataType === 'referrals' || dataType === 'all') {
+      fs.writeFileSync(REFERRAL_DATA_FILE, JSON.stringify({ 
+        referrals: {}, 
+        referralCodes: {},
+        events: [],
+        leaderboard: []
+      }));
+    }
+    
+    seenTransactions.clear();
+    
+    return res.status(200).json({
+      success: true,
+      message: `Data reset successful (${dataType})`
+    });
+  } catch (error) {
+    console.error('Error resetting data:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Root route
 app.get('/', (req, res) => {
   return res.status(200).json({
-    service: 'HATM Token Monitor',
-    status: 'Running',
-    endpoints: [
-      '/api/token-transfers',
-      '/api/staking-data',
-      '/api/staking-data/:walletAddress',
-      '/api/token-balance/:walletAddress',
-      '/api/token-stats',
-      '/api/monitored-wallets',
-      '/api/add-wallet',
-      '/api/remove-wallet',
-      '/api/poll-now'
-    ]
+    name: 'Hacked ATM Token Railway API',
+    version: '1.0.0',
+    description: 'API for tracking HATM token transfers and staking operations on Solana',
+    network: NETWORK
   });
 });
 
-// Start the transaction polling loop
-let pollingIntervalId = null;
-
-function startPolling() {
-  console.log(`Starting transaction polling with interval ${POLLING_INTERVAL}ms`);
-  // Run once immediately
-  pollTransactions().catch(err => {
-    console.error('Error in initial transaction polling:', err.message);
-  });
-  
-  // Then start the interval
-  pollingIntervalId = setInterval(() => {
-    pollTransactions().catch(err => {
-      console.error('Error in transaction polling:', err.message);
-    });
-  }, POLLING_INTERVAL);
-}
-
-// Start the server
+// Start server and polling
 const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server listening on port ${PORT}`);
+  console.log(`Network: ${NETWORK}`);
+  console.log(`Monitoring token: ${TOKEN_MINT}`);
+  console.log(`Monitoring staking program: ${STAKING_PROGRAM_ID}`);
   
-  // Start polling after server starts
-  startPolling();
+  // Start polling immediately and then at intervals
+  pollTransactions();
+  setInterval(pollTransactions, POLLING_INTERVAL);
 });
 
-// Handle shutdown gracefully
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down...');
-  if (pollingIntervalId) {
-    clearInterval(pollingIntervalId);
-  }
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
-});
-
-export default server;
+export default app;
