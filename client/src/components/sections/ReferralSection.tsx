@@ -1,7 +1,7 @@
 import { GradientText } from "@/components/ui/gradient-text";
 import { Badge } from "@/components/ui/badge";
 import { Users, Link } from "lucide-react";
-import ReferralWidget from "@/components/ReferralWidget";
+import ReferralWidget from "../ReferralWidget";
 
 const ReferralSection = () => {
   return (

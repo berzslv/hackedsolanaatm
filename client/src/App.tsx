@@ -9,16 +9,11 @@ import { ReferralProvider } from "@/context/ReferralContext";
 import NotFound from "@/pages/not-found";
 import Layout from "@/layout/Layout";
 import Home from "@/pages/Home";
-import Whitepaper from "@/pages/Whitepaper";
-import Dashboard from "@/pages/Dashboard";
-import SmartContractTesting from "@/pages/SmartContractTesting";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/whitepaper" component={Whitepaper} />
-      <Route path="/smart-contract" component={SmartContractTesting} />
       <Route component={NotFound} />
     </Switch>
   );
