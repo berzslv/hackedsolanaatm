@@ -33,7 +33,7 @@ const DirectStakingWidget: React.FC = () => {
   const [isUnstaking, setIsUnstaking] = useState<boolean>(false);
   const [isClaiming, setIsClaiming] = useState<boolean>(false);
   
-  // Function to handle staking with two separate transactions
+  // Function to handle staking in a single transaction
   const handleStake = async () => {
     if (!connected || !publicKey || !signTransaction || !sendTransaction) {
       toast({
@@ -58,130 +58,75 @@ const DirectStakingWidget: React.FC = () => {
     setIsStaking(true);
     
     try {
-      // Step 1: Create and send the "buy tokens" transaction
+      // Get referral code from URL if present
+      const searchParams = new URLSearchParams(window.location.search);
+      const referralCode = searchParams.get('ref');
+      
       toast({
-        title: 'Step 1 of 2',
-        description: 'Creating buy tokens transaction...',
+        title: 'Processing Stake Request',
+        description: 'Creating buy and stake transaction...',
       });
       
-      // First transaction - buy tokens
-      const buyResponse = await fetch('/api/buy-tokens', {
+      // Combined buy and stake transaction
+      const stakeResponse = await fetch('/api/buy-and-stake', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           walletAddress: publicKey.toString(),
-          amount: amount
+          amount: amount,
+          referralCode: referralCode
         }),
       });
       
-      if (!buyResponse.ok) {
-        const errorData = await buyResponse.json();
-        throw new Error(errorData.error || 'Failed to create buy transaction');
+      if (!stakeResponse.ok) {
+        const errorData = await stakeResponse.json();
+        throw new Error(errorData.error || 'Failed to create buy and stake transaction');
       }
       
-      const buyData = await buyResponse.json();
+      const stakeData = await stakeResponse.json();
       
-      if (buyData.success && buyData.transaction) {
+      if (stakeData.success && stakeData.transaction) {
         // Deserialize and sign the transaction
-        const buyBuffer = Uint8Array.from(atob(buyData.transaction), c => c.charCodeAt(0));
-        const buyTransaction = Transaction.from(buyBuffer);
+        const txBuffer = Uint8Array.from(atob(stakeData.transaction), c => c.charCodeAt(0));
+        const transaction = Transaction.from(txBuffer);
         
         toast({
           title: 'Waiting for approval',
           description: 'Please approve the transaction in your wallet',
         });
         
-        // Send the transaction
-        try {
-          // Setup Solana connection
-          const connection = new Connection(clusterApiUrl('devnet'));
-          
-          // Send the transaction to the network
-          const signature = await sendTransaction(buyTransaction, connection);
-          
-          toast({
-            title: 'Transaction 1 submitted',
-            description: 'Waiting for confirmation...',
-          });
-          
-          // Wait for the transaction to confirm
-          await connection.confirmTransaction(signature, 'confirmed');
-          
-          toast({
-            title: 'Tokens purchased',
-            description: `Successfully purchased ${amount} tokens. Now staking...`,
-          });
-          
-          // Step 2: Create and send the "stake tokens" transaction
-          toast({
-            title: 'Step 2 of 2',
-            description: 'Creating stake transaction...',
-          });
-          
-          // Now create the staking transaction
-          const stakeResponse = await fetch('/api/stake-tokens', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              walletAddress: publicKey.toString(),
-              amount: amount,
-              transactionId: signature // Include the first transaction ID
-            }),
-          });
-          
-          if (!stakeResponse.ok) {
-            const errorData = await stakeResponse.json();
-            throw new Error(errorData.error || 'Failed to create staking transaction');
-          }
-          
-          const stakeData = await stakeResponse.json();
-          
-          if (stakeData.success && stakeData.transaction) {
-            // Deserialize and sign the transaction
-            const stakeBuffer = Uint8Array.from(atob(stakeData.transaction), c => c.charCodeAt(0));
-            const stakeTransaction = Transaction.from(stakeBuffer);
-            
-            toast({
-              title: 'Waiting for approval',
-              description: 'Please approve the staking transaction in your wallet',
-            });
-            
-            // Send the transaction
-            const stakeSignature = await sendTransaction(stakeTransaction, connection);
-            
-            toast({
-              title: 'Transaction 2 submitted',
-              description: 'Waiting for confirmation...',
-            });
-            
-            // Wait for the transaction to confirm
-            await connection.confirmTransaction(stakeSignature, 'confirmed');
-            
-            toast({
-              title: 'Staking successful',
-              description: `Successfully staked ${amount} tokens`,
-              variant: 'default'
-            });
-            
-            // Update all data
-            refreshAllData();
-            refreshBalance();
-            
-            // Clear the input
-            setStakeAmount('');
-          }
-        } catch (error) {
-          console.error('Transaction error:', error);
-          toast({
-            title: 'Transaction error',
-            description: error instanceof Error ? error.message : 'Failed to send transaction',
-            variant: 'destructive'
-          });
-        }
+        // Setup Solana connection
+        const connection = new Connection(clusterApiUrl('devnet'));
+        
+        // Send the transaction to the network
+        const signature = await sendTransaction(transaction, connection);
+        
+        toast({
+          title: 'Transaction submitted',
+          description: 'Waiting for confirmation...',
+        });
+        
+        // Wait for the transaction to confirm
+        await connection.confirmTransaction(signature, 'confirmed');
+        
+        const referralMessage = referralCode 
+          ? ` using referral code ${referralCode}`
+          : '';
+        
+        toast({
+          title: 'Staking successful',
+          description: `Successfully purchased and staked ${amount} tokens${referralMessage}`,
+          variant: 'default'
+        });
+        
+        // Update all data
+        refreshAllData();
+        refreshBalance();
+        
+        // Clear the input
+        setStakeAmount('');
       }
     } catch (error) {
       console.error('Staking error:', error);
