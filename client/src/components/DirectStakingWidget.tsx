@@ -343,9 +343,38 @@ const DirectStakingWidget: React.FC = () => {
   };
   
   // Handle max button click for staking
-  const handleMaxStake = () => {
-    // TODO: Get token balance directly from blockchain
-    setStakeAmount('100'); // Placeholder - would use actual token balance
+  const handleMaxStake = async () => {
+    if (!connected || !publicKey) return;
+    
+    try {
+      const connection = new Connection(clusterApiUrl('devnet'));
+      
+      // Get token balance using utility function
+      const response = await fetch(`/api/token-balance/${publicKey.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch token balance');
+      }
+      
+      const data = await response.json();
+      if (data.success && data.balance !== undefined) {
+        // Set 95% of balance to account for transaction fees
+        const maxAmount = Math.floor(data.balance * 0.95);
+        setStakeAmount(maxAmount.toString());
+      } else {
+        toast({
+          title: 'Balance Error',
+          description: 'Could not retrieve token balance',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error getting max stake amount:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to calculate maximum stake amount',
+        variant: 'destructive'
+      });
+    }
   };
   
   // Handle max button click for unstaking
