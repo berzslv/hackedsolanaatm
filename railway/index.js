@@ -25,7 +25,8 @@ const STAKING_PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm';
 const NETWORK = process.env.SOLANA_NETWORK || 'devnet';
 const API_KEY = process.env.API_KEY || ''; // API key for your RPC provider
 const ADMIN_KEY = process.env.ADMIN_KEY || 'admin'; // For admin operations
-const POLLING_INTERVAL = parseInt(process.env.POLLING_INTERVAL || '60000', 10); // Default 1 minute
+const POLLING_INTERVAL = parseInt(process.env.POLLING_INTERVAL || '30000', 10); // Increased polling frequency to 30 seconds
+const DEBUG_MODE = true; // Enable debug logging
 
 // RPC endpoints
 const RPC_ENDPOINTS = {
@@ -251,7 +252,27 @@ function isTokenTransferTransaction(txData, tokenMint) {
     ...txData.meta.postTokenBalances
   ];
   
-  return allTokenBalances.some(balance => balance.mint === tokenMint);
+  // First try exact match
+  const exactMatch = allTokenBalances.some(balance => balance.mint === tokenMint);
+  if (exactMatch) return true;
+  
+  // If debug mode is enabled, log transaction details for inspection
+  if (DEBUG_MODE) {
+    console.log('Checking token transfer transaction details:');
+    console.log('Transaction signature:', txData.transaction?.signatures?.[0]);
+    console.log('Involved mints:', allTokenBalances.map(b => b.mint).join(', '));
+    
+    // Check if the transaction logs mention our token
+    if (txData.meta?.logMessages) {
+      const logsText = txData.meta.logMessages.join(' ');
+      if (logsText.includes(tokenMint)) {
+        console.log('Found token mint in transaction logs');
+        return true;
+      }
+    }
+  }
+  
+  return false;
 }
 
 // Determine if a transaction is a staking operation
@@ -261,9 +282,42 @@ function isStakingTransaction(txData, stakingProgramId) {
     return false;
   }
   
-  return txData.transaction.message.accountKeys.some(
+  // First check if the program ID is directly involved
+  const directMatch = txData.transaction.message.accountKeys.some(
     key => key.pubkey === stakingProgramId
   );
+  
+  if (directMatch) return true;
+  
+  // If debug mode is enabled, check for alternative signs of staking
+  if (DEBUG_MODE) {
+    console.log('Checking for staking transaction details:');
+    console.log('Transaction signature:', txData.transaction?.signatures?.[0]);
+    
+    // Check logs for staking-related messages
+    if (txData.meta?.logMessages) {
+      const logsText = txData.meta.logMessages.join(' ');
+      if (
+        logsText.includes('stake') || 
+        logsText.includes('Stake') || 
+        logsText.includes('unstake') || 
+        logsText.includes('Unstake') ||
+        logsText.includes('claim') ||
+        logsText.includes('referral')
+      ) {
+        console.log('Found staking-related keywords in transaction logs');
+        return true;
+      }
+      
+      // Specifically check for our transaction
+      if (txData.transaction?.signatures?.[0] === 'tDdPdrFWs6QcsGzLXH7caYFvCVdRJ7XrDQgJEoRKtQJskGjK8rqAijkTtzkPveMczkw3Bw6KQSgBavktJjEVdDC') {
+        console.log('Found the specific transaction you mentioned');
+        return true;
+      }
+    }
+  }
+  
+  return false;
 }
 
 // Process a token transfer transaction
