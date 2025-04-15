@@ -95,7 +95,11 @@ const DirectStakingWidget: React.FC = () => {
         
         // Send the transaction
         try {
-          const signature = await sendTransaction(buyTransaction, []);
+          // Setup Solana connection
+          const connection = new Connection(clusterApiUrl('devnet'));
+          
+          // Send the transaction to the network
+          const signature = await sendTransaction(buyTransaction, connection);
           
           toast({
             title: 'Transaction 1 submitted',
@@ -103,7 +107,6 @@ const DirectStakingWidget: React.FC = () => {
           });
           
           // Wait for the transaction to confirm
-          const connection = new Connection(clusterApiUrl('devnet'));
           await connection.confirmTransaction(signature, 'confirmed');
           
           toast({
@@ -148,7 +151,7 @@ const DirectStakingWidget: React.FC = () => {
             });
             
             // Send the transaction
-            const stakeSignature = await sendTransaction(stakeTransaction, []);
+            const stakeSignature = await sendTransaction(stakeTransaction, connection);
             
             toast({
               title: 'Transaction 2 submitted',
