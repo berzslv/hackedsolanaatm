@@ -3,9 +3,8 @@ import FeaturesSection from '@/components/sections/FeaturesSection';
 import TokensSection from '@/components/sections/TokensSection';
 import LeaderboardSection from '@/components/sections/LeaderboardSection';
 import FaqSection from '@/components/sections/FaqSection';
-import SmartContractStakingSection from '@/components/sections/SmartContractStakingSection';
-import SmartContractReferralSection from '@/components/sections/SmartContractReferralSection';
-import DirectStakingSection from '@/components/sections/DirectStakingSection';
+import StakingSection from '@/components/sections/StakingSection';
+import ReferralSection from '@/components/sections/ReferralSection';
 import { useEffect } from 'react';
 
 const Home = () => {
@@ -15,11 +14,20 @@ const Home = () => {
 
   return (
     <>
-      <HeroSection />
-      <FeaturesSection />
-      <TokensSection />
+      {/* Main sections with appropriate IDs for navigation */}
+      <section id="home">
+        <HeroSection />
+      </section>
       
-      {/* On-Chain Smart Contract Sections */}
+      <section id="about">
+        <FeaturesSection />
+      </section>
+      
+      <section id="tokens">
+        <TokensSection />
+      </section>
+      
+      {/* On-Chain Smart Contract Header */}
       <div className="bg-card/30 backdrop-blur-sm border-y border-border py-10 my-4">
         <div className="container mx-auto px-4">
           <div className="text-center">
@@ -32,26 +40,22 @@ const Home = () => {
         </div>
       </div>
       
-      {/* Direct Blockchain Integration - No Backend */}
-      <div className="bg-gradient-to-r from-primary/5 to-primary/10 py-10 my-4">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <h2 className="text-2xl md:text-3xl font-display mb-2">Direct Blockchain Integration</h2>
-            <p className="text-foreground/70 max-w-2xl mx-auto text-sm">
-              Our new interface connects directly to the Solana blockchain without a backend,
-              allowing for true decentralization and trustless interaction with your staking accounts.
-            </p>
-          </div>
-        </div>
-      </div>
+      {/* Simplified section layout */}
+      <section id="staking">
+        <StakingSection />
+      </section>
       
-      <DirectStakingSection />
+      <section id="referral">
+        <ReferralSection />
+      </section>
       
-      {/* Legacy Smart Contract Integration */}
-      <SmartContractStakingSection />
-      <SmartContractReferralSection />
-      <LeaderboardSection />
-      <FaqSection />
+      <section id="leaderboard">
+        <LeaderboardSection />
+      </section>
+      
+      <section id="faq">
+        <FaqSection />
+      </section>
     </>
   );
 };

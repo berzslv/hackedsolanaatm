@@ -1,8 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useSolana } from '@/context/SolanaContext';
 import WhitepaperDialog from '@/components/WhitepaperDialog';
 import { SolanaWalletButton } from '@/components/ui/wallet-adapter';
+
+// Smooth scroll function
+const scrollToElement = (id: string) => {
+  const element = document.getElementById(id);
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth' });
+  }
+};
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -10,20 +18,51 @@ const Header = () => {
   const { connected } = useSolana();
   const [location] = useLocation();
   
+  // Check for hash in URL for smooth scrolling on load
+  useEffect(() => {
+    if (location === '/') {
+      const hash = window.location.hash;
+      if (hash) {
+        // Remove the # and scroll to element
+        const id = hash.substring(1);
+        setTimeout(() => scrollToElement(id), 100);
+      }
+    }
+  }, [location]);
+  
   const NavigationLink = ({ href, children }: { href: string, children: React.ReactNode }) => {
     const [location] = useLocation();
     const isHome = location === '/';
     
-    // Add a null check for href to prevent "startsWith" errors
+    // Handle navigation differently based on location
     if (!isHome && href && href.startsWith('/#')) {
+      // If we're not on home page, navigate to home with hash
       return (
         <Link href={href} className="text-foreground/80 hover:text-primary transition-colors">
           {children}
         </Link>
       );
     }
+    
+    // If on home page, use smooth scrolling
     return (
-      <a href={href ? href.replace('/#', '#') : '#'} className="text-foreground/80 hover:text-primary transition-colors">
+      <a 
+        href={href ? href.replace('/#', '#') : '#'} 
+        className="text-foreground/80 hover:text-primary transition-colors"
+        onClick={(e) => {
+          if (isHome && href) {
+            e.preventDefault();
+            // Extract the ID from the href (remove /# or #)
+            const id = href.replace('/#', '').replace('#', '');
+            scrollToElement(id);
+            
+            // Close mobile menu if open
+            if (isMenuOpen) {
+              setIsMenuOpen(false);
+            }
+          }
+        }}
+      >
         {children}
       </a>
     );
@@ -43,7 +82,17 @@ const Header = () => {
           <div className="absolute left-1/2 top-1/4 w-4 h-4 bg-accent/20 rounded-full"></div>
         </div>
         
-        <Link href="/" className="flex items-center gap-2 z-10">
+        {/* Logo/Home link that scrolls to top when on homepage */}
+        <a 
+          href="/" 
+          className="flex items-center gap-2 z-10"
+          onClick={(e) => {
+            if (location === '/') {
+              e.preventDefault();
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+          }}
+        >
           <div className="relative w-10 h-10 flex items-center justify-center bg-card rounded-full overflow-hidden">
             <i className="ri-bank-fill text-primary text-2xl"></i>
             <div className="absolute inset-0 animate-pulse-slow opacity-50 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-full"></div>
@@ -52,22 +101,29 @@ const Header = () => {
             <span className="font-display text-xl text-foreground">Hacked<span className="text-primary">ATM</span></span>
             <span className="text-[10px] -mt-1 text-accent">DEVNET MODE</span>
           </div>
-        </Link>
+        </a>
         
+        {/* Desktop Navigation */}
         <div className="hidden lg:flex items-center space-x-6 z-10">
+          <NavigationLink href="/#home">Home</NavigationLink>
           <NavigationLink href="/#about">About</NavigationLink>
-          <NavigationLink href="/#tokens">Tokens</NavigationLink>
           <NavigationLink href="/#staking">Staking</NavigationLink>
-          <NavigationLink href="/#referral">Referral</NavigationLink>
+          <NavigationLink href="/#referral">Referrals</NavigationLink>
           <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
           <NavigationLink href="/#faq">FAQ</NavigationLink>
 
-          <button onClick={() => setShowWhitepaper(true)} className="text-foreground/80 hover:text-primary transition-colors">Whitepaper</button>
+          {/* Whitepaper as popup */}
+          <button 
+            onClick={() => setShowWhitepaper(true)} 
+            className="text-foreground/80 hover:text-primary transition-colors"
+          >
+            Whitepaper
+          </button>
           <WhitepaperDialog open={showWhitepaper} onOpenChange={setShowWhitepaper} />
         </div>
         
+        {/* Wallet + Mobile Menu Button */}
         <div className="flex items-center gap-3 z-10">
-          {/* Use the new Solana wallet adapter button */}
           <SolanaWalletButton />
           <button 
             className="lg:hidden text-foreground/80 hover:text-primary" 
@@ -88,14 +144,23 @@ const Header = () => {
               <div className="absolute right-1/4 bottom-1/4 w-2 h-2 bg-secondary/20 rounded-full"></div>
             </div>
             
+            <NavigationLink href="/#home">Home</NavigationLink>
             <NavigationLink href="/#about">About</NavigationLink>
-            <NavigationLink href="/#tokens">Tokens</NavigationLink>
             <NavigationLink href="/#staking">Staking</NavigationLink>
-            <NavigationLink href="/#referral">Referral</NavigationLink>
+            <NavigationLink href="/#referral">Referrals</NavigationLink>
             <NavigationLink href="/#leaderboard">Leaderboard</NavigationLink>
             <NavigationLink href="/#faq">FAQ</NavigationLink>
 
-            <button onClick={() => setShowWhitepaper(true)} className="text-foreground/80 hover:text-primary py-2 transition-colors z-10 text-left w-full">Whitepaper</button>
+            <button 
+              onClick={() => {
+                setShowWhitepaper(true);
+                setIsMenuOpen(false);
+              }} 
+              className="text-foreground/80 hover:text-primary py-2 transition-colors z-10 text-left w-full"
+            >
+              Whitepaper
+            </button>
+            
             {/* Mobile wallet button */}
             <div className="sm:hidden w-full z-10">
               <SolanaWalletButton />

@@ -1312,7 +1312,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Endpoint to stake tokens
+  // Endpoint to buy tokens - first step in the two-transaction staking process
+  app.post("/api/buy-tokens", async (req, res) => {
+    try {
+      const { walletAddress, amount } = req.body;
+      
+      if (!walletAddress || !amount) {
+        return res.status(400).json({ error: "Wallet address and amount are required" });
+      }
+      
+      // Parse token amount
+      const parsedAmount = parseInt(amount, 10);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({ error: "Invalid token amount" });
+      }
+      
+      console.log(`Processing token purchase request for wallet: ${walletAddress}, amount: ${parsedAmount}`);
+      
+      try {
+        // In a real implementation, this would mint tokens or transfer from a treasury
+        // For now, we'll just create a transaction to mint tokens to the user
+        const simpleTokenModule = await import('./simple-token');
+        const tokenMintAddress = simpleTokenModule.getTokenMint().toString();
+        
+        // Create a transaction for minting tokens to the user
+        // In a production system, this would involve payment processing
+        const mintTransaction = await simpleTokenModule.createMintTokensTransaction(
+          walletAddress,
+          parsedAmount
+        );
+        
+        // Return the serialized transaction to the client to sign
+        return res.json({
+          success: true,
+          message: `Transaction created to purchase ${parsedAmount} HATM tokens`,
+          transaction: mintTransaction,
+          tokenAmount: parsedAmount,
+          tokenMint: tokenMintAddress
+        });
+      } catch (error) {
+        console.error("Error in token purchase process:", error);
+        return res.status(500).json({
+          error: "Failed to create token purchase transaction",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } catch (error) {
+      console.error("Error processing token purchase request:", error);
+      return res.status(500).json({
+        error: "Failed to process token purchase request",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Endpoint to stake tokens - second step in the two-transaction staking process
   app.post("/api/stake-tokens", async (req, res) => {
     try {
       const { walletAddress, amount } = req.body;

@@ -1,29 +1,50 @@
 import { GradientText } from "@/components/ui/gradient-text";
-import ReferralDashboard from "@/components/ReferralDashboard";
+import { Badge } from "@/components/ui/badge";
+import { Users, Link } from "lucide-react";
+import ReferralWidget from "@/components/ReferralWidget";
 
 const ReferralSection = () => {
   return (
-    <section id="referral" className="section section-odd">
-      <div className="pattern-wave"></div>
-      <div className="pattern-circles">
-        <div className="absolute w-64 h-64 rounded-full border border-secondary/10 -top-20 -right-20"></div>
-        <div className="absolute w-40 h-40 rounded-full border border-primary/10 -bottom-20 -left-10"></div>
-        <div className="absolute w-4 h-4 bg-primary/5 rounded-full bottom-1/4 right-1/4"></div>
-        <div className="absolute w-3 h-3 bg-secondary/5 rounded-full top-1/4 left-1/4"></div>
-        <div className="absolute w-5 h-5 bg-accent/5 rounded-full top-1/3 right-1/3"></div>
-      </div>
-      
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-display mb-4 text-foreground">
-            Referral <GradientText className="from-secondary to-accent">Program</GradientText>
+    <section className="py-16 px-4 bg-gradient-to-r from-primary/5 to-primary/10">
+      <div className="container mx-auto">
+        <div className="max-w-3xl mx-auto text-center mb-12">
+          <Badge variant="outline" className="mb-4 text-primary">
+            <Users className="h-3.5 w-3.5 mr-1" />
+            Share & Earn
+          </Badge>
+          <h2 className="text-3xl font-bold mb-4">
+            <GradientText>Refer Friends</GradientText> and Earn 3% Rewards
           </h2>
-          <p className="text-foreground/70 max-w-2xl mx-auto">
-            Share your unique referral link and earn 3% on every transaction
+          <p className="text-muted-foreground mb-8">
+            Generate your unique referral link and earn 3% of all tokens staked by friends who use your link.
+            Rewards are automatically tracked and distributed on-chain for maximum transparency.
           </p>
+          
+          <div className="flex flex-col md:flex-row items-center justify-center gap-5 mb-8">
+            <div className="bg-card p-4 rounded-lg shadow-sm w-full max-w-[200px]">
+              <div className="text-sm text-muted-foreground mb-1">Referral Reward</div>
+              <div className="text-2xl font-bold">3%</div>
+            </div>
+            
+            <div className="bg-card p-4 rounded-lg shadow-sm w-full max-w-[200px]">
+              <div className="text-sm text-muted-foreground mb-1">Paid In</div>
+              <div className="text-2xl font-bold">HATM Tokens</div>
+            </div>
+            
+            <div className="bg-card p-4 rounded-lg shadow-sm w-full max-w-[200px]">
+              <div className="text-sm text-muted-foreground mb-1">Payment Method</div>
+              <div className="text-2xl font-bold">Instant</div>
+            </div>
+          </div>
         </div>
         
-        <ReferralDashboard />
+        <div className="relative">
+          {/* Background gradient effects */}
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 -translate-x-1/2"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          
+          <ReferralWidget />
+        </div>
       </div>
     </section>
   );

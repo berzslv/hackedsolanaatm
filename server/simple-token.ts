@@ -214,6 +214,98 @@ export async function mintTokens(walletAddress: string, amount: number = 1000): 
   }
 }
 
+// Create a transaction to mint tokens that can be sent to the client
+export async function createMintTokensTransaction(
+  walletAddress: string,
+  amount: number
+): Promise<string> {
+  try {
+    // Get connection and mint authority
+    const connection = getConnection();
+    const { keypair: mintAuthority, mintPublicKey } = getMintAuthority();
+    const ownerAddress = new PublicKey(walletAddress);
+    
+    console.log(`Creating mint transaction for ${walletAddress}, amount: ${amount}`);
+    
+    // Calculate token amount with decimals
+    const decimals = 9;
+    const adjustedAmount = amount * Math.pow(10, decimals);
+    
+    // Get the associated token account address
+    const associatedTokenAddress = await getAssociatedTokenAddress(
+      mintPublicKey,
+      ownerAddress,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    
+    // Create a transaction
+    const transaction = new Transaction();
+    
+    // Check if the token account exists
+    try {
+      await getAccount(connection, associatedTokenAddress);
+      console.log("Token account exists, adding only mint instruction");
+    } catch (error) {
+      if (error instanceof TokenAccountNotFoundError) {
+        console.log("Token account doesn't exist, adding creation instruction");
+        // Add instruction to create the associated token account
+        transaction.add(
+          createAssociatedTokenAccountInstruction(
+            mintAuthority.publicKey, // payer
+            associatedTokenAddress, // associated token account
+            ownerAddress, // owner
+            mintPublicKey, // mint
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          )
+        );
+      } else {
+        throw error;
+      }
+    }
+    
+    // Add the mint instruction
+    transaction.add(
+      createMintToInstruction(
+        mintPublicKey, // mint
+        associatedTokenAddress, // destination token account
+        mintAuthority.publicKey, // mint authority
+        BigInt(adjustedAmount), // amount with decimals as bigint
+        [], // multiSigners (empty because we sign elsewhere)
+        TOKEN_PROGRAM_ID
+      )
+    );
+    
+    // Set recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = mintAuthority.publicKey;
+    
+    // Sign the transaction with the mint authority
+    transaction.sign(mintAuthority);
+    
+    // Serialize the transaction
+    const serializedTransaction = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false
+    });
+    
+    // Return base64 encoded transaction
+    return Buffer.from(serializedTransaction).toString('base64');
+  } catch (error) {
+    console.error("Error creating mint transaction:", error);
+    throw error;
+  }
+}
+
+// Get token mint address 
+export function getTokenMint(): PublicKey {
+  const { mintPublicKey } = getMintAuthority();
+  return mintPublicKey;
+}
+
 // Get token balance for a wallet
 export async function getTokenBalance(walletAddress: string): Promise<number> {
   try {
