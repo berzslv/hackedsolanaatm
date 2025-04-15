@@ -1,243 +1,167 @@
-
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { GradientText } from "@/components/ui/gradient-text";
 
 interface WhitepaperDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const WhitepaperDialog = ({ open, onOpenChange }: WhitepaperDialogProps) => {
+export default function WhitepaperDialog({ open, onOpenChange }: WhitepaperDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[90vh]">
-        <ScrollArea className="h-full pr-4">
-          <h1 className="text-4xl md:text-5xl font-display mb-6 text-foreground">
-            <GradientText>Hacked ATM</GradientText> Whitepaper
-          </h1>
-          <p className="text-foreground/70 text-lg mb-8">
-            A comprehensive guide to the Hacked ATM token ecosystem, staking mechanism, and referral system.
-          </p>
-          
-          <div className="space-y-8">
-            <div className="bg-card/80 backdrop-blur-sm rounded-xl p-8 border border-border shadow-md">
-              <h2 className="text-2xl font-display mb-6 text-foreground">Token Overview</h2>
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-xl font-medium mb-3 text-foreground">Token Information</h3>
-                  <ul className="space-y-2">
-                    <li className="flex justify-between py-2 border-b border-border">
-                      <span className="text-foreground/70">Token Name:</span>
-                      <span className="text-primary font-medium">Hacked ATM</span>
-                    </li>
-                    <li className="flex justify-between py-2 border-b border-border">
-                      <span className="text-foreground/70">Token Symbol:</span>
-                      <span className="text-primary font-medium">HATM</span>
-                    </li>
-                    <li className="flex justify-between py-2 border-b border-border">
-                      <span className="text-foreground/70">Blockchain:</span>
-                      <span className="text-primary font-medium">Solana</span>
-                    </li>
-                    <li className="flex justify-between py-2 border-b border-border">
-                      <span className="text-foreground/70">Token Type:</span>
-                      <span className="text-primary font-medium">Solana-based with built-in referral & staking</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+      <DialogContent className="max-w-4xl h-[85vh] p-0">
+        <DialogHeader className="px-6 pt-6 pb-2 bg-[#0f0b19] sticky top-0 z-10 border-b border-gray-800">
+          <DialogTitle className="text-xl font-bold">Hacked ATM Token Whitepaper</DialogTitle>
+          <DialogDescription className="text-gray-400">
+            Technical overview and tokenomics
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="h-full max-h-[calc(85vh-5rem)] p-6">
+          <div className="prose prose-invert max-w-none">
+            <h1>Hacked ATM Token (HATM)</h1>
+            <p className="lead">
+              A revolutionary Solana-based token with built-in staking, referral systems, and automatic rewards distribution.
+            </p>
 
-            <div className="bg-card/80 backdrop-blur-sm rounded-xl p-8 border border-border shadow-md">
-              <h2 className="text-2xl font-display mb-6 text-foreground">Key Features</h2>
-              <div className="space-y-8">
-                <div>
-                  <h3 className="text-xl font-medium mb-3 text-foreground">Referral System</h3>
-                  <div className="bg-muted rounded-lg p-4 mb-4">
-                    <h4 className="text-foreground mb-2">Referral Fee Structure:</h4>
-                    <ul className="space-y-2 text-foreground/70">
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-primary mt-0.5"></i>
-                        <span>When users buy or sell Hacked ATM using a referral code or link, a total of 6% fee is applied.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-primary mt-0.5"></i>
-                        <span>3% of the 6% fee goes directly to the referrer (the person who shared the referral link).</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-primary mt-0.5"></i>
-                        <span>1% of the 6% fee goes to a marketing wallet to support the project.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-primary mt-0.5"></i>
-                        <span>2% of the 6% fee is collected and used to reward stakers in the staking vault. The 2% is distributed every 30 minutes to users who have staked their tokens, and the rewards are auto-compounded into their staked balance.</span>
-                      </li>
-                    </ul>
-                  </div>
-                  
-                  <div className="bg-muted rounded-lg p-4">
-                    <h4 className="text-foreground mb-2">Without Referral:</h4>
-                    <ul className="space-y-2 text-foreground/70">
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-secondary mt-0.5"></i>
-                        <span>When users buy or sell Hacked ATM without referral code or link, a total of 8% fee is applied.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-secondary mt-0.5"></i>
-                        <span>2% of the 8% fee goes to a marketing wallet to support the project.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-secondary mt-0.5"></i>
-                        <span>6% of the 8% fee is collected and used to reward stakers in the staking vault. The 2% is distributed every 30 minutes to users who have staked their tokens, and the rewards are auto-compounded into their staked balance.</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
+            <h2>1. Introduction</h2>
+            <p>
+              Hacked ATM Token (HATM) is a decentralized finance protocol built on the Solana blockchain, 
+              designed to provide a secure, transparent, and rewarding experience for all participants. 
+              By leveraging the high-speed, low-cost capabilities of Solana, HATM offers an innovative 
+              approach to staking and referral rewards that encourages community growth and participation.
+            </p>
 
-                <div>
-                  <h3 className="text-xl font-medium mb-3 text-foreground">Staking Vault</h3>
-                  <div className="bg-muted rounded-lg p-4 mb-4">
-                    <h4 className="text-foreground mb-2">Dynamic APY:</h4>
-                    <ul className="space-y-2 text-foreground/70">
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-primary mt-0.5"></i>
-                        <span>The APY for stakers will be dynamic, meaning it will adjust based on the transaction volume (2% of every buy and sell) and the total amount of Hacked ATM tokens staked in the vault.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-primary mt-0.5"></i>
-                        <span>More transactions = Higher APY.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-primary mt-0.5"></i>
-                        <span>More tokens staked = Lower APY.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-primary mt-0.5"></i>
-                        <span>The APY will auto-adjust based on the fees collected and vault balance, ensuring a flexible, sustainable reward system.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-primary mt-0.5"></i>
-                        <span>Auto-compounding: Staking rewards will automatically be compounded every 30 minutes into the user's staked balance.</span>
-                      </li>
-                    </ul>
-                  </div>
-                  
-                  <div className="bg-muted rounded-lg p-4">
-                    <h4 className="text-foreground mb-2">Early Withdrawal Fee:</h4>
-                    <ul className="space-y-2 text-foreground/70">
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-secondary mt-0.5"></i>
-                        <span>If users unstake their Hacked ATM tokens within 7 days, a 4% fee of the amount they have staked will be burned automatically, 1% goes to marketing.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-secondary mt-0.5"></i>
-                        <span>This fee is designed to discourage early unstaking and help with token scarcity.</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
+            <h2>2. Token Economics</h2>
+            <h3>2.1 Token Details</h3>
+            <ul>
+              <li><strong>Name:</strong> Hacked ATM Token</li>
+              <li><strong>Symbol:</strong> HATM</li>
+              <li><strong>Blockchain:</strong> Solana</li>
+              <li><strong>Standard:</strong> SPL Token</li>
+              <li><strong>Total Supply:</strong> 10,000,000 HATM</li>
+              <li><strong>Decimals:</strong> 9</li>
+            </ul>
 
-                <div>
-                  <h3 className="text-xl font-medium mb-3 text-foreground">Leaderboard & Rewards</h3>
-                  <div className="bg-muted rounded-lg p-4 mb-4">
-                    <h4 className="text-foreground mb-2">Leaderboard:</h4>
-                    <ul className="space-y-2 text-foreground/70">
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-accent mt-0.5"></i>
-                        <span>Weekly and Monthly Leaderboards will track and display the top 3 referrers and top 3 stakers.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-accent mt-0.5"></i>
-                        <span>Top 3 Referrers: Based on the number of referrals or the transaction volume generated from their referrals.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-accent mt-0.5"></i>
-                        <span>Top 3 Stakers: Based on the amount of Hacked ATM tokens staked.</span>
-                      </li>
-                    </ul>
-                  </div>
-                  
-                  <div className="bg-muted rounded-lg p-4">
-                    <h4 className="text-foreground mb-2">Rewards for Top Users:</h4>
-                    <ul className="space-y-2 text-foreground/70">
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-accent mt-0.5"></i>
-                        <span>Airdrop Coins: The top 3 users (both referrers and stakers) will receive airdropped Hacked ATM tokens at the end of each week and month.</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-accent mt-0.5"></i>
-                        <span>Extra Staking Rewards: The top 3 stakers will receive additional staking rewards in the form of extra APY (e.g., +1% APY bonus for the top staker).</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <i className="ri-check-line text-accent mt-0.5"></i>
-                        <span>Recognition: The top 3 will also be featured prominently on the website and potentially in social media posts, with special badges or titles.</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <h3>2.2 Token Distribution</h3>
+            <p>The total supply of 10,000,000 HATM tokens will be distributed as follows:</p>
+            <ul>
+              <li><strong>Public Sale:</strong> 60% (6,000,000 HATM)</li>
+              <li><strong>Staking Rewards Pool:</strong> 20% (2,000,000 HATM)</li>
+              <li><strong>Development Team:</strong> 10% (1,000,000 HATM) - Locked for 12 months</li>
+              <li><strong>Marketing & Partnerships:</strong> 7% (700,000 HATM)</li>
+              <li><strong>Ecosystem Growth:</strong> 3% (300,000 HATM)</li>
+            </ul>
 
-            <div className="bg-card/80 backdrop-blur-sm rounded-xl p-8 border border-border shadow-md">
-              <h2 className="text-2xl font-display mb-6 text-foreground">Tokenomics</h2>
-              <div className="space-y-4">
-                <div className="bg-muted rounded-lg p-4">
-                  <h4 className="text-foreground mb-2">Transaction Fees:</h4>
-                  <ul className="space-y-2 text-foreground/70">
-                    <li className="flex items-start gap-2">
-                      <i className="ri-currency-line text-primary mt-0.5"></i>
-                      <span>6% total transaction fee with referral (3% for referrer, 1% for marketing, and 2% for staking rewards).</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <i className="ri-currency-line text-primary mt-0.5"></i>
-                      <span>8% total transaction fee without referral (2% for marketing, and 6% for staking rewards).</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <i className="ri-fire-line text-error mt-0.5"></i>
-                      <span>4% of staked tokens burned, 1% sent to marketing wallet if unstaked within 7 days.</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+            <h2>3. Features</h2>
+            <h3>3.1 Staking Mechanism</h3>
+            <p>
+              HATM employs a unique staking mechanism that rewards token holders for their participation and commitment to the ecosystem.
+            </p>
+            <h4>Key details:</h4>
+            <ul>
+              <li><strong>Base Annual Percentage Yield (APY):</strong> 120%</li>
+              <li><strong>Staking Period:</strong> 7 days minimum lock-up</li>
+              <li><strong>Early Withdrawal Fee:</strong> 10% (redistributed to staking pool)</li>
+              <li><strong>Rewards Distribution:</strong> Automatic, calculated in real-time</li>
+            </ul>
 
-            <div className="bg-card/80 backdrop-blur-sm rounded-xl p-8 border border-border shadow-md">
-              <h2 className="text-2xl font-display mb-6 text-foreground">Website Features</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-muted rounded-lg p-4">
-                  <h3 className="text-lg font-medium mb-2 text-foreground">Buy Widget</h3>
-                  <p className="text-foreground/70">
-                    A widget where users can directly purchase Hacked ATM tokens from the website using their Solana wallet.
-                  </p>
-                </div>
-                
-                <div className="bg-muted rounded-lg p-4">
-                  <h3 className="text-lg font-medium mb-2 text-foreground">Staking Widget</h3>
-                  <p className="text-foreground/70">
-                    A widget allowing users to stake their Hacked ATM tokens to earn dynamic APY rewards.
-                  </p>
-                </div>
-                
-                <div className="bg-muted rounded-lg p-4">
-                  <h3 className="text-lg font-medium mb-2 text-foreground">Referral Dashboard</h3>
-                  <p className="text-foreground/70">
-                    A dashboard for users to track their referrals, generate referral links, and monitor their earnings.
-                  </p>
-                </div>
-                
-                <div className="bg-muted rounded-lg p-4">
-                  <h3 className="text-lg font-medium mb-2 text-foreground">Leaderboard Widget</h3>
-                  <p className="text-foreground/70">
-                    A widget displaying the weekly and monthly leaderboard for top referrers and top stakers.
-                  </p>
-                </div>
-              </div>
+            <h3>3.2 Referral System</h3>
+            <p>
+              The HATM referral system incentivizes community growth by rewarding users who bring 
+              new participants into the ecosystem. All referral transactions are tracked on-chain 
+              for complete transparency.
+            </p>
+            <h4>Key details:</h4>
+            <ul>
+              <li><strong>Referral Reward:</strong> 3% of referred user's staking amount</li>
+              <li><strong>Distribution:</strong> Instantly credited to referrer's account</li>
+              <li><strong>Tracking:</strong> Fully on-chain with permanent records</li>
+              <li><strong>Leaderboards:</strong> Weekly and monthly recognition for top referrers</li>
+            </ul>
+
+            <h2>4. Smart Contract Architecture</h2>
+            <p>
+              HATM is built on multiple interconnected smart contracts to ensure security, 
+              efficiency, and scalability.
+            </p>
+            <h3>4.1 Core Contracts</h3>
+            <ul>
+              <li><strong>Staking Vault:</strong> Manages stake deposits, withdrawals, and rewards calculations</li>
+              <li><strong>Referral Tracker:</strong> Handles referral code generation, validation, and reward distribution</li>
+              <li><strong>Token Distributor:</strong> Controls token distribution and vesting schedules</li>
+            </ul>
+
+            <h2>5. Security Measures</h2>
+            <p>
+              The security of user funds and the integrity of the HATM ecosystem are top priorities. 
+              The following measures have been implemented to ensure a robust and secure protocol:
+            </p>
+            <ul>
+              <li><strong>Third-party Audits:</strong> Comprehensive security audits by leading blockchain security firms</li>
+              <li><strong>Time-lock Mechanisms:</strong> Protocol upgrades subject to timelock delays</li>
+              <li><strong>Multi-signature Controls:</strong> Critical protocol functions require multiple approvals</li>
+              <li><strong>Bug Bounty Program:</strong> Continuous security improvement through community participation</li>
+            </ul>
+
+            <h2>6. Roadmap</h2>
+            <h3>Phase 1: Foundation (Q2 2025)</h3>
+            <ul>
+              <li>Token launch on Solana</li>
+              <li>Deployment of core smart contracts</li>
+              <li>Basic staking functionality</li>
+              <li>Website and dashboard launch</li>
+            </ul>
+
+            <h3>Phase 2: Expansion (Q3 2025)</h3>
+            <ul>
+              <li>Referral system implementation</li>
+              <li>Mobile app development</li>
+              <li>Enhanced analytics and reporting</li>
+              <li>Community governance proposals</li>
+            </ul>
+
+            <h3>Phase 3: Ecosystem Growth (Q4 2025)</h3>
+            <ul>
+              <li>Advanced staking tiers with enhanced rewards</li>
+              <li>Cross-chain bridge integrations</li>
+              <li>Strategic partnerships</li>
+              <li>Expanded utility for HATM tokens</li>
+            </ul>
+
+            <h3>Phase 4: Maturity (Q1-Q2 2026)</h3>
+            <ul>
+              <li>Full decentralized governance</li>
+              <li>Ecosystem grants program</li>
+              <li>Additional product offerings</li>
+              <li>Enterprise partnerships</li>
+            </ul>
+
+            <h2>7. Conclusion</h2>
+            <p>
+              Hacked ATM Token (HATM) represents a new generation of DeFi protocols that prioritize 
+              community growth, transparent rewards, and sustainable tokenomics. By combining innovative 
+              staking mechanisms with a robust referral system on the high-performance Solana blockchain, 
+              HATM creates value for all participants while maintaining the security and decentralization 
+              principles core to blockchain technology.
+            </p>
+            <p>
+              Join us in building the future of decentralized finance with HATM.
+            </p>
+
+            <div className="disclaimer mt-16 text-sm text-gray-400 border-t border-gray-800 pt-4">
+              <p><strong>Disclaimer:</strong> This whitepaper is for informational purposes only and does not constitute 
+              financial advice. Please do your own research before making any investment decisions. 
+              Cryptocurrency investments are subject to high market risk.</p>
             </div>
           </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>
   );
-};
-
-export default WhitepaperDialog;
+}

@@ -8,6 +8,7 @@ import { SolanaProvider } from "@/context/SolanaContext";
 import { ReferralProvider } from "@/context/ReferralContext";
 import NotFound from "@/pages/not-found";
 import Header from "@/layout/Header";
+import Footer from "@/layout/Footer";
 import Home from "@/pages/Home";
 
 function Router() {
@@ -31,6 +32,7 @@ function App() {
                 <main className="flex-1">
                   <Router />
                 </main>
+                <Footer />
               </div>
               <Toaster />
             </ReferralProvider>
