@@ -20,6 +20,9 @@ import {
   getGlobalStats
 } from './helius-webhooks';
 
+// Import our buy-and-stake handler
+import { handleBuyAndStake } from './buy-and-stake';
+
 // Solana imports for airdrop functionality
 import {
   Connection,
@@ -1367,6 +1370,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Endpoint to stake tokens - second step in the two-transaction staking process
+  // Endpoint for combined buying and staking tokens in one transaction
+  app.post("/api/buy-and-stake", handleBuyAndStake);
+  
   app.post("/api/stake-tokens", async (req, res) => {
     try {
       const { walletAddress, amount } = req.body;

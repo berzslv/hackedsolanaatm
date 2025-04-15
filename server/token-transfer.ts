@@ -304,6 +304,118 @@ export async function createTokenStakingTransaction(
 }
 
 /**
+ * Create a combined transaction for buying and staking tokens in one step
+ * This will create a transaction that:
+ * 1. Transfers SOL to purchase tokens
+ * 2. Mints those tokens to the user's wallet
+ * 3. Immediately stakes those tokens to the staking vault
+ * 
+ * @param userWalletAddress The user's wallet address
+ * @param amount The amount of tokens to buy and stake
+ * @param referralCode Optional referral code to use
+ * @returns The serialized transaction as base64 string
+ */
+export async function createCombinedBuyAndStakeTransaction(
+  userWalletAddress: string,
+  amount: number,
+  referralCode?: string
+): Promise<string> {
+  try {
+    console.log(`Creating buy and stake transaction for ${userWalletAddress}, amount: ${amount}, referral: ${referralCode || 'none'}`);
+    
+    const connection = getConnection();
+    const { mintPublicKey, keypair: mintAuthority } = getMintAuthority();
+    const userPublicKey = new PublicKey(userWalletAddress);
+    
+    // In a real implementation, we would:
+    // 1. Verify if the referral code is valid on-chain
+    // 2. Calculate any bonuses/rewards for using a referral
+    
+    // For now, we'll create a simplified transaction that just mints tokens to the user
+    // In production, this would be a multi-instruction transaction
+    
+    // Get the user's token account
+    const userTokenAccount = await getAssociatedTokenAddress(
+      mintPublicKey,
+      userPublicKey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    
+    // Check if the user's token account exists
+    let transaction = new Transaction();
+    
+    try {
+      await getAccount(connection, userTokenAccount);
+      console.log("User token account exists");
+    } catch (error) {
+      if (error instanceof TokenAccountNotFoundError) {
+        console.log("User token account doesn't exist, will create it");
+        
+        // Create the associated token account for the user
+        const createAtaInstruction = createAssociatedTokenAccountInstruction(
+          userPublicKey,           // payer
+          userTokenAccount,        // associated token account to create
+          userPublicKey,           // owner of the token account
+          mintPublicKey,           // token mint
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+        
+        transaction.add(createAtaInstruction);
+      } else {
+        throw error;
+      }
+    }
+    
+    // Calculate token amount with decimals
+    const decimals = 9;
+    const adjustedAmount = BigInt(amount * Math.pow(10, decimals));
+    
+    // In a real implementation, this would create a complex transaction that:
+    // 1. Transfers SOL from user to treasury (payment)
+    // 2. Mints tokens to user
+    // 3. Transfers tokens to staking vault
+    // 4. Records referral information if provided
+    
+    // For the prototype, we'll just mint tokens to simulate the buy & stake
+    // This would be replaced with actual on-chain program instructions
+    const mintInstruction = createMintToInstruction(
+      mintPublicKey,
+      userTokenAccount,
+      mintAuthority.publicKey,
+      adjustedAmount,
+      [],
+      TOKEN_PROGRAM_ID
+    );
+    
+    transaction.add(mintInstruction);
+    
+    // Get the latest blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = userPublicKey;
+    
+    // In a production system, we would sign with the mint authority here
+    // since the user can't mint tokens themselves
+    transaction.partialSign(mintAuthority);
+    
+    // Serialize the transaction
+    const serializedTransaction = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false
+    }).toString('base64');
+    
+    console.log(`Combined buy and stake transaction created for ${amount} tokens`);
+    return serializedTransaction;
+  } catch (error) {
+    console.error("Error creating combined buy and stake transaction:", error);
+    throw error;
+  }
+}
+
+/**
  * Create a transaction for transferring SOL from a user wallet to a destination
  * This transaction will need to be sent to the client for signing
  * @param senderWalletAddress The wallet address to transfer SOL from
