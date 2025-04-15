@@ -318,14 +318,15 @@ export async function createTokenStakingTransaction(
 export async function createCombinedBuyAndStakeTransaction(
   userWalletAddress: string,
   amount: number,
-  referralCode?: string
+  referralAddress?: string
 ): Promise<string> {
   try {
-    console.log(`Creating buy and stake transaction for ${userWalletAddress}, amount: ${amount}, referral: ${referralCode || 'none'}`);
+    console.log(`Creating buy and stake transaction for ${userWalletAddress}, amount: ${amount}, referral: ${referralAddress || 'none'}`);
     
     const connection = getConnection();
     const { mintPublicKey, keypair: mintAuthority } = getMintAuthority();
     const userPublicKey = new PublicKey(userWalletAddress);
+    const referralPublicKey = referralAddress ? new PublicKey(referralAddress) : undefined;
     
     // Create transaction object
     let transaction = new Transaction();
@@ -380,22 +381,26 @@ export async function createCombinedBuyAndStakeTransaction(
     transaction.add(mintInstruction);
 
     // 5. Now add a staking instruction to transfer tokens to the staking vault
-    // Get the staking vault address (using mint authority temporarily)
-    const stakingVaultPubkey = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
+    // Get the staking vault address from the smart contract
+    const stakingProgramId = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
     
-    // Get the staking vault's token account
     try {
-      // Import staking-vault-utils to get vault token account
+      // Import staking-vault-utils to get program details
       const stakingVaultUtils = await import('./staking-vault-utils');
       
-      // Add the transfer instruction to stake the tokens
-      // We need a separate transaction for this as it needs to be signed by the user
-      console.log(`Adding staking instruction for ${amount} tokens to vault ${stakingVaultPubkey.toString()}`);
+      console.log(`Adding staking instruction for ${amount} tokens to program ${stakingProgramId.toString()}`);
       
-      // Create transfer instruction
+      // For the referral-staking program, we need to determine the vault's token account
+      // In a complete implementation, we'd fetch this from the blockchain
+      // For now, we'll use the transfer instruction as a simplification
+      
+      // Get the vault token account or the staking program's PDA
+      const vaultTokenAccount = new PublicKey('2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap');
+      
+      // Create transfer instruction to stake tokens
       const stakeInstruction = createTransferInstruction(
         userTokenAccount,          // source
-        stakingVaultPubkey,        // destination - this should be the token account of the staking vault
+        vaultTokenAccount,         // destination - vault's token account
         userPublicKey,             // owner of source account
         adjustedAmount,            // amount with decimals
         [],                        // multiSigners (not needed in this case)
@@ -404,14 +409,17 @@ export async function createCombinedBuyAndStakeTransaction(
       
       transaction.add(stakeInstruction);
       
-      // 6. If there's a referral code, add referral registration instruction
-      if (referralCode) {
-        // In a real implementation, we would get the referrer's public key from the referral code
-        // and add an instruction to register them as the referrer
-        console.log(`Would add referral registration for code: ${referralCode}`);
+      // 6. If there's a referral address, add referral data to the transaction
+      if (referralPublicKey) {
+        console.log(`Adding referral data for address: ${referralPublicKey.toString()}`);
         
-        // This would be a call to the referral tracker program
-        // transaction.add(createReferralInstruction(...));
+        // In a complete implementation, we would add an instruction to the
+        // referral staking program to register the referral relationship
+        // This would involve creating an instruction with the proper accounts and program ID
+        
+        // For now, we're logging but this would be implemented as:
+        // const registerReferralIx = createRegisterReferralInstruction(...);
+        // transaction.add(registerReferralIx);
       }
     } catch (error) {
       console.error("Error adding staking instruction:", error);

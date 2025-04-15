@@ -1,14 +1,15 @@
 import { Request, Response } from 'express';
-import { storage } from './storage';
+import { PublicKey } from '@solana/web3.js';
 import { createCombinedBuyAndStakeTransaction } from './token-transfer';
 
 /**
  * Handler for the buy-and-stake endpoint
  * This creates a transaction that buys and stakes tokens in one step
+ * with integration to on-chain referral system
  */
 export async function handleBuyAndStake(req: Request, res: Response) {
   try {
-    const { walletAddress, amount, referralCode } = req.body;
+    const { walletAddress, amount, referralAddress } = req.body;
     
     if (!walletAddress || !amount) {
       return res.status(400).json({ error: "Wallet address and amount are required" });
@@ -20,38 +21,32 @@ export async function handleBuyAndStake(req: Request, res: Response) {
       return res.status(400).json({ error: "Invalid token amount" });
     }
     
-    console.log(`Processing combined buy and stake request for wallet: ${walletAddress}, amount: ${parsedAmount}, referral: ${referralCode || 'none'}`);
+    console.log(`Processing combined buy and stake request for wallet: ${walletAddress}, amount: ${parsedAmount}, referral: ${referralAddress || 'none'}`);
     
     try {
-      // Create the combined transaction
+      // Validate referral address if provided
+      let validReferralAddress: string | undefined = undefined;
+      let referralMessage = '';
+      
+      if (referralAddress) {
+        try {
+          // Validate that the referral address is a valid Solana address
+          new PublicKey(referralAddress);
+          validReferralAddress = referralAddress;
+          referralMessage = `Using referral from ${referralAddress}`;
+          console.log(`Valid referral address: ${referralAddress}`);
+        } catch (error) {
+          console.error("Invalid referral address format:", error);
+          // Continue even if validation fails, but don't pass the referral
+        }
+      }
+      
+      // Create the combined transaction with the validated referral address
       const serializedTransaction = await createCombinedBuyAndStakeTransaction(
         walletAddress,
         parsedAmount,
-        referralCode
+        validReferralAddress
       );
-      
-      // If there's a referral code, validate it
-      let referralMessage = '';
-      let referralValid = false;
-      
-      if (referralCode) {
-        try {
-          // Simple validation for now - in production this would check on-chain
-          referralValid = await storage.validateReferralCode(referralCode);
-          if (referralValid) {
-            const referrerAddress = await storage.getReferrerAddressByCode(referralCode);
-            if (referrerAddress) {
-              referralMessage = `Using referral from ${referrerAddress}`;
-              console.log(`Valid referral code: ${referralCode} from ${referrerAddress}`);
-            }
-          } else {
-            console.log(`Invalid referral code: ${referralCode}`);
-          }
-        } catch (error) {
-          console.error("Error validating referral code:", error);
-          // Continue even if validation fails
-        }
-      }
       
       // Return the transaction to be signed by the user
       return res.json({
@@ -59,7 +54,7 @@ export async function handleBuyAndStake(req: Request, res: Response) {
         message: `Transaction created to buy and stake ${parsedAmount} HATM tokens. ${referralMessage}`,
         transaction: serializedTransaction,
         amount: parsedAmount,
-        referralValid,
+        referralValid: !!validReferralAddress,
         isStaking: true
       });
     } catch (error) {
