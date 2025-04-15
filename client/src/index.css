@@ -102,8 +102,8 @@
     @apply border-border;
   }
 
-  body {
-    @apply font-sans antialiased bg-[#0f0b19] text-white;
+  html, body {
+    @apply font-sans antialiased bg-[#0f0b19] text-white overflow-x-hidden;
     background-attachment: fixed;
   }
 

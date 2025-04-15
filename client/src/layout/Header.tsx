@@ -7,10 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
-  SheetTitle,
   SheetTrigger,
-  SheetClose
 } from '@/components/ui/sheet';
 import { Menu, X } from 'lucide-react';
 
@@ -167,15 +164,18 @@ const Header = () => {
                 <Menu className="h-5 w-5" />
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] p-0 bg-[#0f0b19] border-l border-gray-800">
+            <SheetContent side="right" className="w-[300px] p-0 bg-[#0f0b19] border-l border-gray-800" hideCloseButton>
               <div className="flex flex-col h-full">
                 <div className="p-4 border-b border-gray-800 flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Logo />
                   </div>
-                  <SheetClose className="rounded-full h-8 w-8 flex items-center justify-center bg-[#1a1525]/80 hover:bg-[#1a1525] text-gray-200">
+                  <button 
+                    onClick={() => setIsOpen(false)}
+                    className="rounded-full h-8 w-8 flex items-center justify-center bg-[#1a1525]/80 hover:bg-[#1a1525] text-gray-200"
+                  >
                     <X className="h-4 w-4" />
-                  </SheetClose>
+                  </button>
                 </div>
                 
                 <div className="flex-1 overflow-auto py-2">
