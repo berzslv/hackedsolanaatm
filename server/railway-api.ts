@@ -43,10 +43,30 @@ export interface TokenBalance {
 /**
  * Get enhanced staking data for a wallet address
  * @param walletAddress The wallet address to get staking data for
- * @returns Enhanced staking data from Railway API
+ * @returns Enhanced staking data from Railway API or local cache
  */
 export async function getEnhancedStakingData(walletAddress: string): Promise<EnhancedStakingData> {
   try {
+    // First check our local cache
+    const { externalStakingCache } = await import('./external-staking-cache');
+    const cachedData = externalStakingCache.getStakingData(walletAddress);
+    
+    // If we have cached data that shows staked tokens, use that (our sync fixed the registration)
+    if (cachedData && cachedData.amountStaked > 0) {
+      console.log(`Found staking data in local cache for ${walletAddress}: ${cachedData.amountStaked} tokens staked`);
+      return {
+        amountStaked: cachedData.amountStaked,
+        pendingRewards: cachedData.pendingRewards,
+        lastUpdateTime: cachedData.lastUpdateTime.toISOString(),
+        stakedAt: cachedData.stakedAt.toISOString(),
+        eventCount: 1,
+        timeUntilUnlock: cachedData.timeUntilUnlock,
+        isLocked: cachedData.timeUntilUnlock !== null && cachedData.timeUntilUnlock > 0,
+        estimatedAPY: cachedData.estimatedAPY
+      };
+    }
+    
+    // If no cached data or no staked tokens in cache, try Railway API  
     console.log(`Fetching staking data from Railway API for wallet: ${walletAddress}`);
     const response = await fetch(`${RAILWAY_SERVICE_URL}/api/staking-data?wallet=${walletAddress}`);
     
