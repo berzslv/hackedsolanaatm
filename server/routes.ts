@@ -125,7 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stakedAt: new Date(stakedAt || Date.now()),
         lastUpdateTime: new Date(lastUpdateTime || Date.now()),
         estimatedAPY: Number(estimatedAPY || 120),
-        timeUntilUnlock: timeUntilUnlock ? Number(timeUntilUnlock) : null
+        timeUntilUnlock: timeUntilUnlock ? Number(timeUntilUnlock) : 0
       });
       
       return res.json({

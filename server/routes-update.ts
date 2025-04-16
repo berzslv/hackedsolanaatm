@@ -139,7 +139,7 @@ export function addSyncStakingRoute(app: Express) {
         stakedAt: new Date(stakingTransactions[0].timestamp),
         lastUpdateTime: new Date(),
         estimatedAPY: 120, // Default APY 
-        timeUntilUnlock: null // Calculate based on lock period
+        timeUntilUnlock: 0 // Initialize to 0, will be calculated if locked
       };
       
       // Calculate pending rewards
@@ -179,7 +179,7 @@ export function addSyncStakingRoute(app: Express) {
       console.error("Error syncing staking records:", error);
       return res.status(500).json({
         success: false,
-        error: error.message || "Failed to sync staking records"
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   });
