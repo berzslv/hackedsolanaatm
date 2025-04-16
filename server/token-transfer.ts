@@ -12,6 +12,7 @@ import {
   createTransferInstruction,
   getAccount,
   TokenAccountNotFoundError,
+  TokenInvalidAccountOwnerError,
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID
 } from '@solana/spl-token';
@@ -516,13 +517,10 @@ export async function createCombinedBuyAndStakeTransaction(
           );
           
           transaction.add(createVaultAtaInstruction);
-        } else if (error instanceof TokenInvalidAccountOwnerError) {
-          // The account exists but has a different owner than expected
-          console.error("Vault token account has invalid owner:", error);
-          throw new Error("Vault token account has invalid owner. This may indicate a configuration issue with the vault PDA.");
         } else {
+          // If it's any other error, log it and abort
           console.error("Error checking vault token account:", error);
-          throw error;
+          throw new Error(`Error with vault token account: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
       
