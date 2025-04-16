@@ -329,20 +329,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // If we get here, it's a valid wallet address format
           console.log(`Validated wallet address format as referral code: ${code}`);
           
-          // Check if the wallet exists on the blockchain (we're mocking this)
-          // In a real implementation, we'd check if the wallet has ever made a transaction
-          const isRealWallet = code.length === 44 || code.length === 43 || code.length === 32;
-          if (isRealWallet) {
-            return res.json({ 
-              valid: true, 
-              message: "Valid wallet address being used as referral code" 
-            });
-          } else {
-            return res.json({
-              valid: false,
-              message: "Wallet address format is valid, but this wallet doesn't exist on the blockchain"
-            });
-          }
+          // Accept ANY valid Solana wallet address as a valid referral code
+          // This is more user-friendly during testing
+          return res.json({ 
+            valid: true, 
+            message: "Valid wallet address being used as referral code" 
+          });
         } catch (addressErr) {
           // Not a valid wallet address, so check if it's a valid legacy code
           // For demonstration purposes we'll be more strict: only accept codes we know are valid
