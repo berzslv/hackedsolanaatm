@@ -712,6 +712,19 @@ const DirectStakingWidget: React.FC = () => {
           </TabsContent>
         </Tabs>
         
+        {/* Sync Staking Records Button */}
+        <div className="mt-6 pt-4 border-t">
+          <Alert variant="outline" className="mb-3">
+            <Info className="h-4 w-4" />
+            <AlertTitle>Stake not showing?</AlertTitle>
+            <AlertDescription>
+              If you've transferred tokens to the vault but they're not showing as staked,
+              use the button below to sync your records.
+            </AlertDescription>
+          </Alert>
+          <SyncStakingButton onSuccess={refreshAllData} />
+        </div>
+        
         {/* Global Staking Statistics */}
         <div className="mt-6 pt-6 border-t">
           <div className="text-sm text-muted-foreground mb-3">Global Staking Statistics</div>
