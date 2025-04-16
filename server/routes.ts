@@ -21,7 +21,8 @@ import {
 } from './helius-webhooks';
 
 // Import our buy-and-stake handler
-import { handleBuyAndStake } from './buy-and-stake';
+import { handleBuyAndStakeV2 } from './buy-and-stake-v2';
+import { handleDirectStake } from './direct-stake';
 
 // Import our sync-staking handler to fix staking records
 import { handleSyncStaking } from './sync-staking-handler';
@@ -1665,11 +1666,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Endpoint to stake tokens - second step in the two-transaction staking process
   // Endpoint for combined buying and staking tokens in one transaction
-  app.post("/api/buy-and-stake", handleBuyAndStake);
+  app.post("/api/buy-and-stake", handleBuyAndStakeV2);
   
   // Add endpoint to sync staking records - this will help fix the issue with staked tokens not showing up
   app.post("/api/sync-staking", handleSyncStaking);
   
+  // Add a new endpoint for direct staking using the proper referral staking contract
+  app.post("/api/direct-stake", handleDirectStake);
+  
+  // Legacy staking endpoint (will be deprecated)
   app.post("/api/stake-tokens", async (req, res) => {
     try {
       const { walletAddress, amount } = req.body;
