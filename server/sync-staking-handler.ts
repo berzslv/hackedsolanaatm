@@ -31,7 +31,7 @@ export async function handleSyncStaking(req: Request, res: Response) {
       console.log(`Current vault balance: ${vaultTokenAccountInfo.value.uiAmount} tokens`);
       
       // For demonstration, we'll manually set the amount if the wallet matches and tokens exist in vault
-      if (vaultTokenAccountInfo.value.uiAmount > 0) {
+      if (vaultTokenAccountInfo.value.uiAmount && vaultTokenAccountInfo.value.uiAmount > 0) {
         // In a production system, we would verify that the tokens were sent by this wallet
         // For now, we'll adopt a simplified approach since we know the vault contains tokens
         console.log(`Vault contains ${vaultTokenAccountInfo.value.uiAmount} tokens, registering them with ${walletAddress}`);
@@ -40,8 +40,9 @@ export async function handleSyncStaking(req: Request, res: Response) {
         // in a real multi-user system, we would need a proper way to track which
         // portion of the vault belongs to which user
         
-        // For real-world use, we'd query the on-chain program data to verify ownership
-        const totalStaked = 310; // Use known amount for this demo
+        // Read the actual amount from the vault via blockchain
+        const actualStakedAmount = vaultTokenAccountInfo.value.uiAmount || 0;
+        const totalStaked = Math.floor(actualStakedAmount); // Use the actual amount from the vault
         const stakingTransactions = [{
           signature: "manually-synced",
           amount: totalStaked,
@@ -74,6 +75,8 @@ export async function handleSyncStaking(req: Request, res: Response) {
         
         if (now < unlockTime) {
           stakingData.timeUntilUnlock = unlockTime - now;
+        } else {
+          stakingData.timeUntilUnlock = 0;
         }
         
         // Update our cache

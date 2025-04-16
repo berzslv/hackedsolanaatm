@@ -632,12 +632,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const burnAmount = Math.floor(feeAmount * 0.8);
           const marketingAmount = Math.floor(feeAmount * 0.2);
           
-          // Mint tokens to the user as a fallback
-          const fallbackConnection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
-          const mintSignature = await tokenUtils.mintTokens(
-            fallbackConnection,
-            mintAuthority,
-            walletPubkey,
+          // Transfer tokens from the staking vault to the user
+          const tokenTransfer = await import('./token-transfer');
+          const mintSignature = await tokenTransfer.vaultTransferTokens(
+            walletAddress,
             netAmount
           );
           

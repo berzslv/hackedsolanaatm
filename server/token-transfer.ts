@@ -17,6 +17,9 @@ import {
 } from '@solana/spl-token';
 import { getConnection, getMintAuthority, getOrCreateTokenAccount, getTokenMint } from './simple-token';
 
+// Vault token account known address
+const VAULT_TOKEN_ACCOUNT = '3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL';
+
 /**
  * Transfer tokens from one wallet to another
  * @param senderWalletAddress The sender's wallet address
@@ -197,6 +200,67 @@ export async function authorityTransferTokens(
 // Import here to avoid circular dependency
 import { createMintToInstruction } from '@solana/spl-token';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+
+/**
+ * Transfer tokens from the staking vault to a user's wallet for unstaking
+ * @param recipientWalletAddress The wallet address to receive tokens
+ * @param amount The amount of tokens to unstake
+ * @returns The transaction signature
+ */
+export async function vaultTransferTokens(
+  recipientWalletAddress: string,
+  amount: number
+): Promise<string> {
+  try {
+    console.log(`Unstaking ${amount} tokens from vault to ${recipientWalletAddress}`);
+    
+    const connection = getConnection();
+    const { keypair: authorityKeypair, mintPublicKey } = getMintAuthority();
+    const recipientPublicKey = new PublicKey(recipientWalletAddress);
+    
+    // Get the vault token account
+    const vaultPublicKey = new PublicKey(VAULT_TOKEN_ACCOUNT);
+    
+    // Calculate token amount with decimals
+    const decimals = 9;
+    const adjustedAmount = amount * Math.pow(10, decimals);
+    console.log(`Unstake amount with decimals: ${adjustedAmount}`);
+    
+    // Ensure recipient token account exists
+    const recipientTokenAccount = await getOrCreateTokenAccount(
+      connection,
+      authorityKeypair,
+      mintPublicKey,
+      recipientPublicKey
+    );
+    
+    // Create transfer instruction from vault to recipient
+    const transferInstruction = createTransferInstruction(
+      vaultPublicKey,              // source (vault)
+      recipientTokenAccount,       // destination (recipient)
+      authorityKeypair.publicKey,  // authority that can sign for vault
+      BigInt(adjustedAmount),      // amount with decimals
+      [],                          // multiSigners (empty for single signer)
+      TOKEN_PROGRAM_ID
+    );
+    
+    // Create and send transaction
+    const transaction = new Transaction().add(transferInstruction);
+    
+    console.log("Sending vault unstaking transaction...");
+    const signature = await sendAndConfirmTransaction(
+      connection,
+      transaction,
+      [authorityKeypair] // The authority keypair is needed to sign for the vault
+    );
+    
+    console.log(`Unstaking transfer successful! Signature: ${signature}`);
+    return signature;
+  } catch (error) {
+    console.error("Error transferring tokens from vault:", error);
+    throw error;
+  }
+}
 
 /**
  * Create a transaction for staking tokens (transferring tokens from a user to the staking vault)
