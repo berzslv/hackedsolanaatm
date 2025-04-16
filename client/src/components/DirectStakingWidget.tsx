@@ -44,6 +44,7 @@ const DirectStakingWidget: React.FC = () => {
   const [isStaking, setIsStaking] = useState<boolean>(false);
   const [isUnstaking, setIsUnstaking] = useState<boolean>(false);
   const [isClaiming, setIsClaiming] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   
   // Function to handle staking in a single transaction
   const handleStake = async () => {

@@ -27,6 +27,9 @@ import { handleDirectStake } from './direct-stake';
 // Import our sync-staking handler to fix staking records
 import { handleSyncStaking } from './sync-staking-handler';
 
+// Import force sync handler
+import { handleForceSync } from './force-sync';
+
 // Solana imports for airdrop functionality
 import {
   Connection,
@@ -1683,6 +1686,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Add endpoint to sync staking records - this will help fix the issue with staked tokens not showing up
   app.post("/api/sync-staking", handleSyncStaking);
+  
+  // Add a force sync endpoint to force Railway to update staking information
+  app.post("/api/force-sync", handleForceSync);
   
   // Add a new endpoint for direct staking using the proper referral staking contract
   app.post("/api/direct-stake", handleDirectStake);
