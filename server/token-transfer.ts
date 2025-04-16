@@ -516,7 +516,12 @@ export async function createCombinedBuyAndStakeTransaction(
           );
           
           transaction.add(createVaultAtaInstruction);
+        } else if (error instanceof TokenInvalidAccountOwnerError) {
+          // The account exists but has a different owner than expected
+          console.error("Vault token account has invalid owner:", error);
+          throw new Error("Vault token account has invalid owner. This may indicate a configuration issue with the vault PDA.");
         } else {
+          console.error("Error checking vault token account:", error);
           throw error;
         }
       }
@@ -547,7 +552,8 @@ export async function createCombinedBuyAndStakeTransaction(
       }
     } catch (error) {
       console.error("Error adding staking instruction:", error);
-      // Continue with just the mint instruction if staking fails
+      // Don't continue with just the mint instruction - we need to ensure tokens are staked
+      throw new Error(`Failed to create staking part of transaction: ${error instanceof Error ? error.message : String(error)}`);
     }
     
     // 7. Get the latest blockhash
