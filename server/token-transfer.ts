@@ -440,7 +440,7 @@ export async function createCombinedBuyAndStakeTransaction(
       const stakeInstruction = createTransferInstruction(
         userTokenAccount,          // source
         vaultTokenAccount,         // destination - vault's token account
-        userPublicKey,             // owner of source account
+        userPublicKey,             // owner of the source account
         adjustedAmount,            // amount with decimals
         [],                        // multiSigners (not needed in this case)
         TOKEN_PROGRAM_ID

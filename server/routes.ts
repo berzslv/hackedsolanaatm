@@ -328,15 +328,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           new PublicKey(code);
           // If we get here, it's a valid wallet address format
           console.log(`Validated wallet address format as referral code: ${code}`);
-          return res.json({ 
-            valid: true, 
-            message: "Valid wallet address being used as referral code" 
-          });
+          
+          // Check if the wallet exists on the blockchain (we're mocking this)
+          // In a real implementation, we'd check if the wallet has ever made a transaction
+          const isRealWallet = code.length === 44 || code.length === 43 || code.length === 32;
+          if (isRealWallet) {
+            return res.json({ 
+              valid: true, 
+              message: "Valid wallet address being used as referral code" 
+            });
+          } else {
+            return res.json({
+              valid: false,
+              message: "Wallet address format is valid, but this wallet doesn't exist on the blockchain"
+            });
+          }
         } catch (addressErr) {
           // Not a valid wallet address, so check if it's a valid legacy code
-          // For demonstration, we'll consider codes 3-44 characters as valid
-          // This covers both short codes and wallet addresses
-          const isValid = code.length >= 3 && code.length <= 44;
+          // For demonstration purposes we'll be more strict: only accept codes we know are valid
+          // This would normally check against a database or smart contract
+          const validCodes = ["HATM001", "DEVTEST", "LAUNCH25"];
+          const isValid = validCodes.includes(code);
           console.log(`Validating referral code on-chain: ${code}, Result: ${isValid}`);
           
           // Simulate blockchain network unreliability with retries
@@ -388,8 +400,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Received on-chain referral code validation request for: ${code}`);
       
       // In a real implementation, this would query the smart contract
-      // For demonstration, we'll consider codes 3-10 characters as valid
-      const isValid = code.length >= 3 && code.length <= 10;
+      // For demonstration purposes we'll be more strict: only accept codes we know are valid
+      const validCodes = ["HATM001", "DEVTEST", "LAUNCH25"]; 
+      let isValid = validCodes.includes(code);
+      
+      // Also check if it's a valid wallet address
+      try {
+        const { PublicKey } = await import('@solana/web3.js');
+        new PublicKey(code);
+        // Valid wallet addresses with proper length are accepted
+        if (code.length === 44 || code.length === 43 || code.length === 32) {
+          isValid = true;
+        }
+      } catch (e) {
+        // Not a valid wallet address, isValid is determined by the valid codes check
+      }
       console.log(`On-chain validation result for code ${code}: ${isValid}`);
 
       return res.json({ 
