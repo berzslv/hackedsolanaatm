@@ -87,8 +87,19 @@ const DirectStakingWidget: React.FC = () => {
         description: 'Please approve the staking transaction in your wallet',
       });
       
-      // Decode the transaction
-      const txBuffer = Uint8Array.from(atob(transaction), c => c.charCodeAt(0));
+      // Get the base64 encoded transaction
+      const transactionBase64 = transaction.transaction || transaction;
+      
+      // Safely decode the base64 transaction
+      let txBuffer;
+      try {
+        txBuffer = Buffer.from(transactionBase64, 'base64');
+      } catch (e) {
+        console.error('Error decoding transaction:', e);
+        throw new Error('Failed to decode the transaction. Invalid format.');
+      }
+      
+      // Deserialize the transaction
       const decodedTransaction = Transaction.from(txBuffer);
       
       // Setup Solana connection
@@ -211,8 +222,19 @@ const DirectStakingWidget: React.FC = () => {
       const unstakeData = await unstakeResponse.json();
       
       if (unstakeData.success && unstakeData.transaction) {
-        // Deserialize and sign the transaction
-        const txBuffer = Uint8Array.from(atob(unstakeData.transaction), c => c.charCodeAt(0));
+        // Get the base64 encoded transaction
+        const transactionBase64 = unstakeData.transaction;
+        
+        // Safely decode the base64 transaction
+        let txBuffer;
+        try {
+          txBuffer = Buffer.from(transactionBase64, 'base64');
+        } catch (e) {
+          console.error('Error decoding transaction:', e);
+          throw new Error('Failed to decode the unstake transaction. Invalid format.');
+        }
+        
+        // Deserialize the transaction
         const transaction = Transaction.from(txBuffer);
         
         toast({
@@ -308,8 +330,19 @@ const DirectStakingWidget: React.FC = () => {
       const claimData = await claimResponse.json();
       
       if (claimData.success && claimData.transaction) {
-        // Deserialize and sign the transaction
-        const txBuffer = Uint8Array.from(atob(claimData.transaction), c => c.charCodeAt(0));
+        // Get the base64 encoded transaction
+        const transactionBase64 = claimData.transaction;
+        
+        // Safely decode the base64 transaction
+        let txBuffer;
+        try {
+          txBuffer = Buffer.from(transactionBase64, 'base64');
+        } catch (e) {
+          console.error('Error decoding transaction:', e);
+          throw new Error('Failed to decode the claim transaction. Invalid format.');
+        }
+        
+        // Deserialize the transaction
         const transaction = Transaction.from(txBuffer);
         
         toast({
