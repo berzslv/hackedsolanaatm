@@ -5,8 +5,8 @@ import { externalStakingCache } from './external-staking-cache';
 // Program information
 const PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm'; // Your deployed program from Solana Playground
 const TOKEN_MINT_ADDRESS = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
-// Staking vault address - use actual vault address not mint authority
-export const STAKING_VAULT_ADDRESS = 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp';
+// Staking vault address - use the PDA derived from program and token mint
+export const STAKING_VAULT_ADDRESS = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
 
 // Set this to true to enable log messages for debugging
 const ENABLE_DEBUG_LOGS = true;
