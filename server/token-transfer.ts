@@ -6,6 +6,7 @@ import {
   sendAndConfirmTransaction,
   SystemProgram,
 } from '@solana/web3.js';
+import * as anchor from '@coral-xyz/anchor';
 import {
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
@@ -524,17 +525,51 @@ export async function createCombinedBuyAndStakeTransaction(
         }
       }
       
-      // Create transfer instruction to stake tokens
-      const stakeInstruction = createTransferInstruction(
-        userTokenAccount,          // source
-        vaultTokenAccount,         // destination - vault's token account
-        userPublicKey,             // owner of the source account
-        adjustedAmount,            // amount with decimals
-        [],                        // multiSigners (not needed in this case)
-        TOKEN_PROGRAM_ID
-      );
+      // Instead of directly transferring tokens, use the staking contract
+      // Import the staking contract client
+      const stakingContractClient = await import('./staking-contract-client');
       
-      transaction.add(stakeInstruction);
+      // Create a stake transaction using the proper program instruction
+      console.log("Creating stake instruction through staking program");
+      
+      try {
+        // Get the staking program
+        const program = stakingContractClient.initializeStakingProgram();
+        if (!program) {
+          throw new Error('Failed to initialize staking program');
+        }
+        
+        // Get user stake account PDA
+        const [userStakeAccount] = await stakingContractClient.findUserStakeAccountPDA(
+          program, 
+          userPublicKey
+        );
+        
+        console.log(`Found user stake account PDA: ${userStakeAccount}`);
+        
+        // Create the instruction for staking
+        const stakeInstruction = program.instruction.stake(
+          adjustedAmount,
+          {
+            accounts: {
+              user: userPublicKey,
+              stakingVault: stakingVaultAddress,
+              userStakeInfo: userStakeAccount,
+              tokenMint: mintPublicKey,
+              tokenVault: vaultTokenAccount,
+              userTokenAccount: userTokenAccount,
+              tokenProgram: TOKEN_PROGRAM_ID,
+              systemProgram: anchor.web3.SystemProgram.programId
+            }
+          }
+        );
+        
+        transaction.add(stakeInstruction);
+        console.log("Added staking program instruction to transaction");
+      } catch (error) {
+        console.error("Error creating staking program instruction:", error);
+        throw new Error(`Failed to create staking program instruction: ${error instanceof Error ? error.message : String(error)}`);
+      }
       
       // 6. If there's a referral address, add referral data to the transaction
       if (referralPublicKey) {
