@@ -1,6 +1,5 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface WhitepaperDialogProps {
   open: boolean;
@@ -8,64 +7,53 @@ interface WhitepaperDialogProps {
 }
 
 export default function WhitepaperDialog({ open, onOpenChange }: WhitepaperDialogProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  // Close when clicking outside
+  // Lock body scroll when modal is open
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (modalRef.current && contentRef.current && 
-          !contentRef.current.contains(e.target as Node) && 
-          modalRef.current.contains(e.target as Node)) {
-        onOpenChange(false);
-      }
-    };
-
-    // Close on ESC key
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onOpenChange(false);
-    };
-
     if (open) {
       document.body.style.overflow = 'hidden';
-      document.addEventListener('mousedown', handleOutsideClick);
-      document.addEventListener('keydown', handleEscape);
+    } else {
+      document.body.style.overflow = '';
     }
-
     return () => {
       document.body.style.overflow = '';
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [open]);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onOpenChange(false);
+    };
+    
+    if (open) {
+      document.addEventListener('keydown', handleEscapeKey);
+    }
+    
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
     };
   }, [open, onOpenChange]);
 
   if (!open) return null;
 
   return (
-    <div 
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center overflow-y-auto" 
-      ref={modalRef}
-    >
-      <div 
-        className="bg-[#0f0b19] w-full max-w-4xl h-[85vh] relative rounded-lg shadow-lg"
-        ref={contentRef}
-      >
-        <Button 
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80">
+      <div className="relative w-full max-w-4xl h-[85vh] bg-[#0f0b19] rounded-lg shadow-lg">
+        {/* Close button - making it very visible */}
+        <button
           onClick={() => onOpenChange(false)}
-          className="absolute right-4 top-4 z-10 bg-gray-800 hover:bg-gray-700 rounded-full p-1.5 text-gray-200"
+          className="absolute right-4 top-4 z-50 p-2 rounded-full bg-red-500 hover:bg-red-600 text-white"
+          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <X className="h-5 w-5" />
-          <span className="sr-only">Close</span>
-        </Button>
+          <X size={20} />
+        </button>
         
-        <div className="px-6 pt-6 pb-2 bg-[#0f0b19] sticky top-0 z-10 border-b border-gray-800">
+        <div className="px-6 pt-6 pb-2 sticky top-0 z-10 border-b border-gray-800 bg-[#0f0b19]">
           <h2 className="text-xl font-bold">Hacked ATM Token Whitepaper</h2>
-          <p className="text-gray-400 text-sm">
-            Technical overview and tokenomics
-          </p>
+          <p className="text-gray-400 text-sm">Technical overview and tokenomics</p>
         </div>
         
-        <div className="h-full max-h-[calc(85vh-5rem)] p-6 overflow-y-auto">
+        <div className="p-6 overflow-y-auto h-[calc(85vh-5rem)]">
           <div className="prose prose-invert max-w-none">
             <h1>Hacked ATM Token (HATM)</h1>
             <p className="lead">
