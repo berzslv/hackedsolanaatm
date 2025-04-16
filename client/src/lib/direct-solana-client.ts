@@ -197,3 +197,113 @@ export const getStakingVaultInfo = async (
     };
   }
 };
+
+/**
+ * Buy and stake tokens in one transaction by batching instructions
+ * 
+ * @param walletAddress The wallet address staking tokens
+ * @param amount Amount of tokens to stake
+ * @param referralCode Optional referral code 
+ * @returns Transaction signature if successful
+ */
+export const buyAndStakeTokens = async (
+  walletAddress: string,
+  solAmount: number,
+  referralCode?: string
+): Promise<{ 
+  signature?: string; 
+  error?: string; 
+  transactionDetails?: any;
+}> => {
+  try {
+    if (!walletAddress || !solAmount) {
+      return { error: "Wallet address and amount are required" };
+    }
+    
+    // Step 1: Get the buy and stake transaction from our backend
+    const buyStakeResponse = await fetch('/api/buy-and-stake', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        walletAddress,
+        solAmount,
+        referralCode
+      })
+    });
+    
+    if (!buyStakeResponse.ok) {
+      const errorData = await buyStakeResponse.json();
+      return { error: errorData.message || "Failed to create buy and stake transaction" };
+    }
+    
+    const buyStakeData = await buyStakeResponse.json();
+    
+    // Return the transaction details - the frontend will need to sign and send this
+    return { 
+      transactionDetails: buyStakeData
+    };
+  } catch (error) {
+    console.error('Error in buy and stake process:', error);
+    return { 
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+};
+
+/**
+ * Completes a staking transaction by sending tokens to the staking vault
+ * 
+ * @param walletAddress The wallet address of the user
+ * @param amount Amount of tokens to stake
+ * @returns Transaction signature if successful
+ */
+export const stakeExistingTokens = async (
+  walletAddress: string,
+  amount: number
+): Promise<{
+  signature?: string;
+  error?: string;
+  stakingTransaction?: any;
+}> => {
+  try {
+    if (!walletAddress || !amount) {
+      return { error: "Wallet address and amount are required" };
+    }
+    
+    // Get token balance first to make sure user has enough tokens
+    const tokenBalance = await getTokenBalance(walletAddress);
+    
+    if (tokenBalance < amount) {
+      return { 
+        error: `Insufficient token balance. You have ${tokenBalance} tokens but are trying to stake ${amount}.` 
+      };
+    }
+    
+    // Create a staking transaction via our backend
+    const response = await fetch('/api/stake-tokens', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        walletAddress,
+        amount
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { error: errorData.message || "Failed to create staking transaction" };
+    }
+    
+    const stakingData = await response.json();
+    
+    // Return the transaction details to be signed by the wallet
+    return { 
+      stakingTransaction: stakingData
+    };
+  } catch (error) {
+    console.error('Error in staking process:', error);
+    return { 
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+};

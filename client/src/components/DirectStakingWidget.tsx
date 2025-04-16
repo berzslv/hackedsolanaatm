@@ -15,6 +15,7 @@ import { GradientText } from '@/components/ui/gradient-text';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatNumber, formatTimeRemaining } from '@/lib/utils';
 import { Connection, PublicKey, Transaction, clusterApiUrl } from '@solana/web3.js';
+import { buyAndStakeTokens, stakeExistingTokens } from '@/lib/direct-solana-client';
 
 // Optional Helius API key - would be set from environment in production
 const HELIUS_API_KEY = '';
@@ -67,40 +68,40 @@ const DirectStakingWidget: React.FC = () => {
         description: 'Creating buy and stake transaction...',
       });
       
-      // Combined buy and stake transaction
-      const stakeResponse = await fetch('/api/buy-and-stake', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          walletAddress: publicKey.toString(),
-          amount: amount,
-          referralCode: referralCode
-        }),
-      });
+      // Step 1: Use our direct-solana-client to get the transaction
+      const buyStakeResult = await buyAndStakeTokens(
+        publicKey.toString(),
+        amount,
+        referralCode || undefined
+      );
       
-      if (!stakeResponse.ok) {
-        const errorData = await stakeResponse.json();
-        throw new Error(errorData.error || 'Failed to create buy and stake transaction');
+      // Check if there was an error in creating the transaction
+      if (buyStakeResult.error) {
+        throw new Error(buyStakeResult.error);
       }
       
-      const stakeData = await stakeResponse.json();
+      // Check if we have transaction details
+      if (!buyStakeResult.transactionDetails) {
+        throw new Error('No transaction details received');
+      }
       
-      if (stakeData.success && stakeData.transaction) {
-        // Deserialize and sign the transaction
-        const txBuffer = Uint8Array.from(atob(stakeData.transaction), c => c.charCodeAt(0));
-        const transaction = Transaction.from(txBuffer);
-        
+      const txDetails = buyStakeResult.transactionDetails;
+      
+      // If the transaction needs to be signed by the user
+      if (txDetails.solTransferTransaction) {
         toast({
           title: 'Waiting for approval',
-          description: 'Please approve the transaction in your wallet',
+          description: 'Please approve the SOL transfer transaction in your wallet',
         });
+        
+        // Decode the transaction
+        const txBuffer = Uint8Array.from(atob(txDetails.solTransferTransaction), c => c.charCodeAt(0));
+        const transaction = Transaction.from(txBuffer);
         
         // Setup Solana connection
         const connection = new Connection(clusterApiUrl('devnet'));
         
-        // Send the transaction to the network
+        // Sign and send the transaction
         const signature = await sendTransaction(transaction, connection);
         
         toast({
@@ -108,25 +109,49 @@ const DirectStakingWidget: React.FC = () => {
           description: 'Waiting for confirmation...',
         });
         
-        // Wait for the transaction to confirm
+        // Wait for confirmation
         await connection.confirmTransaction(signature, 'confirmed');
         
-        const referralMessage = referralCode 
-          ? ` using referral code ${referralCode}`
-          : '';
-        
-        toast({
-          title: 'Staking successful',
-          description: `Successfully purchased and staked ${amount} tokens${referralMessage}`,
-          variant: 'default'
+        // Step 2: After SOL transfer, call confirm-purchase endpoint
+        const confirmResponse = await fetch('/api/complete-purchase-and-stake', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            walletAddress: publicKey.toString(),
+            tokenAmount: txDetails.tokenAmount,
+            solAmount: txDetails.solAmount,
+            solTransferSignature: signature,
+            referralCode
+          }),
         });
         
-        // Update all data
-        refreshAllData();
-        refreshBalance();
+        if (!confirmResponse.ok) {
+          const errorData = await confirmResponse.json();
+          throw new Error(errorData.error || 'Failed to complete purchase and stake');
+        }
         
-        // Clear the input
-        setStakeAmount('');
+        const confirmData = await confirmResponse.json();
+        
+        if (confirmData.success) {
+          const referralMessage = referralCode 
+            ? ` using referral code ${referralCode}`
+            : '';
+          
+          toast({
+            title: 'Staking successful',
+            description: `Successfully purchased and staked ${txDetails.tokenAmount} tokens${referralMessage}`,
+            variant: 'default'
+          });
+          
+          // Update all data
+          refreshAllData();
+          refreshBalance();
+          
+          // Clear the input
+          setStakeAmount('');
+        }
       }
     } catch (error) {
       console.error('Staking error:', error);
