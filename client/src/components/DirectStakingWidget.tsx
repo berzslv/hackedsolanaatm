@@ -262,15 +262,11 @@ const DirectStakingWidget: React.FC = () => {
         try {
           console.log('Attempting to deserialize unstake transaction:', transactionBase64);
           
-          // Convert base64 string to Uint8Array using browser APIs
-          const binaryString = window.atob(transactionBase64);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
+          // Use the shared utility function
+          const transactionBytes = base64ToUint8Array(transactionBase64);
           
           // Create Transaction from bytes
-          transaction = Transaction.from(bytes);
+          transaction = Transaction.from(transactionBytes);
           console.log('Successfully deserialized unstake transaction');
         } catch (e: any) {
           console.error('Error deserializing unstake transaction:', e);
@@ -380,17 +376,29 @@ const DirectStakingWidget: React.FC = () => {
         // Get the base64 encoded transaction
         const transactionBase64 = claimData.transaction;
         
-        // Safely decode the base64 transaction
-        let txBuffer;
-        try {
-          txBuffer = Buffer.from(transactionBase64, 'base64');
-        } catch (e) {
-          console.error('Error decoding transaction:', e);
-          throw new Error('Failed to decode the claim transaction. Invalid format.');
-        }
+        // Use the same base64 decoding method as staking and unstaking
+        let transaction: Transaction;
         
-        // Deserialize the transaction
-        const transaction = Transaction.from(txBuffer);
+        try {
+          console.log('Attempting to deserialize claim transaction:', transactionBase64);
+          
+          // Use the shared utility function
+          const transactionBytes = base64ToUint8Array(transactionBase64);
+          
+          // Create Transaction from bytes
+          transaction = Transaction.from(transactionBytes);
+          console.log('Successfully deserialized claim transaction');
+        } catch (e: any) {
+          console.error('Error deserializing claim transaction:', e);
+          try {
+            // Try direct method as fallback
+            transaction = Transaction.from(transactionBase64);
+            console.log('Successfully deserialized claim transaction using direct method');
+          } catch (e2: any) {
+            console.error('All claim deserialization methods failed:', e2);
+            throw new Error(`Failed to decode claim transaction: ${e2.message}`);
+          }
+        }
         
         toast({
           title: 'Waiting for approval',
