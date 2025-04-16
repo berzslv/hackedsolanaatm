@@ -6,7 +6,8 @@ import { externalStakingCache } from './external-staking-cache';
 const PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm'; // Your deployed program from Solana Playground
 const TOKEN_MINT_ADDRESS = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
 // Staking vault address - use actual vault address not mint authority
-export const STAKING_VAULT_ADDRESS = 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp';
+// Making sure to use the same address as in railway/index.js
+export const STAKING_VAULT_ADDRESS = '2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap';
 
 // Set this to true to enable log messages for debugging
 const ENABLE_DEBUG_LOGS = true;

@@ -5,8 +5,11 @@
  */
 import fetch from 'node-fetch';
 
-// Railway service URL
+// Railway service URL - Using the same URL as defined in client/src/lib/railway-client.ts
 const RAILWAY_SERVICE_URL = 'https://hackedpolling-production.up.railway.app';
+
+// Use the correct staking vault address as defined in railway/index.js
+export const STAKING_VAULT_ADDRESS = 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp';
 
 // Types for Railway API responses
 export interface EnhancedStakingData {
