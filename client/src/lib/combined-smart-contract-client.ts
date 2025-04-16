@@ -244,13 +244,13 @@ export const buyAndStakeTokens = async (
     }
     
     // Step 1: Get the buy and stake transaction from our V2 endpoint
-    const buyStakeResponse = await fetch('/api/buy-and-stake', {
+    const buyStakeResponse = await fetch('/api/buy-and-stake-v2', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         walletAddress,
         amount: solAmount,
-        referralAddress
+        referrer: referralAddress // Make sure we use the right parameter name
       })
     });
     
@@ -311,7 +311,7 @@ export const stakeExistingTokens = async (
       body: JSON.stringify({
         walletAddress,
         amount,
-        referralAddress
+        referrer: referralAddress
       })
     });
     

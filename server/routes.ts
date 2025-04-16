@@ -329,16 +329,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { PublicKey } = await import('@solana/web3.js');
         
         try {
-          new PublicKey(code);
-          // If we get here, it's a valid wallet address format
-          console.log(`Validated wallet address format as referral code: ${code}`);
+          // Try to create a PublicKey from the code
+          const pubkey = new PublicKey(code);
           
-          // Accept ANY valid Solana wallet address as a valid referral code
-          // This is more user-friendly during testing
-          return res.json({ 
-            valid: true, 
-            message: "Valid wallet address being used as referral code" 
-          });
+          // Check that the string actually has the correct length for a Solana address
+          if (code.length >= 32 && code.length <= 44) {
+            console.log(`Validated wallet address format as referral code: ${code}`);
+            
+            // Accept proper Solana wallet address as a valid referral code
+            return res.json({ 
+              valid: true, 
+              message: "Valid wallet address being used as referral code" 
+            });
+          } else {
+            // Even though it parses as a PublicKey, it's not the right format
+            console.log(`Rejected invalid wallet address format for referral code: ${code}`);
+            return res.json({ 
+              valid: false, 
+              message: "Invalid referral code format" 
+            });
+          }
         } catch (addressErr) {
           // Not a valid wallet address, so check if it's a valid legacy code
           // For demonstration purposes we'll be more strict: only accept codes we know are valid
@@ -403,9 +413,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Also check if it's a valid wallet address
       try {
         const { PublicKey } = await import('@solana/web3.js');
-        new PublicKey(code);
+        const pubkey = new PublicKey(code);
         // Valid wallet addresses with proper length are accepted
-        if (code.length === 44 || code.length === 43 || code.length === 32) {
+        if (code.length >= 32 && code.length <= 44) {
           isValid = true;
         }
       } catch (e) {

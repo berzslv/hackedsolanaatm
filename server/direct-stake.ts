@@ -15,7 +15,7 @@ import { getConnection } from './simple-token';
  */
 export async function handleDirectStake(req: Request, res: Response) {
   try {
-    const { walletAddress, amount, referralAddress } = req.body;
+    const { walletAddress, amount, referrer } = req.body;
     
     if (!walletAddress || !amount) {
       return res.status(400).json({ error: "Wallet address and amount are required" });
