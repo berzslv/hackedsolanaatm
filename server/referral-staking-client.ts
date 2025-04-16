@@ -134,13 +134,14 @@ export function createStakingInstruction(
     const data = program.coder.instruction.encode('stake', { amount: new BN(amount.toString()) });
     
     // The accounts required for the referral staking instruction
-    // Based on the IDL, we need: owner, globalState, userInfo, userTokenAccount, vault, tokenProgram, systemProgram
+    // Based on the IDL, we need: owner, globalState, userInfo, userTokenAccount, vault, vaultTokenAccount, tokenProgram, systemProgram
     const keys = [
       { pubkey: userWallet, isSigner: true, isWritable: true },           // owner
       { pubkey: globalStatePDA, isSigner: false, isWritable: true },      // globalState
       { pubkey: userInfoPDA, isSigner: false, isWritable: true },         // userInfo
       { pubkey: userTokenAccount, isSigner: false, isWritable: true },    // userTokenAccount
       { pubkey: STAKING_VAULT_ADDRESS, isSigner: false, isWritable: true }, // vault
+      { pubkey: VAULT_TOKEN_ACCOUNT, isSigner: false, isWritable: true }, // vaultTokenAccount
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },   // tokenProgram
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
     ];
