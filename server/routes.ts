@@ -1780,6 +1780,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stakingVaultAddress
         };
         
+        // Update our external staking cache so the UI can display it
+        const { externalStakingCache } = await import('./external-staking-cache');
+        externalStakingCache.updateStakingData({
+          walletAddress,
+          amountStaked: parsedAmount,
+          pendingRewards: 0,
+          stakedAt: new Date(),
+          lastUpdateTime: new Date(),
+          estimatedAPY: 125.4,
+          timeUntilUnlock: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
+        });
+        
+        console.log(`Updated external staking cache for wallet ${walletAddress} with amount ${parsedAmount}`);
+        
         return res.json({
           success: true,
           message: `${parsedAmount} HATM tokens have been staked successfully on chain`,

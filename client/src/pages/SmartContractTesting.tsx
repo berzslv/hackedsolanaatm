@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import StakingWidgetSmartContract from '@/components/StakingWidgetSmartContract';
+import DirectStakingWidget from '@/components/DirectStakingWidget';
 import StakingReferralComponent from '@/components/StakingReferralComponent';
-import StakingReferralWidget from '@/components/StakingReferralWidget';
 import LeaderboardComponent from '@/components/LeaderboardComponent';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -38,7 +37,7 @@ export default function SmartContractTesting() {
         <TabsContent value="new-ui" className="mt-6">
           <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-8">
-              <StakingReferralWidget />
+              <StakingReferralComponent />
             </div>
             
             <div className="space-y-8">
@@ -50,7 +49,7 @@ export default function SmartContractTesting() {
         <TabsContent value="original-ui" className="mt-6">
           <div className="grid md:grid-cols-2 gap-8">
             <div>
-              <StakingWidgetSmartContract />
+              <DirectStakingWidget />
             </div>
             
             <div>
