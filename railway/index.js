@@ -4,8 +4,8 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import axios from 'axios';
-import { Connection, PublicKey } from '@solana/web3.js';
+import fetch from 'node-fetch';
+import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 
 // Load environment variables
 dotenv.config();
@@ -117,29 +117,34 @@ function getRpcEndpoint() {
 // Make RPC call to Solana
 async function callSolanaRpc(method, params = []) {
   try {
-    const response = await axios.post(
-      getRpcEndpoint(),
-      {
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    // Add API key header if provided
+    if (API_KEY) {
+      headers['x-api-key'] = API_KEY;
+    }
+    
+    const response = await fetch(getRpcEndpoint(), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
         jsonrpc: '2.0',
         id: 1,
         method,
         params
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          // Add API key header if provided
-          ...(API_KEY && { 'x-api-key': API_KEY })
-        }
-      }
-    );
+      })
+    });
 
-    if (response.data.error) {
-      console.error('RPC error:', response.data.error);
+    const data = await response.json();
+    
+    if (data.error) {
+      console.error('RPC error:', data.error);
       return null;
     }
 
-    return response.data.result;
+    return data.result;
   } catch (error) {
     console.error(`Error calling RPC method ${method}:`, error.message);
     return null;
