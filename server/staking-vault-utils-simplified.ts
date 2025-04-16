@@ -5,6 +5,8 @@ import { externalStakingCache } from './external-staking-cache';
 // Program information
 const PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm'; // Your deployed program from Solana Playground
 const TOKEN_MINT_ADDRESS = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
+// Staking vault address - this is the mint authority's address
+export const STAKING_VAULT_ADDRESS = '2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap';
 
 // Models for staking data
 export interface StakingUserInfo {
@@ -14,6 +16,7 @@ export interface StakingUserInfo {
   lastClaimAt: Date | null;
   timeUntilUnlock: number | null;
   estimatedAPY: number;
+  stakingVaultAddress?: string; // Adding this to return the correct vault address
 }
 
 export interface StakingVaultInfo {
@@ -61,6 +64,7 @@ export async function getUserStakingInfo(walletAddress: string): Promise<Staking
       lastClaimAt: null,
       timeUntilUnlock: null,
       estimatedAPY: 120, // Default APY from program
+      stakingVaultAddress: STAKING_VAULT_ADDRESS
     };
   } catch (error) {
     console.error(`Error getting staking info for ${walletAddress}:`, error);
@@ -73,6 +77,7 @@ export async function getUserStakingInfo(walletAddress: string): Promise<Staking
       lastClaimAt: null,
       timeUntilUnlock: null,
       estimatedAPY: 120, // Default APY from program
+      stakingVaultAddress: STAKING_VAULT_ADDRESS
     };
   }
 }
@@ -92,7 +97,7 @@ export async function getStakingVaultInfo(): Promise<StakingVaultInfo> {
       rewardPool: 50000,
       stakersCount: 5,
       currentAPY: 120,
-      stakingVaultAddress: PROGRAM_ID,
+      stakingVaultAddress: STAKING_VAULT_ADDRESS, // Use consistent vault address
     };
     
     console.log(`Retrieved global staking stats:`, stakingVaultData);
@@ -106,7 +111,7 @@ export async function getStakingVaultInfo(): Promise<StakingVaultInfo> {
       rewardPool: 50000,
       stakersCount: 5,
       currentAPY: 120,
-      stakingVaultAddress: PROGRAM_ID,
+      stakingVaultAddress: STAKING_VAULT_ADDRESS,
     };
   }
 }

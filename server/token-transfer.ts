@@ -397,9 +397,11 @@ export async function createCombinedBuyAndStakeTransaction(
       // In a complete implementation, we'd fetch this from the blockchain
       // For now, we'll use the transfer instruction as a simplification
       
-      // Get the vault token account for the staking vault program
-      // Using the proper staking vault address from the error investigation
-      const stakingVaultAddress = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
+      // Import the correct staking vault address from the utils
+      const { STAKING_VAULT_ADDRESS } = await import('./staking-vault-utils-simplified');
+      
+      // Get the vault token account for the staking vault
+      const stakingVaultAddress = new PublicKey(STAKING_VAULT_ADDRESS);
       
       // Get the associated token account for the staking vault
       const vaultTokenAccount = await getAssociatedTokenAddress(
