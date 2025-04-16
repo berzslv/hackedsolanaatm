@@ -185,7 +185,7 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         
         // Initialize StakingVaultClient for staking data
         const { StakingVaultClient } = await import('@/lib/staking-vault-client');
-        const tokenMint = "12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5";
+        const tokenMint = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk";
         
         // Initialize ReferralTrackerClient for referral data
         const { ReferralTrackerClient } = await import('@/lib/referral-tracker-client');
@@ -352,7 +352,7 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             
             // Initialize StakingVaultClient for staking data
             const { StakingVaultClient } = await import('@/lib/staking-vault-client');
-            const tokenMint = "12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5";
+            const tokenMint = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk";
             
             // Initialize ReferralTrackerClient for referral data
             const { ReferralTrackerClient } = await import('@/lib/referral-tracker-client');
