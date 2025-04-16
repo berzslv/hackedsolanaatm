@@ -24,15 +24,41 @@ class ExternalStakingCache {
   updateStakingData(data: Omit<StakingData, 'timestamp'>): void {
     const walletAddress = data.walletAddress.toLowerCase();
     
+    // Check if we already have data for this wallet to handle cumulative staking
+    const existingData = this.cache.get(walletAddress);
+    
+    // Prepare the updated data
+    let updatedData: Omit<StakingData, 'timestamp'>;
+    
+    if (existingData && data.amountStaked > 0) {
+      // For staking operations, add to existing amount
+      console.log(`Adding ${data.amountStaked} to existing staked amount of ${existingData.amountStaked} for ${walletAddress}`);
+      updatedData = {
+        ...data,
+        amountStaked: existingData.amountStaked + data.amountStaked,
+      };
+    } else if (existingData && data.amountStaked < 0) {
+      // For unstaking operations (negative amount), subtract from existing
+      const newAmount = Math.max(0, existingData.amountStaked + data.amountStaked);
+      console.log(`Unstaking ${Math.abs(data.amountStaked)} from ${existingData.amountStaked} for ${walletAddress}. New amount: ${newAmount}`);
+      updatedData = {
+        ...data,
+        amountStaked: newAmount,
+      };
+    } else {
+      // Just use the new data if no existing data or amount is 0 (explicit set)
+      updatedData = data;
+    }
+    
     // Add timestamp when data was received
     const timestampedData: StakingData = {
-      ...data,
+      ...updatedData,
       timestamp: new Date()
     };
     
     // Store in cache
     this.cache.set(walletAddress, timestampedData);
-    console.log(`Updated staking data for ${walletAddress}`);
+    console.log(`Updated staking data for ${walletAddress}. New amount: ${timestampedData.amountStaked}`);
   }
   
   // Get staking data for a wallet address

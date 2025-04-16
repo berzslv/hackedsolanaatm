@@ -729,15 +729,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Processing airdrop request for wallet: ${walletAddress}`);
 
       try {
-        // Import the token utilities
+        // Import the token transfer utility instead of minting
+        const tokenTransfer = await import('./token-transfer');
         const simpleToken = await import('./simple-token');
 
-        // Mint tokens using SPL token program
-        const web3 = await import('@solana/web3.js');
-        const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
-        const { keypair: mintAuthority } = simpleToken.getMintAuthority();
-        const walletPubkey = new web3.PublicKey(walletAddress);
-        const signature = await simpleToken.mintTokensSimple(walletAddress, 1000);
+        // Transfer tokens from authority (treasury) instead of minting new ones
+        console.log(`Transferring 1000 tokens from treasury to ${walletAddress}`);
+        const signature = await tokenTransfer.authorityTransferTokens(walletAddress, 1000);
 
         // Get the updated token balance
         const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
@@ -1028,15 +1026,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const stakingVaultAddress = authorityKeypair.publicKey.toString();
         
         // This is a proper two-step process for buying and staking:
-        // 1. First mint tokens to the user's wallet (buy)
-        const mintSignature = await simpleToken.mintTokensSimple(walletAddress, parsedTokenAmount);
-        console.log(`Tokens minted to user wallet! Signature: ${mintSignature}`);
+        // 1. First transfer tokens from treasury to the user's wallet (buy) instead of minting
+        const tokenTransfer = await import('./token-transfer');
+        const mintSignature = await tokenTransfer.authorityTransferTokens(walletAddress, parsedTokenAmount);
+        console.log(`Tokens transferred to user wallet! Signature: ${mintSignature}`);
         
-        // Wait a bit for the mint transaction to be confirmed
+        // Wait a bit for the transfer transaction to be confirmed
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // 2. Then transfer tokens from user wallet to staking vault (stake)
-        const tokenTransfer = await import('./token-transfer');
         
         try {
           // Create a staking transaction (but don't execute it server-side)
@@ -1211,16 +1209,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Now proceed with token minting since SOL transfer is confirmed
+        // Now proceed with token transfer since SOL transfer is confirmed
         const simpleToken = await import('./simple-token');
+        const tokenTransfer = await import('./token-transfer');
         
-        // Mint tokens to the user's wallet
-        const mintSignature = await simpleToken.mintTokensSimple(walletAddress, tokenAmount);
+        // Transfer tokens from authority to the user's wallet instead of minting
+        console.log(`Transferring ${tokenAmount} tokens from treasury to ${walletAddress}`);
+        const mintSignature = await tokenTransfer.authorityTransferTokens(walletAddress, tokenAmount);
         
         // Get updated token balance
         const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
         
-        console.log(`Tokens minted successfully! Signature: ${mintSignature}`);
+        console.log(`Tokens transferred successfully! Signature: ${mintSignature}`);
         
         // Update token stats
         try {
