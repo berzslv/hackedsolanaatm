@@ -1,76 +1,30 @@
-import { useEffect, useState } from 'react';
-import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { 
-  Program, 
-  AnchorProvider, 
-  Idl,
-  BN 
-} from '@coral-xyz/anchor';
-import { useAnchorWallet } from '@solana/wallet-adapter-react';
-import * as anchor from '@coral-xyz/anchor';
+/**
+ * Combined Smart Contract Client
+ * 
+ * This module provides client-side functions for interacting with the
+ * referral staking smart contract on the Solana blockchain.
+ */
+import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 
-// Import IDL when it becomes available
-// import idl from '@idl/referral_staking.json';
+// Token configuration
+const tokenMintAddress = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
+// The staking vault address (PDA derived from program and token mint)
+const stakingVaultAddress = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
+// Program ID for the referral staking program
+const stakingProgramId = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm';
 
-// Constants
-export const PROGRAM_ID = new PublicKey("EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm");
-export const HATM_TOKEN_MINT = new PublicKey("59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk");
-
-// Temporary IDL placeholder until we have the actual IDL
-const temporaryIdl: Idl = {
-  version: "0.1.0",
-  name: "referral_staking",
-  instructions: [
-    {
-      name: "initialize",
-      accounts: [], // Will be filled when IDL is available
-      args: [] 
-    },
-    {
-      name: "registerUser",
-      accounts: [], 
-      args: [] 
-    },
-    {
-      name: "stake",
-      accounts: [], 
-      args: [] 
-    },
-    {
-      name: "unstake",
-      accounts: [], 
-      args: [] 
-    },
-    {
-      name: "claimRewards",
-      accounts: [], 
-      args: [] 
-    },
-    {
-      name: "compoundRewards",
-      accounts: [], 
-      args: [] 
-    }
-  ],
-  accounts: [],
-  errors: []
-};
-
-// Interface definitions
-export interface StakingInfo {
+// Interfaces for staking data
+export interface StakingUserInfo {
   amountStaked: number;
   pendingRewards: number;
   stakedAt: Date;
   lastClaimAt: Date | null;
-  timeUntilUnlock: number | null; // Milliseconds until unlock or null if already unlocked
+  lastCompoundAt?: Date | null;
+  timeUntilUnlock: number | null; // milliseconds until unlock
   estimatedAPY: number;
-}
-
-export interface ReferralInfo {
-  referrer: string | null;
-  referralCode: string | null;
-  referralCount: number;
-  totalReferralRewards: number;
+  dataSource: 'blockchain' | 'helius' | 'external' | 'default';
+  walletTokenBalance?: number;
+  stakingVaultAddress?: string;
 }
 
 export interface StakingVaultInfo {
@@ -78,437 +32,314 @@ export interface StakingVaultInfo {
   rewardPool: number;
   stakersCount: number;
   currentAPY: number;
-  unlockDuration: number; // In seconds
-  earlyUnstakePenalty: number; // In basis points
+  stakingVaultAddress: string;
+  lastUpdated: string;
 }
 
-// Helper function to find Global State PDA
-function findGlobalStatePDA() {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("global_state")],
-    PROGRAM_ID
+/**
+ * Get a connection to the Solana blockchain
+ */
+export const getSolanaConnection = (heliusApiKey?: string): Connection => {
+  // If Helius API key is provided, use it for better RPC connection
+  if (heliusApiKey) {
+    return new Connection(`https://rpc-devnet.helius.xyz/?api-key=${heliusApiKey}`);
+  }
+  
+  // Otherwise use standard devnet connection
+  return new Connection(clusterApiUrl('devnet'));
+};
+
+/**
+ * Get the token mint public key
+ */
+export const getTokenMint = (): PublicKey => {
+  return new PublicKey(tokenMintAddress);
+};
+
+/**
+ * Get the staking program ID
+ */
+export const getStakingProgramId = (): PublicKey => {
+  return new PublicKey(stakingProgramId);
+};
+
+/**
+ * Get the user's PDA (Program Derived Address) for the referral staking program
+ * @param walletAddress The user's wallet address
+ */
+export const getUserStakingPDA = async (
+  walletAddress: string
+): Promise<PublicKey> => {
+  const walletPubkey = new PublicKey(walletAddress);
+  const programId = getStakingProgramId();
+  
+  // Get the PDA for user_info in the referral staking program
+  const [userInfoPDA] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from('user_info'),
+      walletPubkey.toBuffer()
+    ],
+    programId
   );
-}
+  
+  return userInfoPDA;
+};
 
-// Helper function to find User Info PDA
-function findUserInfoPDA(walletAddress: PublicKey) {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("user_info"), walletAddress.toBuffer()],
-    PROGRAM_ID
-  );
-}
+/**
+ * Get token balance for a wallet
+ * @param walletAddress The wallet address to check
+ */
+export const getTokenBalance = async (
+  walletAddress: string,
+  connection?: Connection
+): Promise<number> => {
+  try {
+    const conn = connection || getSolanaConnection();
+    const tokenMint = getTokenMint();
+    const walletPubkey = new PublicKey(walletAddress);
+    
+    // Get all token accounts owned by wallet for our specific mint
+    const tokenAccounts = await conn.getParsedTokenAccountsByOwner(
+      walletPubkey,
+      { mint: tokenMint }
+    );
+    
+    // If no token accounts found, balance is 0
+    if (tokenAccounts.value.length === 0) {
+      return 0;
+    }
+    
+    // Sum up balances from all token accounts with this mint
+    let totalBalance = 0;
+    for (const account of tokenAccounts.value) {
+      const parsedInfo = account.account.data.parsed.info;
+      totalBalance += Number(parsedInfo.tokenAmount.amount) / (10 ** parsedInfo.tokenAmount.decimals);
+    }
+    
+    return totalBalance;
+  } catch (error) {
+    console.error('Error fetching token balance:', error);
+    return 0;
+  }
+};
 
-// Hook to interact with the combined smart contract
-export function useCombinedSmartContract() {
-  const anchorWallet = useAnchorWallet();
-  const [program, setProgram] = useState<Program | null>(null);
-  const [globalState, setGlobalState] = useState<PublicKey | null>(null);
-  const [vaultAddress, setVaultAddress] = useState<PublicKey | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Initialize the program and find PDAs when wallet is connected
-  useEffect(() => {
-    if (!anchorWallet) return;
+/**
+ * Get user's staking information by fetching on-chain data via server API
+ * @param walletAddress The wallet address to get staking info for
+ * @param heliusApiKey Optional Helius API key for better RPC
+ */
+export const getUserStakingInfo = async (
+  walletAddress: string,
+  heliusApiKey?: string
+): Promise<StakingUserInfo> => {
+  try {
+    const connection = getSolanaConnection(heliusApiKey);
     
-    try {
-      // Get connection and provider
-      const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com');
-      const provider = new AnchorProvider(
-        connection,
-        anchorWallet,
-        { commitment: 'confirmed' }
-      );
-      
-      // Create program instance
-      const programInstance = new Program(temporaryIdl, PROGRAM_ID, provider);
-      setProgram(programInstance);
-      
-      // Find Global State PDA
-      const [globalStatePDA] = findGlobalStatePDA();
-      setGlobalState(globalStatePDA);
-      
-      // TODO: Load vault address from global state when account is available
-    } catch (err) {
-      console.error("Error initializing staking program:", err);
-      setError("Failed to initialize staking program");
-    }
-  }, [anchorWallet]);
-  
-  // Function to register user
-  const registerUser = async (referrer?: string): Promise<boolean> => {
-    if (!program || !anchorWallet) {
-      setError("Wallet not connected");
-      return false;
+    // Get staking information from server API - this uses real blockchain data
+    const response = await fetch(`/api/staking-info/${walletAddress}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch staking information');
     }
     
-    setLoading(true);
-    setError(null);
+    const responseData = await response.json();
     
-    try {
-      const [userInfoPDA] = findUserInfoPDA(anchorWallet.publicKey);
-      
-      // Check if user is already registered
-      try {
-        await program.account.userInfo.fetch(userInfoPDA);
-        console.log("User already registered");
-        setLoading(false);
-        return true;
-      } catch (e) {
-        // User not registered yet, continue with registration
-      }
-      
-      // Parse referrer pubkey if provided
-      let referrerPubkey: PublicKey | null = null;
-      if (referrer) {
-        try {
-          referrerPubkey = new PublicKey(referrer);
-        } catch (e) {
-          console.error("Invalid referrer address:", e);
-        }
-      }
-      
-      // Prepare transaction
-      const tx = await program.methods
-        .registerUser(referrerPubkey)
-        .accounts({
-          owner: anchorWallet.publicKey,
-          userInfo: userInfoPDA,
-          systemProgram: SystemProgram.programId,
-        })
-        .transaction();
-      
-      // Send transaction
-      const signature = await program.provider.sendAndConfirm(tx);
-      console.log("User registered successfully. Signature:", signature);
-      
-      setLoading(false);
-      return true;
-    } catch (err) {
-      console.error("Error registering user:", err);
-      setError("Failed to register user");
-      setLoading(false);
-      return false;
-    }
-  };
-  
-  // Function to stake tokens
-  const stakeTokens = async (amount: number): Promise<boolean> => {
-    if (!program || !anchorWallet || !globalState) {
-      setError("Wallet not connected or program not initialized");
-      return false;
+    // The API returns the staking info in a nested 'stakingInfo' property
+    const stakingData = responseData.success && responseData.stakingInfo 
+      ? responseData.stakingInfo 
+      : responseData;
+    
+    console.log("Received staking data:", stakingData); // Debug log
+    
+    // Also add wallet token balance
+    const tokenBalance = await getTokenBalance(walletAddress, connection);
+    
+    // Format the response
+    return {
+      amountStaked: stakingData.amountStaked || 0,
+      pendingRewards: stakingData.pendingRewards || 0,
+      stakedAt: new Date(stakingData.stakedAt || Date.now()),
+      lastClaimAt: stakingData.lastClaimAt ? new Date(stakingData.lastClaimAt) : null, 
+      lastCompoundAt: stakingData.lastCompoundAt ? new Date(stakingData.lastCompoundAt) : null,
+      timeUntilUnlock: stakingData.timeUntilUnlock || null,
+      estimatedAPY: stakingData.estimatedAPY || 0,
+      dataSource: stakingData.dataSource || 'blockchain',
+      walletTokenBalance: tokenBalance
+    } as StakingUserInfo;
+  } catch (error) {
+    console.error('Error fetching staking info:', error);
+    
+    // Return empty data on error
+    return {
+      amountStaked: 0,
+      pendingRewards: 0,
+      stakedAt: new Date(),
+      lastClaimAt: null,
+      lastCompoundAt: null,
+      timeUntilUnlock: null,
+      estimatedAPY: 0,
+      dataSource: 'default',
+      stakingVaultAddress: stakingVaultAddress
+    };
+  }
+};
+
+/**
+ * Get global staking vault statistics from blockchain via server API
+ */
+export const getStakingVaultInfo = async (
+  heliusApiKey?: string
+): Promise<StakingVaultInfo> => {
+  try {
+    // Get staking vault information from server API - this uses real blockchain data
+    const response = await fetch('/api/staking-stats');
+    if (!response.ok) {
+      throw new Error('Failed to fetch staking vault statistics');
     }
     
-    setLoading(true);
-    setError(null);
+    const statsData = await response.json();
     
-    try {
-      // Ensure user is registered
-      await ensureUserRegistered();
-      
-      // Get user info PDA
-      const [userInfoPDA] = findUserInfoPDA(anchorWallet.publicKey);
-      
-      // Get global state to get vault address
-      const globalStateData = await program.account.globalState.fetch(globalState);
-      const vaultAddress = globalStateData.vault;
-      
-      // Convert amount to lamports (adjust based on token decimals)
-      const amountBN = new BN(amount);
-      
-      // TODO: Implement actual token transfer logic
-      // This needs to be completed once we have the full IDL and token accounts setup
-      
-      // For now, show what we would do:
-      console.log(`Would stake ${amount} tokens from ${anchorWallet.publicKey.toString()} to vault ${vaultAddress.toString()}`);
-      
-      setLoading(false);
-      return true;
-    } catch (err) {
-      console.error("Error staking tokens:", err);
-      setError("Failed to stake tokens");
-      setLoading(false);
-      return false;
-    }
-  };
-  
-  // Function to unstake tokens
-  const unstakeTokens = async (amount: number): Promise<boolean> => {
-    if (!program || !anchorWallet || !globalState) {
-      setError("Wallet not connected or program not initialized");
-      return false;
-    }
+    return {
+      totalStaked: statsData.totalStaked || 0,
+      rewardPool: statsData.rewardPool || 0,
+      stakersCount: statsData.stakersCount || 0,
+      currentAPY: statsData.currentAPY || 0,
+      stakingVaultAddress: statsData.stakingVaultAddress || stakingVaultAddress,
+      lastUpdated: statsData.lastUpdated || new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('Error fetching staking vault info:', error);
     
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // Get user info PDA
-      const [userInfoPDA] = findUserInfoPDA(anchorWallet.publicKey);
-      
-      // Get global state to get vault address
-      const globalStateData = await program.account.globalState.fetch(globalState);
-      const vaultAddress = globalStateData.vault;
-      
-      // Convert amount to lamports (adjust based on token decimals)
-      const amountBN = new BN(amount);
-      
-      // TODO: Implement actual token unstake logic
-      // This needs to be completed once we have the full IDL and token accounts setup
-      
-      // For now, show what we would do:
-      console.log(`Would unstake ${amount} tokens from vault ${vaultAddress.toString()} to ${anchorWallet.publicKey.toString()}`);
-      
-      setLoading(false);
-      return true;
-    } catch (err) {
-      console.error("Error unstaking tokens:", err);
-      setError("Failed to unstake tokens");
-      setLoading(false);
-      return false;
-    }
-  };
-  
-  // Function to claim rewards
-  const claimRewards = async (): Promise<boolean> => {
-    if (!program || !anchorWallet || !globalState) {
-      setError("Wallet not connected or program not initialized");
-      return false;
+    // Return empty data on error
+    return {
+      totalStaked: 0,
+      rewardPool: 0,
+      stakersCount: 0,
+      currentAPY: 0,
+      stakingVaultAddress: stakingVaultAddress,
+      lastUpdated: new Date().toISOString(),
+    };
+  }
+};
+
+/**
+ * Buy and stake tokens in one transaction using the referral staking program
+ * 
+ * @param walletAddress The wallet address staking tokens
+ * @param amount Amount of tokens to buy and stake
+ * @param referralAddress Optional referral wallet address
+ * @returns Transaction details if successful
+ */
+export const buyAndStakeTokens = async (
+  walletAddress: string,
+  solAmount: number,
+  referralAddress?: string
+): Promise<{ 
+  signature?: string; 
+  error?: string; 
+  transactionDetails?: any;
+}> => {
+  try {
+    if (!walletAddress || !solAmount) {
+      return { error: "Wallet address and amount are required" };
     }
     
-    setLoading(true);
-    setError(null);
+    // Step 1: Get the buy and stake transaction from our V2 endpoint
+    const buyStakeResponse = await fetch('/api/buy-and-stake', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        walletAddress,
+        amount: solAmount,
+        referralAddress
+      })
+    });
     
-    try {
-      // Get user info PDA
-      const [userInfoPDA] = findUserInfoPDA(anchorWallet.publicKey);
-      
-      // Get global state to get vault address
-      const globalStateData = await program.account.globalState.fetch(globalState);
-      const vaultAddress = globalStateData.vault;
-      
-      // TODO: Implement actual reward claiming logic
-      // This needs to be completed once we have the full IDL and token accounts setup
-      
-      // For now, show what we would do:
-      console.log(`Would claim rewards for ${anchorWallet.publicKey.toString()} from vault ${vaultAddress.toString()}`);
-      
-      setLoading(false);
-      return true;
-    } catch (err) {
-      console.error("Error claiming rewards:", err);
-      setError("Failed to claim rewards");
-      setLoading(false);
-      return false;
-    }
-  };
-  
-  // Function to compound rewards
-  const compoundRewards = async (): Promise<boolean> => {
-    if (!program || !anchorWallet || !globalState) {
-      setError("Wallet not connected or program not initialized");
-      return false;
+    if (!buyStakeResponse.ok) {
+      const errorData = await buyStakeResponse.json();
+      return { error: errorData.message || "Failed to create buy and stake transaction" };
     }
     
-    setLoading(true);
-    setError(null);
+    const buyStakeData = await buyStakeResponse.json();
     
-    try {
-      // Get user info PDA
-      const [userInfoPDA] = findUserInfoPDA(anchorWallet.publicKey);
-      
-      // TODO: Implement actual reward compounding logic
-      // This needs to be completed once we have the full IDL and token accounts setup
-      
-      // For now, show what we would do:
-      console.log(`Would compound rewards for ${anchorWallet.publicKey.toString()}`);
-      
-      setLoading(false);
-      return true;
-    } catch (err) {
-      console.error("Error compounding rewards:", err);
-      setError("Failed to compound rewards");
-      setLoading(false);
-      return false;
-    }
-  };
-  
-  // Ensure user is registered before performing other operations
-  const ensureUserRegistered = async (): Promise<boolean> => {
-    if (!program || !anchorWallet) {
-      setError("Wallet not connected");
-      return false;
-    }
-    
-    const [userInfoPDA] = findUserInfoPDA(anchorWallet.publicKey);
-    
-    try {
-      // Check if user is already registered
-      await program.account.userInfo.fetch(userInfoPDA);
-      return true;
-    } catch (e) {
-      // User not registered, register now
-      return await registerUser();
-    }
-  };
-  
-  // Function to get user staking info
-  const getUserStakingInfo = async (walletAddress?: string): Promise<StakingInfo | null> => {
-    if (!program) {
-      setError("Program not initialized");
-      return null;
+    // Return the transaction details - the frontend will need to sign and send this
+    return { 
+      transactionDetails: buyStakeData
+    };
+  } catch (error) {
+    console.error('Error in buy and stake process:', error);
+    return { 
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+};
+
+/**
+ * Stakes tokens using the referral staking program
+ * 
+ * @param walletAddress The wallet address of the user
+ * @param amount Amount of tokens to stake
+ * @param referralAddress Optional referral wallet address
+ * @returns Transaction details if successful
+ */
+export const stakeExistingTokens = async (
+  walletAddress: string,
+  amount: number,
+  referralAddress?: string
+): Promise<{
+  signature?: string;
+  error?: string;
+  stakingTransaction?: any;
+}> => {
+  try {
+    if (!walletAddress || !amount) {
+      return { error: "Wallet address and amount are required" };
     }
     
-    try {
-      const pubkey = walletAddress 
-        ? new PublicKey(walletAddress) 
-        : anchorWallet?.publicKey;
-        
-      if (!pubkey) {
-        setError("No wallet address provided");
-        return null;
-      }
-      
-      const [userInfoPDA] = findUserInfoPDA(pubkey);
-      
-      try {
-        const userInfo = await program.account.userInfo.fetch(userInfoPDA);
-        
-        // Get global state for config values
-        const [globalStatePDA] = findGlobalStatePDA();
-        const globalState = await program.account.globalState.fetch(globalStatePDA);
-        
-        // Calculate time until unlock
-        const currentTime = Math.floor(Date.now() / 1000);
-        const stakedTime = userInfo.lastStakeTime.toNumber();
-        const unlockDuration = globalState.unlockDuration.toNumber();
-        const unlockTime = stakedTime + unlockDuration;
-        
-        let timeUntilUnlock = null;
-        if (currentTime < unlockTime) {
-          timeUntilUnlock = (unlockTime - currentTime) * 1000; // Convert to milliseconds
-        }
-        
-        // Calculate estimated APY (simplified version)
-        const estimatedAPY = (globalState.rewardRate.toNumber() * 365) / 100;
-        
-        return {
-          amountStaked: userInfo.stakedAmount.toNumber(),
-          pendingRewards: userInfo.rewards.toNumber(),
-          stakedAt: new Date(userInfo.lastStakeTime.toNumber() * 1000),
-          lastClaimAt: userInfo.lastClaimTime.toNumber() > 0 
-            ? new Date(userInfo.lastClaimTime.toNumber() * 1000) 
-            : null,
-          timeUntilUnlock,
-          estimatedAPY
-        };
-      } catch (e) {
-        // User not registered or error fetching data
-        console.warn("Error fetching user info:", e);
-        return {
-          amountStaked: 0,
-          pendingRewards: 0,
-          stakedAt: new Date(),
-          lastClaimAt: null,
-          timeUntilUnlock: null,
-          estimatedAPY: 0
-        };
-      }
-    } catch (err) {
-      console.error("Error getting staking info:", err);
-      setError("Failed to get staking info");
-      return null;
-    }
-  };
-  
-  // Function to get referral info
-  const getUserReferralInfo = async (walletAddress?: string): Promise<ReferralInfo | null> => {
-    if (!program) {
-      setError("Program not initialized");
-      return null;
-    }
+    // Get token balance first to make sure user has enough tokens
+    const tokenBalance = await getTokenBalance(walletAddress);
     
-    try {
-      const pubkey = walletAddress 
-        ? new PublicKey(walletAddress) 
-        : anchorWallet?.publicKey;
-        
-      if (!pubkey) {
-        setError("No wallet address provided");
-        return null;
-      }
-      
-      const [userInfoPDA] = findUserInfoPDA(pubkey);
-      
-      try {
-        const userInfo = await program.account.userInfo.fetch(userInfoPDA);
-        
-        // Generate referral code from wallet address
-        // In a production system, you might want to store this in the contract
-        // or use a more sophisticated approach
-        const referralCode = pubkey.toString().substring(0, 8);
-        
-        return {
-          referrer: userInfo.referrer ? userInfo.referrer.toString() : null,
-          referralCode,
-          referralCount: userInfo.referralCount.toNumber(),
-          totalReferralRewards: userInfo.totalReferralRewards.toNumber()
-        };
-      } catch (e) {
-        // User not registered or error fetching data
-        console.warn("Error fetching referral info:", e);
-        return {
-          referrer: null,
-          referralCode: null,
-          referralCount: 0,
-          totalReferralRewards: 0
-        };
-      }
-    } catch (err) {
-      console.error("Error getting referral info:", err);
-      setError("Failed to get referral info");
-      return null;
-    }
-  };
-  
-  // Function to get vault info
-  const getVaultInfo = async (): Promise<StakingVaultInfo | null> => {
-    if (!program) {
-      setError("Program not initialized");
-      return null;
-    }
-    
-    try {
-      const [globalStatePDA] = findGlobalStatePDA();
-      const globalState = await program.account.globalState.fetch(globalStatePDA);
-      
-      return {
-        totalStaked: globalState.totalStaked.toNumber(),
-        rewardPool: globalState.rewardPool.toNumber(),
-        stakersCount: globalState.stakersCount.toNumber(),
-        currentAPY: (globalState.rewardRate.toNumber() * 365) / 100,
-        unlockDuration: globalState.unlockDuration.toNumber(),
-        earlyUnstakePenalty: globalState.earlyUnstakePenalty.toNumber()
+    if (tokenBalance < amount) {
+      return { 
+        error: `Insufficient token balance. You have ${tokenBalance} tokens but are trying to stake ${amount}.` 
       };
-    } catch (err) {
-      console.error("Error getting vault info:", err);
-      setError("Failed to get vault info");
-      return null;
     }
-  };
-  
-  return {
-    program,
-    loading,
-    error,
-    registerUser,
-    stakeTokens,
-    unstakeTokens,
-    claimRewards,
-    compoundRewards,
-    getUserStakingInfo,
-    getUserReferralInfo,
-    getVaultInfo,
-    ensureUserRegistered
-  };
-}
+    
+    // Create a staking transaction via our direct-stake endpoint
+    const response = await fetch('/api/direct-stake', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        walletAddress,
+        amount,
+        referralAddress
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { error: errorData.message || "Failed to create staking transaction" };
+    }
+    
+    const stakingData = await response.json();
+    
+    // Log the response to help with debugging
+    console.log('Stake transaction response:', stakingData);
+    
+    // Validate that there's transaction data in the response
+    if (!stakingData.success || !stakingData.transaction) {
+      return { 
+        error: 'Invalid response from server - missing transaction data' 
+      };
+    }
+    
+    // Return the transaction details to be signed by the wallet
+    return { 
+      stakingTransaction: stakingData
+    };
+  } catch (error) {
+    console.error('Error in staking process:', error);
+    return { 
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+};

@@ -6,7 +6,7 @@ import {
   StakingVaultInfo, 
   getUserStakingInfo, 
   getStakingVaultInfo 
-} from '@/lib/direct-solana-client';
+} from '@/lib/combined-smart-contract-client';
 
 /**
  * Hook to interact with Solana blockchain directly

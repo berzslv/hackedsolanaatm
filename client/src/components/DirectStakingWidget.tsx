@@ -15,7 +15,7 @@ import { GradientText } from '@/components/ui/gradient-text';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatNumber, formatTimeRemaining } from '@/lib/utils';
 import { Connection, PublicKey, Transaction, clusterApiUrl } from '@solana/web3.js';
-import { buyAndStakeTokens, stakeExistingTokens } from '@/lib/direct-solana-client';
+import { buyAndStakeTokens, stakeExistingTokens } from '@/lib/combined-smart-contract-client';
 
 
 // Optional Helius API key - would be set from environment in production
