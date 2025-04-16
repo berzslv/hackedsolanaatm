@@ -522,36 +522,53 @@ const DirectStakingWidget: React.FC = () => {
         description: 'Forcing blockchain data sync...',
       });
       
-      const response = await fetch('/api/force-sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          walletAddress: publicKey.toString()
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to sync blockchain data');
-      }
-      
-      const syncData = await response.json();
-      
-      if (syncData.success) {
-        toast({
-          title: 'Sync successful',
-          description: 'Successfully synced staking data from blockchain',
-          variant: 'default'
+      // Try to sync with our server-side API
+      try {
+        const response = await fetch('/api/force-sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            walletAddress: publicKey.toString()
+          }),
+          // Add a shorter timeout so we don't wait too long if Railway is down
+          signal: AbortSignal.timeout(10000) // 10 second timeout
         });
         
-        // Update all data
-        refreshAllData();
-        refreshBalance();
-      } else {
-        throw new Error(syncData.message || 'Sync completed but may not have updated data');
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.warn('Force sync warning:', errorData.error || 'API returned error status');
+        } else {
+          const syncData = await response.json();
+          
+          if (syncData.success) {
+            toast({
+              title: 'Sync successful',
+              description: 'Successfully synced staking data from blockchain',
+              variant: 'default'
+            });
+          } else {
+            console.warn('Force sync warning:', syncData.message || 'Sync completed with issues');
+          }
+        }
+      } catch (apiError) {
+        console.warn('Force sync API error (will still try local refresh):', apiError);
       }
+      
+      // Regardless of API success, refresh our data from all sources
+      // This will fall back to local cache or direct blockchain if Railway is down
+      await Promise.all([
+        refreshAllData(),
+        refreshBalance()
+      ]);
+      
+      toast({
+        title: 'Data refresh complete',
+        description: 'Staking data has been refreshed from available sources',
+        variant: 'default'
+      });
+      
     } catch (error) {
       console.error('Sync error:', error);
       toast({
