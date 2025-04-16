@@ -1964,6 +1964,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         console.log(`Updated external staking cache for wallet ${walletAddress} with amount ${parsedAmount}`);
         
+        // Update the Railway data as well to ensure consistency
+        try {
+          console.log('Updating Railway API data...');
+          const railwayApi = await import('./railway-api');
+          
+          // First add the wallet to monitoring
+          await railwayApi.addWalletToMonitor(walletAddress);
+          
+          // Force Railway to poll for the latest data
+          const adminKey = process.env.RAILWAY_ADMIN_KEY || 'admin';
+          await railwayApi.forcePollNow(adminKey);
+          
+          console.log('Railway API data update initiated');
+        } catch (railwayError) {
+          console.error('Error updating Railway data:', railwayError);
+          // Continue anyway, this is not critical for staking confirmation
+        }
+        
         return res.json({
           success: true,
           message: `${parsedAmount} HATM tokens have been staked successfully on chain`,
