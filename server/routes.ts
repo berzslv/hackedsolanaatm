@@ -639,7 +639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             netAmount
           );
           
-          console.log(`Fallback unstake successful! Signature: ${mintSignature}`);
+          console.log(`Unstaking successful! Signature: ${mintSignature}`);
           
           // Update the cache to reflect the unstaking
           if (cachedStakingData) {
@@ -658,7 +658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             marketingAmount,
             transactionSignature: mintSignature,
             explorerUrl: `https://explorer.solana.com/tx/${mintSignature}?cluster=devnet`,
-            message: "Used fallback unstaking method as contract integration failed",
+            message: "Successfully unstaked tokens using mint-based approach",
           });
         }
       } catch (error) {

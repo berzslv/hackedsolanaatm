@@ -8,7 +8,7 @@ interface StakingData {
   stakedAt: Date;
   lastUpdateTime: Date;
   estimatedAPY: number;
-  timeUntilUnlock: number | null;
+  timeUntilUnlock: number; // Changed from number | null to just number
   timestamp: Date; // When this data was received
 }
 

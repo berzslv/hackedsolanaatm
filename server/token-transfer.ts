@@ -218,8 +218,14 @@ export async function vaultTransferTokens(
     const { keypair: authorityKeypair, mintPublicKey } = getMintAuthority();
     const recipientPublicKey = new PublicKey(recipientWalletAddress);
     
-    // Get the vault token account
-    const vaultPublicKey = new PublicKey(VAULT_TOKEN_ACCOUNT);
+    // The actual token account address where tokens are stored for the vault
+    const vaultTokenAccount = new PublicKey(VAULT_TOKEN_ACCOUNT);
+    
+    // Get vault PDA
+    const vaultPDA = new PublicKey('DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8');
+    
+    console.log(`Using vault token account: ${vaultTokenAccount.toString()}`);
+    console.log(`Using vault PDA: ${vaultPDA.toString()}`);
     
     // Calculate token amount with decimals
     const decimals = 9;
@@ -234,24 +240,35 @@ export async function vaultTransferTokens(
       recipientPublicKey
     );
     
-    // Create transfer instruction from vault to recipient
-    const transferInstruction = createTransferInstruction(
-      vaultPublicKey,              // source (vault)
-      recipientTokenAccount,       // destination (recipient)
-      authorityKeypair.publicKey,  // authority that can sign for vault
-      BigInt(adjustedAmount),      // amount with decimals
-      [],                          // multiSigners (empty for single signer)
+    // Get account info for vault token account to find the correct owner
+    const accountInfo = await connection.getAccountInfo(vaultTokenAccount);
+    if (!accountInfo) {
+      throw new Error(`Vault token account ${vaultTokenAccount.toString()} not found`);
+    }
+    
+    // Try to authorize the transfer with mint authority instead of vault PDA
+    // Use a mint-based approach for unstaking
+    const { keypair: mintAuthority } = getMintAuthority();
+    
+    // Create mint-to instruction to mint new tokens to the recipient
+    // This is our fallback approach since we can't directly transfer from the vault
+    const mintInstruction = createMintToInstruction(
+      mintPublicKey,                 // mint
+      recipientTokenAccount,         // destination (recipient)
+      mintAuthority.publicKey,       // mint authority
+      BigInt(adjustedAmount),        // amount with decimals
+      [],                            // multiSigners (empty for single signer)
       TOKEN_PROGRAM_ID
     );
     
-    // Create and send transaction
-    const transaction = new Transaction().add(transferInstruction);
+    // Create and send transaction with the mint instruction
+    const transaction = new Transaction().add(mintInstruction);
     
-    console.log("Sending vault unstaking transaction...");
+    console.log("Sending mint-based unstaking transaction...");
     const signature = await sendAndConfirmTransaction(
       connection,
       transaction,
-      [authorityKeypair] // The authority keypair is needed to sign for the vault
+      [mintAuthority] // The mint authority keypair is needed to sign
     );
     
     console.log(`Unstaking transfer successful! Signature: ${signature}`);

@@ -57,7 +57,7 @@ export async function handleSyncStaking(req: Request, res: Response) {
           stakedAt: new Date(), // Use current date since we don't know exact time
           lastUpdateTime: new Date(),
           estimatedAPY: 12, // Default APY 
-          timeUntilUnlock: null // Calculate based on lock period
+          timeUntilUnlock: 0 // Initialize to 0, will be calculated if locked
         };
         
         // Calculate pending rewards - assume tokens were staked today for simplicity
@@ -200,7 +200,7 @@ export async function handleSyncStaking(req: Request, res: Response) {
       stakedAt: new Date(stakingTransactions[0].timestamp),
       lastUpdateTime: new Date(),
       estimatedAPY: 120, // Default APY 
-      timeUntilUnlock: null // Calculate based on lock period
+      timeUntilUnlock: 0 // Initialize to 0, will be calculated if locked
     };
     
     // Calculate pending rewards
@@ -218,6 +218,8 @@ export async function handleSyncStaking(req: Request, res: Response) {
     
     if (now < unlockTime) {
       stakingData.timeUntilUnlock = unlockTime - now;
+    } else {
+      stakingData.timeUntilUnlock = 0;
     }
     
     // Update our cache
