@@ -5,6 +5,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import axios from 'axios';
+import { Connection, PublicKey } from '@solana/web3.js';
 
 // Load environment variables
 dotenv.config();
@@ -889,6 +890,57 @@ app.get('/api/global-stats', (req, res) => {
   
   return res.status(200).json(combinedStats);
 });
+
+// Get token balance for a wallet
+app.get('/api/token-balance/:walletAddress', async (req, res) => {
+  const { walletAddress } = req.params;
+  if (!walletAddress) {
+    return res.status(400).json({ error: 'Wallet address is required' });
+  }
+  
+  try {
+    // Try to get token balance from on-chain data
+    const tokenBalance = await getTokenBalanceForWallet(walletAddress);
+    return res.status(200).json({
+      walletAddress,
+      balance: tokenBalance
+    });
+  } catch (error) {
+    console.error('Error fetching token balance:', error);
+    // Return zero balance in case of error
+    return res.status(200).json({
+      walletAddress,
+      balance: 0
+    });
+  }
+});
+
+// Helper function to get token balance for a wallet
+async function getTokenBalanceForWallet(walletAddress) {
+  try {
+    // Get connection
+    const connection = new Connection(getRpcEndpoint());
+    
+    // Find the token account for this wallet
+    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+      new PublicKey(walletAddress),
+      { mint: new PublicKey(TOKEN_MINT) }
+    );
+    
+    // Sum balances from all token accounts (usually just one)
+    let balance = 0;
+    for (const { account } of tokenAccounts.value) {
+      if (account.data.parsed.info.mint === TOKEN_MINT) {
+        balance += parseInt(account.data.parsed.info.tokenAmount.amount, 10);
+      }
+    }
+    
+    return balance;
+  } catch (error) {
+    console.error('Error fetching token balance:', error);
+    return 0;
+  }
+}
 
 // Manually update staking data (for testing/admin)
 app.post('/api/update-staking', (req, res) => {
