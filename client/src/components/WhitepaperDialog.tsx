@@ -38,14 +38,14 @@ export default function WhitepaperDialog({ open, onOpenChange }: WhitepaperDialo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80">
-      <div className="relative w-full max-w-4xl h-[85vh] bg-[#0f0b19] rounded-lg shadow-lg">
-        {/* Close button - making it very visible */}
+      <div className="relative w-full max-w-4xl h-[85vh] bg-[#0f0b19] rounded-lg shadow-lg mx-3">
+        {/* Close button - making it very visible and mobile friendly */}
         <button
           onClick={() => onOpenChange(false)}
           className="absolute right-4 top-4 z-50 p-2 rounded-full bg-red-500 hover:bg-red-600 text-white"
-          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <X size={20} />
+          <X size={24} />
         </button>
         
         <div className="px-6 pt-6 pb-2 sticky top-0 z-10 border-b border-gray-800 bg-[#0f0b19]">
