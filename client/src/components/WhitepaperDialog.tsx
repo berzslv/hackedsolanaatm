@@ -18,10 +18,16 @@ export default function WhitepaperDialog({ open, onOpenChange }: WhitepaperDialo
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl h-[85vh] p-0">
-        <DialogClose className="absolute right-4 top-4 rounded-sm p-1.5 opacity-70 bg-gray-800 text-gray-200 hover:bg-gray-700 hover:opacity-100 ring-offset-background transition-opacity focus:outline-none focus:ring-2 focus:ring-[#6366f1] focus:ring-offset-2 disabled:pointer-events-none z-10">
-          <X className="h-4 w-4" />
+        <button 
+          onClick={() => onOpenChange(false)}
+          className="absolute right-4 top-4 rounded-sm p-1.5 opacity-70 bg-gray-800 text-gray-200 hover:bg-gray-700 hover:opacity-100 ring-offset-background transition-opacity focus:outline-none focus:ring-2 focus:ring-[#6366f1] focus:ring-offset-2 disabled:pointer-events-none z-10"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
           <span className="sr-only">Close</span>
-        </DialogClose>
+        </button>
         <DialogHeader className="px-6 pt-6 pb-2 bg-[#0f0b19] sticky top-0 z-10 border-b border-gray-800">
           <DialogTitle className="text-xl font-bold">Hacked ATM Token Whitepaper</DialogTitle>
           <DialogDescription className="text-gray-400">

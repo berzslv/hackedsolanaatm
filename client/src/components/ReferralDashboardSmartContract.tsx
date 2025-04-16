@@ -130,7 +130,7 @@ const ReferralDashboardSmartContract: React.FC = () => {
   const copyReferralLink = () => {
     if (!referralStats?.referralCode) return;
     
-    // Just copy the code, not the URL
+    // Just copy the code, not a URL
     navigator.clipboard.writeText(referralStats.referralCode);
     
     setCopied(true);
@@ -345,13 +345,11 @@ const ReferralDashboardSmartContract: React.FC = () => {
                   </Button>
                 </div>
                 
-                <Button variant="outline" size="icon">
-                  <Share2 className="h-4 w-4" />
-                </Button>
+                {/* No Share button - only using codes */}
               </div>
               
               <p className="text-xs text-muted-foreground">
-                Share this code with friends. When they buy HATM tokens, you'll receive 5% of their purchase amount.
+                Share this code with friends. When they stake HATM tokens using your code, you'll receive 3% of their staking amount as a reward.
               </p>
             </div>
           ) : (
@@ -506,15 +504,15 @@ const ReferralDashboardSmartContract: React.FC = () => {
               <div className="space-y-2">
                 <h4 className="font-medium text-foreground">How to Earn</h4>
                 <p>1. Share your unique referral code with friends</p>
-                <p>2. When they buy HATM tokens, you earn 5% of their purchase amount</p>
+                <p>2. When they stake HATM tokens using your code, you earn 3% of their staking amount</p>
                 <p>3. Rewards are automatically tracked on-chain and cannot be tampered with</p>
               </div>
               
               <div className="space-y-2">
                 <h4 className="font-medium text-foreground">Reward Distribution</h4>
-                <p>• 5% of each purchase goes to the referrer</p>
-                <p>• 2% goes to the staking rewards pool</p>
-                <p>• 1% goes to marketing and development</p>
+                <p>• 3% of each staking amount goes to the referrer</p>
+                <p>• Rewards are instantly credited to your account</p>
+                <p>• All tracked transparently on the blockchain</p>
               </div>
               
               <div className="space-y-2">
