@@ -228,36 +228,43 @@ const ReferralWidget: React.FC = () => {
           </div>
         )}
         
-        {/* Referral Link Section */}
+        {/* Referral Code Section */}
         <div className="space-y-4">
-          <div className="flex flex-col space-y-2">
-            <label className="text-sm font-medium">Your Referral Link</label>
-            <div className="flex space-x-2">
-              <Input 
-                readOnly 
-                value={`${window.location.origin}?ref=${publicKey?.toString()}`} 
-              />
-              <Button 
-                variant="outline" 
-                onClick={copyReferralLink}
-              >
-                {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Share this link with friends and earn 3% on their staking amount
-            </p>
-          </div>
-                
           <div className="bg-primary/5 p-4 rounded-md">
             <div className="flex items-center mb-2">
               <Award className="h-4 w-4 mr-2 text-primary" />
-              <span className="text-sm font-medium">Your Wallet Address (Referral Code)</span>
+              <span className="text-sm font-medium">Your Referral Code</span>
             </div>
             <div className="font-mono text-xs font-medium truncate">{publicKey?.toString()}</div>
+            <div className="flex mt-2 space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={copyReferralLink}
+                className="w-full"
+                size="sm"
+              >
+                {copied ? 
+                  <><CheckCircle className="h-4 w-4 mr-2" /> Code Copied</> : 
+                  <><Copy className="h-4 w-4 mr-2" /> Copy Referral Code</>
+                }
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Your wallet address is automatically used as your referral code
+              Friends need to enter this code when staking to give you 3% rewards
             </p>
+          </div>
+          
+          <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-md border border-blue-200 dark:border-blue-800">
+            <div className="flex items-start">
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
+              <div>
+                <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300">On-Chain Referral System</h4>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  Your wallet address is used as your referral code directly in the smart contract.
+                  No URLs or external tracking - everything is handled securely on the blockchain.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
         

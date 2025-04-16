@@ -18,11 +18,11 @@ interface WhitepaperDialogProps {
 export default function WhitepaperDialog({ open, onOpenChange }: WhitepaperDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[85vh] p-0">
+      <DialogContent className="max-w-4xl h-[85vh] p-0" hideCloseButton>
         <Button 
           onClick={() => onOpenChange(false)}
           variant="ghost"
-          className="absolute right-4 top-4 p-1 h-auto rounded-full opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#6366f1] z-10"
+          className="absolute right-4 top-4 p-1 h-auto rounded-full bg-gray-800 text-white opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#6366f1] z-10"
         >
           <X className="h-5 w-5" />
           <span className="sr-only">Close</span>
