@@ -105,37 +105,65 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const walletAddress = publicKey.toString();
       console.log("Refreshing token balance for:", walletAddress);
       
-      // Get token balance from the API
-      const balanceResponse = await fetch(`/api/token-balance/${walletAddress}`);
-      const balanceData = await balanceResponse.json();
+      // First try to get token balance from the standard API
+      let tokenBalance = 0;
+      let balanceSuccess = false;
       
-      if (balanceResponse.ok && balanceData.success) {
-        console.log("Refreshed token balance:", balanceData.balance);
+      try {
+        // First try Railway API route
+        const balanceResponse = await fetch(`/api/token-balance/${walletAddress}`);
+        const balanceData = await balanceResponse.json();
         
-        // Get staking info to update staked balance and pending rewards
-        const stakingResponse = await fetch(`/api/staking-info/${walletAddress}`);
-        const stakingData = await stakingResponse.json();
-        
-        console.log("Refreshed staking info:", stakingData);
-        
-        // Extract proper staking info
-        let stakedBalance = 0;
-        let pendingRewards = 0;
-        
-        if (stakingData.success && stakingData.stakingInfo) {
-          stakedBalance = Number(stakingData.stakingInfo.amountStaked) || 0;
-          pendingRewards = Number(stakingData.stakingInfo.pendingRewards) || 0;
-          console.log("Extracted staked balance:", stakedBalance, "pending rewards:", pendingRewards);
+        if (balanceResponse.ok && balanceData.success) {
+          console.log("Refreshed token balance from Railway:", balanceData.balance);
+          tokenBalance = Number(balanceData.balance) || 0;
+          balanceSuccess = true;
         }
-        
-        // Update token data with real values (keep referral stats the same)
-        setTokenData(prev => ({
-          ...prev,
-          userTokenBalance: Number(balanceData.balance) || 0,
-          userStakedBalance: stakedBalance,
-          userPendingRewards: pendingRewards,
-        }));
+      } catch (balanceError) {
+        console.error("Error fetching token balance from standard API:", balanceError);
       }
+      
+      // If standard API failed, use direct blockchain endpoint as fallback
+      if (!balanceSuccess) {
+        try {
+          console.log("Trying direct blockchain token balance endpoint...");
+          const directResponse = await fetch(`/api/direct-token-balance/${walletAddress}`);
+          const directData = await directResponse.json();
+          
+          if (directResponse.ok && directData.success) {
+            console.log("Refreshed token balance from direct blockchain:", directData.balance);
+            tokenBalance = Number(directData.balance) || 0;
+            balanceSuccess = true;
+          }
+        } catch (directError) {
+          console.error("Error fetching token balance from direct endpoint:", directError);
+        }
+      }
+      
+      // Get staking info to update staked balance and pending rewards
+      const stakingResponse = await fetch(`/api/staking-info/${walletAddress}`);
+      const stakingData = await stakingResponse.json();
+      
+      console.log("Refreshed staking info:", stakingData);
+      
+      // Extract proper staking info
+      let stakedBalance = 0;
+      let pendingRewards = 0;
+      
+      if (stakingData.success && stakingData.stakingInfo) {
+        stakedBalance = Number(stakingData.stakingInfo.amountStaked) || 0;
+        pendingRewards = Number(stakingData.stakingInfo.pendingRewards) || 0;
+        console.log("Extracted staked balance:", stakedBalance, "pending rewards:", pendingRewards);
+      }
+      
+      // Update token data with real values (keep referral stats the same)
+      setTokenData(prev => ({
+        ...prev,
+        userTokenBalance: tokenBalance,
+        userStakedBalance: stakedBalance,
+        userPendingRewards: pendingRewards,
+      }));
+      
     } catch (error) {
       console.error('Error refreshing token data:', error);
     }
@@ -172,12 +200,43 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const walletAddress = publicKey.toString();
       console.log("Refreshing token data for:", walletAddress);
       
-      // Get token balance from the API
-      const balanceResponse = await fetch(`/api/token-balance/${walletAddress}`);
-      const balanceData = await balanceResponse.json();
+      // First try to get token balance from the standard API
+      let tokenBalance = 0;
+      let balanceSuccess = false;
       
-      if (balanceResponse.ok && balanceData.success) {
-        console.log("Refreshed token balance:", balanceData.balance);
+      try {
+        // First try Railway API route
+        const balanceResponse = await fetch(`/api/token-balance/${walletAddress}`);
+        const balanceData = await balanceResponse.json();
+        
+        if (balanceResponse.ok && balanceData.success) {
+          console.log("Refreshed token balance from Railway:", balanceData.balance);
+          tokenBalance = Number(balanceData.balance) || 0;
+          balanceSuccess = true;
+        }
+      } catch (balanceError) {
+        console.error("Error fetching token balance from standard API:", balanceError);
+      }
+      
+      // If standard API failed, use direct blockchain endpoint as fallback
+      if (!balanceSuccess) {
+        try {
+          console.log("Trying direct blockchain token balance endpoint...");
+          const directResponse = await fetch(`/api/direct-token-balance/${walletAddress}`);
+          const directData = await directResponse.json();
+          
+          if (directResponse.ok && directData.success) {
+            console.log("Refreshed token balance from direct blockchain:", directData.balance);
+            tokenBalance = Number(directData.balance) || 0;
+            balanceSuccess = true;
+          }
+        } catch (directError) {
+          console.error("Error fetching token balance from direct endpoint:", directError);
+        }
+      }
+      
+      if (balanceSuccess) {
+        console.log("Using token balance:", tokenBalance);
         
         // Initialize on-chain data sources
         const { Connection, clusterApiUrl } = await import('@solana/web3.js');
@@ -284,7 +343,7 @@ export const TokenDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // Update token data with all refreshed values
         setTokenData(prev => ({
           ...prev,
-          userTokenBalance: balanceData.balance || 0,
+          userTokenBalance: tokenBalance,
           userStakedBalance: userStakedBalance,
           userPendingRewards: userPendingRewards,
           totalStaked: stakingStats.totalStaked,

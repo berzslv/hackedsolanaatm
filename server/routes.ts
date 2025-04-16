@@ -2245,6 +2245,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/helius/global-stats", (req, res) => {
     getGlobalStats(req, res);
   });
+
+  // Direct token balance endpoint that bypasses Railway
+  app.get("/api/direct-token-balance/:walletAddress", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      
+      if (!walletAddress) {
+        return res.status(400).json({ error: "Wallet address is required" });
+      }
+      
+      console.log(`Getting direct token balance for wallet: ${walletAddress}`);
+      
+      // Import the token utilities
+      const simpleToken = await import('./simple-token');
+      
+      // Get token balance directly from the blockchain
+      const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
+      
+      return res.json({
+        success: true,
+        walletAddress,
+        balance: tokenBalance,
+        timestamp: new Date(),
+        dataSource: 'blockchain'
+      });
+    } catch (error) {
+      console.error(`Error getting direct token balance: ${error}`);
+      return res.status(500).json({ 
+        error: "Failed to get token balance",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
   
   const httpServer = createServer(app);
   return httpServer;
