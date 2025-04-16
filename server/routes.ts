@@ -1403,7 +1403,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isLocked: railwayStakingData.isLocked,
           referrer: railwayStakingData.referrer,
           walletTokenBalance: tokenBalanceData.balance,
-          stakingVaultAddress: 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp',
+          stakingVaultAddress: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8',
           dataSource: 'railway',
           refreshed: true
         };
@@ -1436,7 +1436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const stakingResponse = {
             ...stakingData,
             walletTokenBalance: tokenBalance,
-            stakingVaultAddress: 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp',
+            stakingVaultAddress: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8',
             refreshed: true
           };
           
