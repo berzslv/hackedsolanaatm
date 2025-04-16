@@ -472,20 +472,13 @@ export async function createCombinedBuyAndStakeTransaction(
     const stakingProgramId = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
     
     try {
-      // Import staking-vault-utils to get program details
-      const stakingVaultUtils = await import('./staking-vault-utils');
+      // Import direct-staking-utils for proper staking program interaction
+      const directStakingUtils = await import('./direct-staking-utils');
       
       console.log(`Adding staking instruction for ${amount} tokens to program ${stakingProgramId.toString()}`);
       
-      // For the referral-staking program, we need to determine the vault's token account
-      // In a complete implementation, we'd fetch this from the blockchain
-      // For now, we'll use the transfer instruction as a simplification
-      
-      // Import the correct staking vault address from the utils
-      const { STAKING_VAULT_ADDRESS } = await import('./staking-vault-utils-simplified');
-      
-      // Get the vault token account for the staking vault
-      const stakingVaultAddress = new PublicKey(STAKING_VAULT_ADDRESS);
+      // Using constants directly from directStakingUtils
+      const stakingVaultAddress = directStakingUtils.STAKING_VAULT_ADDRESS;
       
       // Get the associated token account for the staking vault
       // Since the staking vault is a PDA, we need to use allowOwnerOffCurve=true
@@ -524,10 +517,6 @@ export async function createCombinedBuyAndStakeTransaction(
           throw new Error(`Error with vault token account: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
-      
-      // Instead of directly transferring tokens, use the staking contract
-      // Import our direct staking utilities
-      const directStakingUtils = await import('./direct-staking-utils');
       
       // Create a stake transaction using the proper program instruction
       console.log("Creating stake instruction through staking program");
