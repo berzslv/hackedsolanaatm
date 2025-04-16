@@ -20,6 +20,16 @@ import { buyAndStakeTokens, stakeExistingTokens } from '@/lib/direct-solana-clie
 // Optional Helius API key - would be set from environment in production
 const HELIUS_API_KEY = '';
 
+// Utility function to convert base64 to Uint8Array in browser environment
+function base64ToUint8Array(base64String: string): Uint8Array {
+  const binaryString = window.atob(base64String);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
 const DirectStakingWidget: React.FC = () => {
   // Get wallet connection status
   const { connected, publicKey, signTransaction, sendTransaction, balance, refreshBalance } = useSolana();
@@ -95,18 +105,33 @@ const DirectStakingWidget: React.FC = () => {
         throw new Error('Missing transaction field in server response');
       }
       
-      // Safely decode the base64 transaction
-      let txBuffer;
-      try {
-        txBuffer = Buffer.from(transactionData.transaction, 'base64');
-        console.log('Successfully decoded transaction of length:', txBuffer.length);
-      } catch (e: any) {
-        console.error('Error decoding transaction:', e);
-        throw new Error(`Failed to decode the transaction. Invalid format: ${e.message}`);
-      }
+      // Using the utility function declared at the top of the file
       
-      // Deserialize the transaction
-      const decodedTransaction = Transaction.from(txBuffer);
+      // Decode and deserialize the transaction
+      let decodedTransaction: Transaction;
+      
+      try {
+        console.log('Attempting to deserialize transaction:', transactionData.transaction);
+        
+        // Convert base64 string to Uint8Array
+        const transactionBytes = base64ToUint8Array(transactionData.transaction);
+        
+        // Create Transaction from bytes
+        decodedTransaction = Transaction.from(transactionBytes);
+        
+        console.log('Successfully deserialized transaction');
+      } catch (e: any) {
+        console.error('Error deserializing transaction:', e);
+        
+        try {
+          // Try direct method as fallback
+          decodedTransaction = Transaction.from(transactionData.transaction);
+          console.log('Successfully deserialized transaction using direct method');
+        } catch (e2: any) {
+          console.error('All deserialization methods failed:', e2);
+          throw new Error(`Failed to decode transaction: ${e2.message}`);
+        }
+      }
       
       // Setup Solana connection
       const connection = new Connection(clusterApiUrl('devnet'));
@@ -231,17 +256,33 @@ const DirectStakingWidget: React.FC = () => {
         // Get the base64 encoded transaction
         const transactionBase64 = unstakeData.transaction;
         
-        // Safely decode the base64 transaction
-        let txBuffer;
-        try {
-          txBuffer = Buffer.from(transactionBase64, 'base64');
-        } catch (e) {
-          console.error('Error decoding transaction:', e);
-          throw new Error('Failed to decode the unstake transaction. Invalid format.');
-        }
+        // Use the same base64 decoding method as staking
+        let transaction: Transaction;
         
-        // Deserialize the transaction
-        const transaction = Transaction.from(txBuffer);
+        try {
+          console.log('Attempting to deserialize unstake transaction:', transactionBase64);
+          
+          // Convert base64 string to Uint8Array using browser APIs
+          const binaryString = window.atob(transactionBase64);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          
+          // Create Transaction from bytes
+          transaction = Transaction.from(bytes);
+          console.log('Successfully deserialized unstake transaction');
+        } catch (e: any) {
+          console.error('Error deserializing unstake transaction:', e);
+          try {
+            // Try direct method as fallback
+            transaction = Transaction.from(transactionBase64);
+            console.log('Successfully deserialized unstake transaction using direct method');
+          } catch (e2: any) {
+            console.error('All unstake deserialization methods failed:', e2);
+            throw new Error(`Failed to decode unstake transaction: ${e2.message}`);
+          }
+        }
         
         toast({
           title: 'Waiting for approval',
