@@ -423,16 +423,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get global staking stats - directly from blockchain using smart contract
+  // Get global staking stats - from simplified utils without Anchor
   app.get("/api/staking-stats", async (req, res) => {
     try {
-      // Import the staking vault utilities that interact with the smart contract
-      const stakingVaultUtils = await import('./staking-vault-utils');
+      // Import the simplified staking vault utilities
+      const stakingVaultUtils = await import('./staking-vault-utils-simplified');
       
-      // Get global staking statistics directly from the smart contract
+      // Get global staking statistics 
       const vaultInfo = await stakingVaultUtils.getStakingVaultInfo();
       
-      // Format the response with the data from the smart contract
+      // Format the response with the data
       const stakingStats = {
         totalStaked: vaultInfo.totalStaked,
         rewardPool: vaultInfo.rewardPool,
@@ -442,12 +442,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastUpdated: new Date().toISOString()
       };
       
-      console.log(`Retrieved global staking stats from smart contract:`, stakingStats);
+      console.log(`Retrieved global staking stats:`, stakingStats);
       res.json(stakingStats);
     } catch (error) {
-      console.error("Error getting global staking stats from smart contract:", error);
+      console.error("Error getting global staking stats:", error);
       res.status(500).json({ 
-        message: "Failed to get staking stats from smart contract",
+        message: "Failed to get staking stats",
         details: error instanceof Error ? error.message : String(error)
       });
     }
@@ -1264,6 +1264,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if we have data from external provider
       const { externalStakingCache } = await import('./external-staking-cache');
       const externalData = externalStakingCache.getStakingData(walletAddress);
+      
+      // Import our simplified staking vault utils
+      const stakingVaultUtils = await import('./staking-vault-utils-simplified');
       
       let stakingResponse;
       

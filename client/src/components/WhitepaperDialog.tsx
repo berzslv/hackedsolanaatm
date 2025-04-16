@@ -37,12 +37,15 @@ export default function WhitepaperDialog({ open, onOpenChange }: WhitepaperDialo
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80">
-      <div className="relative w-full max-w-4xl h-[85vh] bg-[#0f0b19] rounded-lg shadow-lg mx-3">
+    <div 
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+    >
+      <div className="bg-[#0f0b19] w-[95%] sm:w-[90%] max-w-4xl h-[85vh] relative rounded-lg shadow-lg">
         {/* Close button - making it very visible and mobile friendly */}
         <button
           onClick={() => onOpenChange(false)}
-          className="absolute right-4 top-4 z-50 p-2 rounded-full bg-red-500 hover:bg-red-600 text-white"
+          className="absolute right-2 top-2 z-[10000] p-2 rounded-full bg-red-500 hover:bg-red-600 text-white"
           style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <X size={24} />
