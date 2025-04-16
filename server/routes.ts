@@ -1328,22 +1328,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Import the external staking cache
-      const { externalStakingCache } = await import('./external-staking-cache');
+      console.log(`Refreshing staking data for wallet: ${walletAddress}`);
       
-      // Clear the cache for this wallet
+      // Import the external staking cache and clear it
+      const { externalStakingCache } = await import('./external-staking-cache');
       externalStakingCache.clearWalletCache(walletAddress);
       
-      return res.json({
-        success: true,
-        message: `Staking cache cleared for wallet: ${walletAddress}`,
-        timestamp: new Date()
-      });
+      try {
+        // Get token balance first
+        const simpleTokenModule = await import('./simple-token');
+        const tokenBalance = await simpleTokenModule.getTokenBalance(walletAddress);
+        
+        // Import staking utilities with our correct staking vault address
+        const stakingVaultUtils = await import('./staking-vault-utils-simplified');
+        
+        // Use the getUserStakingInfo to query blockchain data directly
+        console.log(`Querying blockchain for fresh staking data for ${walletAddress}`);
+        const stakingData = await stakingVaultUtils.getUserStakingInfo(walletAddress);
+        
+        // Add token balance and use the correct vault address
+        const stakingResponse = {
+          ...stakingData,
+          walletTokenBalance: tokenBalance,
+          stakingVaultAddress: 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp',
+          refreshed: true
+        };
+        
+        console.log(`Fresh staking data for ${walletAddress}:`, stakingResponse);
+        
+        return res.json({
+          success: true,
+          message: `Retrieved fresh staking data for wallet: ${walletAddress}`,
+          stakingInfo: stakingResponse,
+          timestamp: new Date()
+        });
+      } catch (fetchError) {
+        console.error(`Error fetching fresh staking data: ${fetchError}`);
+        // Even if we can't get fresh data, we still cleared the cache
+        return res.json({
+          success: true,
+          message: `Staking cache cleared for wallet: ${walletAddress}`,
+          error: `Could not fetch fresh data: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`,
+          timestamp: new Date()
+        });
+      }
     } catch (error) {
-      console.error("Error clearing staking cache:", error);
+      console.error("Error refreshing staking data:", error);
       return res.status(500).json({
         success: false,
-        message: "Failed to clear staking cache",
+        message: "Failed to refresh staking data",
         details: error instanceof Error ? error.message : String(error)
       });
     }
@@ -1374,11 +1407,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Getting on-chain staking info for ${walletAddress}`);
       const stakingData = await stakingVaultUtils.getUserStakingInfo(walletAddress);
       
+      // Use the correct staking vault address from our constants
+      const correctStakingVaultAddress = 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp';
+      
       // Add token balance and ensure staking vault address is correct
       const stakingResponse = {
         ...stakingData,
         walletTokenBalance: tokenBalance,
-        stakingVaultAddress: stakingVaultAddress
+        stakingVaultAddress: correctStakingVaultAddress
       };
       
       console.log("Staking info for", walletAddress, ":", JSON.stringify(stakingResponse, null, 2));

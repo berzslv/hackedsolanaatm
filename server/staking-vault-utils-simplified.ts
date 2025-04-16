@@ -217,8 +217,9 @@ async function getDirectTokenTransfersToStakingVault(walletAddress: string): Pro
     const walletPubkey = new PublicKey(walletAddress);
     const stakingVaultPubkey = new PublicKey(STAKING_VAULT_ADDRESS);
     
-    // Get all signatures for the wallet
-    const signatures = await connection.getSignaturesForAddress(walletPubkey, { limit: 100 });
+    // Get a more reasonable number of signatures to avoid rate limiting
+    // We're hitting rate limits with 100 signatures
+    const signatures = await connection.getSignaturesForAddress(walletPubkey, { limit: 10 });
     
     if (!signatures || signatures.length === 0) {
       debugLog(`No transactions found for wallet: ${walletAddress}`);
@@ -309,11 +310,70 @@ async function getDirectTokenTransfersToStakingVault(walletAddress: string): Pro
  * @param walletAddress Wallet address to get staking info for
  * @returns StakingUserInfo with on-chain data
  */
+// Helper function to get staking data directly from latest transactions
+// This is much more efficient and avoids rate limiting issues
+async function getLatestStakingTransaction(walletAddress: string): Promise<{
+  amount: number;
+  timestamp: Date;
+}> {
+  try {
+    const connection = new Connection(clusterApiUrl('devnet'));
+    const walletPubkey = new PublicKey(walletAddress);
+    
+    // Only get the very latest transaction
+    const signatures = await connection.getSignaturesForAddress(walletPubkey, { limit: 1 });
+    
+    if (!signatures || signatures.length === 0) {
+      return { amount: 0, timestamp: new Date() };
+    }
+    
+    // Get the latest transaction
+    const latestTx = await connection.getParsedTransaction(signatures[0].signature);
+    
+    if (!latestTx || !latestTx.meta) {
+      return { amount: 0, timestamp: new Date() };
+    }
+    
+    // Check if it's a staking transaction
+    let amount = 0;
+    if (latestTx.transaction?.message?.instructions) {
+      for (const instruction of latestTx.transaction.message.instructions) {
+        if (!instruction || typeof instruction !== 'object') continue;
+        
+        // Check for token transfers
+        if ('parsed' in instruction && 
+            instruction.program === 'spl-token' && 
+            instruction.parsed?.type === 'transfer') {
+            
+          const info = instruction.parsed.info;
+          
+          if (info && info.authority === walletAddress && 
+              info.destination === STAKING_VAULT_ADDRESS) {
+              
+            // Found a staking transfer
+            const decimals = 9; // Default for SPL tokens
+            const txAmount = typeof info.amount === 'string' ? info.amount : String(info.amount);
+            amount = parseInt(txAmount) / Math.pow(10, decimals);
+          }
+        }
+      }
+    }
+    
+    // Get the timestamp
+    const timestamp = new Date((latestTx.blockTime || Date.now() / 1000) * 1000);
+    
+    return { amount, timestamp };
+  } catch (error) {
+    console.error("Error getting latest staking transaction:", error);
+    return { amount: 0, timestamp: new Date() };
+  }
+}
+
 export async function getUserStakingInfo(walletAddress: string): Promise<StakingUserInfo> {
   try {
     console.log(`Getting on-chain staking info for wallet: ${walletAddress}`);
     
-    // First, let's check the cache for better performance
+    // First, check the cache for better performance
     if (externalStakingCache.hasStakingData(walletAddress)) {
       const cachedData = externalStakingCache.getStakingData(walletAddress);
       if (cachedData) {
@@ -334,57 +394,125 @@ export async function getUserStakingInfo(walletAddress: string): Promise<Staking
       }
     }
     
-    // If no cached data, let's fetch from the blockchain
-    console.log(`No cache data for ${walletAddress}, querying blockchain...`);
+    // Use a more direct approach to avoid rate limits
+    // Look at the latest staking transaction
+    console.log(`Using direct transaction lookup for wallet: ${walletAddress}`);
+    const { amount, timestamp } = await getLatestStakingTransaction(walletAddress);
     
-    // Use the more robust direct token transfer checking function
-    const { 
-      totalStaked, 
-      earliestStakeDate, 
-      latestStakeDate 
-    } = await getDirectTokenTransfersToStakingVault(walletAddress);
+    // If we found a staking amount
+    if (amount > 0) {
+      console.log(`Found staking transaction with ${amount} tokens on ${timestamp}`);
+      
+      // Calculate time until unlock (7 days from stake date)
+      const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+      const unlockDate = new Date(timestamp.getTime() + sevenDaysInMs);
+      const now = new Date();
+      const timeUntilUnlock = now < unlockDate ? unlockDate.getTime() - now.getTime() : null;
+      
+      // Calculate simple pending rewards (10% APY pro-rated by time)
+      const secondsSinceStake = (now.getTime() - timestamp.getTime()) / 1000;
+      const annualRate = 0.10; // 10% annual rate
+      const pendingRewards = amount * (annualRate * (secondsSinceStake / (365 * 24 * 60 * 60)));
+      
+      // Create and return the staking info with real transaction data
+      const stakingInfo: StakingUserInfo = {
+        amountStaked: amount,
+        pendingRewards: pendingRewards,
+        stakedAt: timestamp,
+        lastClaimAt: null,
+        lastCompoundAt: null,
+        timeUntilUnlock: timeUntilUnlock,
+        estimatedAPY: 120, // Default APY from program
+        dataSource: 'blockchain',
+        stakingVaultAddress: STAKING_VAULT_ADDRESS
+      };
+      
+      // Also update our cache for better performance
+      externalStakingCache.updateStakingData({
+        walletAddress,
+        amountStaked: amount,
+        pendingRewards: pendingRewards,
+        stakedAt: timestamp,
+        lastUpdateTime: new Date(),
+        estimatedAPY: 125.4,
+        timeUntilUnlock: timeUntilUnlock
+      });
+      
+      return stakingInfo;
+    }
     
-    // Use the earliest stake date as the starting point
-    const stakedAt = earliestStakeDate || new Date();
+    // If no direct transaction found, try the original method
+    console.log(`No direct staking transaction found for ${walletAddress}, trying transaction history...`);
     
-    // Calculate time until unlock (7 days from stake date)
-    const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
-    const unlockDate = new Date(stakedAt.getTime() + sevenDaysInMs);
-    const now = new Date();
-    const timeUntilUnlock = now < unlockDate ? unlockDate.getTime() - now.getTime() : null;
+    try {
+      // Use the more robust direct token transfer checking function
+      const { 
+        totalStaked, 
+        earliestStakeDate, 
+        latestStakeDate 
+      } = await getDirectTokenTransfersToStakingVault(walletAddress);
+      
+      if (totalStaked > 0) {
+        // Use the earliest stake date as the starting point
+        const stakedAt = earliestStakeDate || new Date();
+        
+        // Calculate time until unlock (7 days from stake date)
+        const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+        const unlockDate = new Date(stakedAt.getTime() + sevenDaysInMs);
+        const now = new Date();
+        const timeUntilUnlock = now < unlockDate ? unlockDate.getTime() - now.getTime() : null;
+        
+        // Calculate simple pending rewards (10% APY pro-rated by time)
+        const secondsSinceStake = (now.getTime() - stakedAt.getTime()) / 1000;
+        const annualRate = 0.10; // 10% annual rate
+        const pendingRewards = totalStaked * (annualRate * (secondsSinceStake / (365 * 24 * 60 * 60)));
+        
+        console.log(`On-chain staking data for ${walletAddress}: ${totalStaked} tokens staked on ${stakedAt}`);
+        
+        // Create and return the staking info
+        const stakingInfo: StakingUserInfo = {
+          amountStaked: totalStaked,
+          pendingRewards: pendingRewards,
+          stakedAt: stakedAt,
+          lastClaimAt: null,
+          lastCompoundAt: latestStakeDate,
+          timeUntilUnlock: timeUntilUnlock,
+          estimatedAPY: 120, // Default APY from program
+          dataSource: 'blockchain',
+          stakingVaultAddress: STAKING_VAULT_ADDRESS
+        };
+        
+        // Also update our cache for better performance on future requests
+        externalStakingCache.updateStakingData({
+          walletAddress,
+          amountStaked: totalStaked,
+          pendingRewards: pendingRewards,
+          stakedAt: stakedAt,
+          lastUpdateTime: new Date(),
+          estimatedAPY: 125.4,
+          timeUntilUnlock: timeUntilUnlock
+        });
+        
+        return stakingInfo;
+      }
+    } catch (err) {
+      console.error(`Error with transaction history approach:`, err);
+    }
     
-    // Calculate simple pending rewards (10% APY pro-rated by time)
-    const secondsSinceStake = (now.getTime() - stakedAt.getTime()) / 1000;
-    const annualRate = 0.10; // 10% annual rate
-    const pendingRewards = totalStaked * (annualRate * (secondsSinceStake / (365 * 24 * 60 * 60)));
-    
-    console.log(`On-chain staking data for ${walletAddress}: ${totalStaked} tokens staked on ${stakedAt}`);
-    
-    // Create and return the staking info
-    const stakingInfo: StakingUserInfo = {
-      amountStaked: totalStaked,
-      pendingRewards: pendingRewards,
-      stakedAt: stakedAt,
+    // If all methods fail, respond with zero staked
+    console.log(`No staking data found for ${walletAddress} in blockchain or cache`);
+    return {
+      amountStaked: 0,
+      pendingRewards: 0,
+      stakedAt: new Date(),
       lastClaimAt: null,
-      lastCompoundAt: latestStakeDate,
-      timeUntilUnlock: timeUntilUnlock,
-      estimatedAPY: 120, // Default APY from program
+      lastCompoundAt: null,
+      timeUntilUnlock: null,
+      estimatedAPY: 120,
       dataSource: 'blockchain',
       stakingVaultAddress: STAKING_VAULT_ADDRESS
     };
     
-    // Also update our cache for better performance on future requests
-    externalStakingCache.updateStakingData({
-      walletAddress,
-      amountStaked: totalStaked,
-      pendingRewards: pendingRewards,
-      stakedAt: stakedAt,
-      lastUpdateTime: new Date(),
-      estimatedAPY: 125.4,
-      timeUntilUnlock: timeUntilUnlock
-    });
-    
-    return stakingInfo;
   } catch (error) {
     console.error(`Error getting on-chain staking info for ${walletAddress}:`, error);
     
