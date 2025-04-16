@@ -33,6 +33,7 @@ export class StakingVaultClient {
   private userWallet: PublicKey;
   private tokenMint: PublicKey;
   private programId: PublicKey;
+  private stakingVaultAddress: PublicKey;
   
   // Caching properties
   private cachedStakingInfo: StakingInfo | null = null;
@@ -53,6 +54,9 @@ export class StakingVaultClient {
     
     // Program ID of the deployed contract
     this.programId = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
+    
+    // Staking vault address (mint authority) - this is where tokens are sent when staked
+    this.stakingVaultAddress = new PublicKey('2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap');
   }
   
   /**

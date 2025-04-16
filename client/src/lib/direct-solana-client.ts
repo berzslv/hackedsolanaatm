@@ -2,6 +2,9 @@ import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 
 // Token configuration
 const tokenMintAddress = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
+// Use the correct staking vault address (mint authority)
+const stakingVaultAddress = '2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap';
+// Program ID for the staking program
 const stakingVaultProgramId = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm';
 
 // Interfaces for staking data
@@ -180,7 +183,7 @@ export const getStakingVaultInfo = async (
       rewardPool: statsData.rewardPool || 0,
       stakersCount: statsData.stakersCount || 0,
       currentAPY: statsData.currentAPY || 0,
-      stakingVaultAddress: statsData.stakingVaultAddress || stakingVaultProgramId,
+      stakingVaultAddress: statsData.stakingVaultAddress || stakingVaultAddress,
       lastUpdated: statsData.lastUpdated || new Date().toISOString(),
     };
   } catch (error) {
@@ -192,7 +195,7 @@ export const getStakingVaultInfo = async (
       rewardPool: 0,
       stakersCount: 0,
       currentAPY: 0,
-      stakingVaultAddress: stakingVaultProgramId,
+      stakingVaultAddress: stakingVaultAddress,
       lastUpdated: new Date().toISOString(),
     };
   }
