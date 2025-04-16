@@ -1316,6 +1316,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Endpoint to get staking info - using external data when available
+  // Clear the staking cache for a specific wallet to force a refresh
+  app.get("/api/staking-info/:walletAddress/refresh", async (req, res) => {
+    try {
+      const { walletAddress } = req.params;
+      
+      if (!walletAddress) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Wallet address is required" 
+        });
+      }
+      
+      // Import the external staking cache
+      const { externalStakingCache } = await import('./external-staking-cache');
+      
+      // Clear the cache for this wallet
+      externalStakingCache.clearWalletCache(walletAddress);
+      
+      return res.json({
+        success: true,
+        message: `Staking cache cleared for wallet: ${walletAddress}`,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error("Error clearing staking cache:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to clear staking cache",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   app.get("/api/staking-info/:walletAddress", async (req, res) => {
     try {
       const { walletAddress } = req.params;

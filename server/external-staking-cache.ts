@@ -67,6 +67,12 @@ class ExternalStakingCache {
     console.log('External staking data cache cleared');
   }
   
+  // Clear a specific wallet address from the cache
+  clearWalletCache(walletAddress: string): void {
+    this.cache.delete(walletAddress.toLowerCase());
+    console.log(`Cleared staking cache for wallet: ${walletAddress}`);
+  }
+  
   // Get all wallet addresses with data
   getAllWalletAddresses(): string[] {
     return Array.from(this.cache.keys());
