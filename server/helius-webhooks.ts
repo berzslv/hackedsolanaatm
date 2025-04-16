@@ -209,7 +209,7 @@ export function handleTokenTransfer(req: Request, res: Response) {
     for (const tx of transactions) {
       // Check if it's a token transfer for our token
       const tokenTransfer = tx.tokenTransfers?.find((transfer: any) => 
-        transfer.mint === '12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5'
+        transfer.mint === '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk'
       );
       
       if (!tokenTransfer) continue;
