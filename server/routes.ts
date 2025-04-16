@@ -550,7 +550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Unstake tokens - directly on-chain
+  // Unstake tokens - directly on-chain via smart contract
   app.post("/api/unstake", async (req, res) => {
     try {
       const { walletAddress, amount } = req.body;
@@ -568,21 +568,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Processing on-chain unstake for wallet: ${walletAddress}, amount: ${parsedAmount}`);
       
-      // In a real implementation, this would interact with the smart contract directly
-      
       try {
-        // Get token utilities
-        const web3 = await import('@solana/web3.js');
-        const tokenUtils = await import('./token-utils');
-        const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
-        const mintAuthority = tokenUtils.getMintAuthority();
-        
-        // Get user's current staking info to verify they have enough staked
-        // In the real implementation, this would come from the blockchain
-        const walletPubkey = new web3.PublicKey(walletAddress);
-        const walletSeed = walletPubkey.toBuffer()[0] + walletPubkey.toBuffer()[31];
-        const amountStaked = Math.floor(100 + (walletSeed * 50));
-        const stakedDays = Math.floor(1 + (walletSeed % 7)); // 1-7 days
+        // Get external staking cache to check current staked amount
+        const { externalStakingCache } = await import('./external-staking-cache');
+        const cachedStakingData = externalStakingCache.getStakingData(walletAddress);
+        const amountStaked = cachedStakingData?.amountStaked || 0;
         
         // Check if they have enough tokens staked
         if (parsedAmount > amountStaked) {
@@ -592,40 +582,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Calculate early unstake fee if within 7-day lock period
-        const lockPeriodDays = 7;
-        const earlyUnstakeFeePercent = stakedDays < lockPeriodDays ? 25 : 0; // 25% fee for early unstake
-        const feeAmount = Math.floor(parsedAmount * (earlyUnstakeFeePercent / 100));
-        const netAmount = parsedAmount - feeAmount;
-        
-        // Calculate fee distribution (on a real implementation this would be handled by the contract)
-        const burnAmount = Math.floor(feeAmount * 0.8); // 80% of fee is burned
-        const marketingAmount = Math.floor(feeAmount * 0.2); // 20% of fee goes to marketing wallet
-        
-        // Create and execute token transfer from staking vault to user wallet
-        // In a real implementation, this would be a contract call
-        const tokenTransfer = await import('./token-transfer');
-        const mintSignature = await tokenUtils.mintTokens(
-          connection,
-          mintAuthority,
-          walletPubkey,
-          netAmount // Transfer the amount after fees
-        );
-        
-        console.log(`Unstake transaction successful! Signature: ${mintSignature}`);
-        
-        // Return the unstake result
-        const result = {
-          amountUnstaked: parsedAmount,
-          fee: feeAmount,
-          netAmount,
-          burnAmount,
-          marketingAmount,
-          transactionSignature: mintSignature,
-          explorerUrl: `https://explorer.solana.com/tx/${mintSignature}?cluster=devnet`
-        };
-        
-        res.json(result);
+        // For development purposes, we'll use the mint as a fallback if the smart contract integration fails
+        try {
+          // Try to use the staking contract client to create an unstake transaction
+          const web3 = await import('@solana/web3.js');
+          const stakingContractClient = await import('./staking-contract-client');
+          
+          const walletPubkey = new web3.PublicKey(walletAddress);
+          
+          // Create the unstake transaction
+          const unstakeTransaction = await stakingContractClient.createUnstakeTransaction(
+            walletPubkey, 
+            parsedAmount
+          );
+          
+          // Serialize the transaction to base64 for the client to sign
+          const serializedTransaction = Buffer.from(
+            unstakeTransaction.serialize({
+              requireAllSignatures: false, 
+              verifySignatures: false
+            })
+          ).toString('base64');
+          
+          // Return the serialized transaction
+          return res.json({
+            success: true,
+            transaction: serializedTransaction,
+            amount: parsedAmount,
+            message: `Transaction created to unstake ${parsedAmount} tokens`,
+          });
+        } catch (contractError) {
+          console.error("Error using smart contract for unstaking:", contractError);
+          
+          // Fall back to the current implementation
+          const web3 = await import('@solana/web3.js');
+          const tokenUtils = await import('./token-utils');
+          const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
+          const mintAuthority = tokenUtils.getMintAuthority();
+          const walletPubkey = new web3.PublicKey(walletAddress);
+          
+          // Calculate early unstake fee if within 7-day lock period
+          const stakedTime = cachedStakingData?.stakedAt ? (Date.now() - cachedStakingData.stakedAt.getTime()) / (1000 * 60 * 60 * 24) : 0;
+          const lockPeriodDays = 7;
+          const earlyUnstakeFeePercent = stakedTime < lockPeriodDays ? 25 : 0;
+          const feeAmount = Math.floor(parsedAmount * (earlyUnstakeFeePercent / 100));
+          const netAmount = parsedAmount - feeAmount;
+          
+          // Calculate fee distribution
+          const burnAmount = Math.floor(feeAmount * 0.8);
+          const marketingAmount = Math.floor(feeAmount * 0.2);
+          
+          // Mint tokens to the user as a fallback
+          const fallbackConnection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
+          const mintSignature = await tokenUtils.mintTokens(
+            fallbackConnection,
+            mintAuthority,
+            walletPubkey,
+            netAmount
+          );
+          
+          console.log(`Fallback unstake successful! Signature: ${mintSignature}`);
+          
+          // Update the cache to reflect the unstaking
+          if (cachedStakingData) {
+            externalStakingCache.updateStakingData({
+              ...cachedStakingData,
+              amountStaked: Math.max(0, cachedStakingData.amountStaked - parsedAmount),
+            });
+          }
+          
+          // Return the result
+          return res.json({
+            amountUnstaked: parsedAmount,
+            fee: feeAmount,
+            netAmount,
+            burnAmount,
+            marketingAmount,
+            transactionSignature: mintSignature,
+            explorerUrl: `https://explorer.solana.com/tx/${mintSignature}?cluster=devnet`,
+            message: "Used fallback unstaking method as contract integration failed",
+          });
+        }
       } catch (error) {
         console.error("Error in unstaking process:", error);
         return res.status(500).json({
@@ -696,7 +733,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const simpleToken = await import('./simple-token');
 
         // Mint tokens using SPL token program
-        const signature = await simpleToken.mintTokens(walletAddress, 1000);
+        const web3 = await import('@solana/web3.js');
+        const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
+        const { keypair: mintAuthority } = simpleToken.getMintAuthority();
+        const walletPubkey = new web3.PublicKey(walletAddress);
+        const signature = await simpleToken.mintTokens(
+          connection,
+          mintAuthority,
+          walletPubkey,
+          1000
+        );
 
         // Get the updated token balance
         const tokenBalance = await simpleToken.getTokenBalance(walletAddress);

@@ -252,9 +252,10 @@ const DirectStakingWidget: React.FC = () => {
       }
       
       const unstakeData = await unstakeResponse.json();
-      
+
+      // Check if we got a transaction to sign or a direct result (fallback method)
       if (unstakeData.success && unstakeData.transaction) {
-        // Get the base64 encoded transaction
+        // Smart contract approach - use the transaction
         const transactionBase64 = unstakeData.transaction;
         
         // Use the same base64 decoding method as staking
@@ -305,14 +306,32 @@ const DirectStakingWidget: React.FC = () => {
           description: `Successfully unstaked ${unstakeValue} tokens`,
           variant: 'default'
         });
-        
-        // Update all data
-        refreshAllData();
-        refreshBalance();
-        
-        // Clear the input
-        setUnstakeAmount('');
+      } else if (unstakeData.transactionSignature) {
+        // Fallback method - the server already processed the unstake
+        toast({
+          title: 'Unstaking successful',
+          description: `Successfully unstaked ${unstakeValue} tokens (fallback method)`,
+          variant: 'default'
+        });
+      } else {
+        throw new Error('Invalid response from server');
       }
+      
+      // After successful unstake, update the UI to reflect the change immediately
+      // This helps avoid UI lag while waiting for the blockchain data to update
+      if (stakingInfo) {
+        // Immediate UI update to make it responsive
+        const updatedStakedAmount = Math.max(0, stakedAmount - unstakeValue);
+        // Update UI directly for immediate feedback
+        stakingInfo.amountStaked = updatedStakedAmount;
+      }
+      
+      // Update all data
+      refreshAllData();
+      refreshBalance();
+      
+      // Clear the input
+      setUnstakeAmount('');
     } catch (error) {
       console.error('Unstaking error:', error);
       toast({

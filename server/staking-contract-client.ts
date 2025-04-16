@@ -5,7 +5,7 @@
  */
 import { PublicKey, Connection, clusterApiUrl, Transaction, TransactionInstruction } from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
-import { BN } from 'bn.js';
+import BN from 'bn.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 import { getWebsocketConnection } from './utils';
 import fs from 'fs';
