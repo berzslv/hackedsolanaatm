@@ -4,6 +4,7 @@ import {
   PublicKey,
   Transaction,
   sendAndConfirmTransaction,
+  SystemProgram,
 } from '@solana/web3.js';
 import {
   getAssociatedTokenAddress,
@@ -76,6 +77,7 @@ export async function transferTokens(
       recipientTokenAccount,     // destination
       senderPublicKey,           // owner of source account
       BigInt(adjustedAmount),    // amount with decimals
+      [],                        // multiSigners (empty array for no additional signers)
       TOKEN_PROGRAM_ID
     );
     
@@ -166,6 +168,7 @@ export async function authorityTransferTokens(
           authorityTokenAccount,
           mintAuthority.publicKey,
           BigInt((amount - tokenBalance + 100) * Math.pow(10, decimals)),
+          [],
           TOKEN_PROGRAM_ID
         );
         

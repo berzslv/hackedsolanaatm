@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X } from "lucide-react";
 
 interface WhitepaperDialogProps {
@@ -7,6 +7,8 @@ interface WhitepaperDialogProps {
 }
 
 export default function WhitepaperDialog({ open, onOpenChange }: WhitepaperDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  
   // Lock body scroll and disable header when modal is open
   useEffect(() => {
     if (open) {
@@ -60,19 +62,31 @@ export default function WhitepaperDialog({ open, onOpenChange }: WhitepaperDialo
     };
   }, [open, onOpenChange]);
 
+  // Prevent dialog from closing when clicking inside
+  const handleDialogClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80">
-      <div className="bg-[#0f0b19] w-[95%] sm:w-[90%] max-w-4xl h-[85vh] relative rounded-lg shadow-lg overflow-hidden">
+    <div 
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80" 
+      onClick={() => onOpenChange(false)}
+    >
+      <div 
+        ref={dialogRef}
+        onClick={handleDialogClick}
+        className="bg-[#0f0b19] w-[95%] sm:w-[90%] max-w-4xl h-[85vh] relative rounded-lg shadow-lg overflow-hidden"
+      >
         {/* Fixed header that stays in place */}
-        <div className="absolute top-0 left-0 right-0 px-6 pt-6 pb-2 bg-[#0f0b19] border-b border-gray-800 z-[10000]">
+        <div className="sticky top-0 left-0 right-0 px-6 pt-6 pb-2 bg-[#0f0b19] border-b border-gray-800 z-10">
           <h2 className="text-xl font-bold">Hacked ATM Token Whitepaper</h2>
           <p className="text-gray-400 text-sm">Technical overview and tokenomics</p>
         </div>
         
         {/* Close button - absolutely positioned in a fixed location */}
-        <div className="absolute top-0 right-0 z-[10001] p-4">
+        <div className="absolute top-0 right-0 z-10 p-4">
           <button
             onClick={() => onOpenChange(false)}
             className="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center"

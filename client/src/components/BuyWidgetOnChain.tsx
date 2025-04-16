@@ -128,30 +128,10 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
           description: "Using wallet address as referral code (6% fee)",
         });
       }
-      // Accept "TEST" as a special code without validation
-      else if (localReferralCode === "TEST") {
-        console.log("Using TEST referral code");
-        setReferralCode("TEST");
-        setReferralValid(true);
-
-        toast({
-          title: "Test referral code applied",
-          description: "Using TEST referral code (6% fee)",
-        });
-      }
-      // Accept predefined codes without validation
-      else if (localReferralCode === "AKIPB0" || localReferralCode === "123456") {
-        console.log(`Using predefined code: ${localReferralCode}`);
-        setReferralCode(localReferralCode);
-        setReferralValid(true);
-
-        toast({
-          title: "Referral code valid",
-          description: `Using referral code: ${localReferralCode} (6% fee)`,
-        });
-      }
+      // For non-wallet addresses, validate with the blockchain or server API
       else {
-        // For other codes, validate with the server
+        console.log("Checking referral code validity on the blockchain");
+        // Check if the code exists on the blockchain
         const isValid = await validateReferralCode(localReferralCode);
 
         if (isValid) {
@@ -173,7 +153,7 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
         } else {
           toast({
             title: "Invalid referral code",
-            description: "The referral code you entered does not exist. Try AKIPB0 or 123456.",
+            description: "The referral code you entered could not be verified on the blockchain.",
             variant: "destructive",
           });
         }
@@ -182,7 +162,7 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
       console.error("Error validating referral code:", error);
       toast({
         title: "Validation failed",
-        description: "Could not validate the referral code. Try AKIPB0 or 123456.",
+        description: "Could not validate the referral code. Please try using a valid Solana wallet address.",
         variant: "destructive",
       });
     } finally {
