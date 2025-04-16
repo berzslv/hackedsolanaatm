@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, Clock, Coins, Award, RefreshCcw, Info } from 'lucide-react';
+import { AlertCircle, Clock, Coins, Award, RefreshCcw, Info, Loader2, RefreshCw } from 'lucide-react';
 import { GradientText } from '@/components/ui/gradient-text';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatNumber, formatTimeRemaining } from '@/lib/utils';
@@ -503,6 +503,67 @@ const DirectStakingWidget: React.FC = () => {
     setUnstakeAmount(stakedAmount.toString());
   };
   
+  // Force sync staking data with the blockchain
+  const handleForceSync = async () => {
+    if (!connected || !publicKey) {
+      toast({
+        title: 'Wallet not connected',
+        description: 'Please connect your wallet to sync staking data',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    setIsSyncing(true);
+    
+    try {
+      toast({
+        title: 'Syncing',
+        description: 'Forcing blockchain data sync...',
+      });
+      
+      const response = await fetch('/api/force-sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: publicKey.toString()
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to sync blockchain data');
+      }
+      
+      const syncData = await response.json();
+      
+      if (syncData.success) {
+        toast({
+          title: 'Sync successful',
+          description: 'Successfully synced staking data from blockchain',
+          variant: 'default'
+        });
+        
+        // Update all data
+        refreshAllData();
+        refreshBalance();
+      } else {
+        throw new Error(syncData.message || 'Sync completed but may not have updated data');
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast({
+        title: 'Sync error',
+        description: error instanceof Error ? error.message : 'Failed to sync blockchain data',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+  
   // Render data source badge
   const renderDataSourceBadge = () => {
     if (!stakingInfo?.dataSource) return null;
@@ -732,6 +793,41 @@ const DirectStakingWidget: React.FC = () => {
           </TabsContent>
         </Tabs>
         
+
+        {/* Advanced Actions */}
+        <div className="mt-6 pt-6 border-t">
+          <div className="flex justify-between items-center mb-3">
+            <div className="text-sm text-muted-foreground">Advanced Options</div>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleForceSync}
+              disabled={isSyncing || !connected}
+              className="text-xs"
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-1 h-3 w-3" />
+                  Force Sync
+                </>
+              )}
+            </Button>
+          </div>
+          
+          <Alert className="mb-4 text-xs bg-primary/5 border-primary/20">
+            <Info className="h-3 w-3" />
+            <AlertTitle className="text-xs">Force Sync</AlertTitle>
+            <AlertDescription className="text-xs">
+              If your staking data isn't showing correctly, use Force Sync to refresh it from the blockchain.
+            </AlertDescription>
+          </Alert>
+        </div>
 
         {/* Global Staking Statistics */}
         <div className="mt-6 pt-6 border-t">
