@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatNumber, formatTimeRemaining } from '@/lib/utils';
 import { Connection, PublicKey, Transaction, clusterApiUrl } from '@solana/web3.js';
 import { buyAndStakeTokens, stakeExistingTokens } from '@/lib/direct-solana-client';
+import { SyncStakingButton } from './SyncStakingButton';
 
 // Optional Helius API key - would be set from environment in production
 const HELIUS_API_KEY = '';
