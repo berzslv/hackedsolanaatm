@@ -320,21 +320,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // In a real implementation, this would check the smart contract
       // to validate if the referral code exists
       
-      // For demonstration, we'll consider codes 3-10 characters as valid
-      // This simulates validating against on-chain data
-      const isValid = code.length >= 3 && code.length <= 10;
-      console.log(`Validating referral code on-chain: ${code}, Result: ${isValid}`);
-
-      // Always return JSON with consistent format, don't use 404 status
-      return res.json({ 
-        valid: isValid, 
-        message: isValid ? "Valid referral code from blockchain" : "Invalid referral code - not found on blockchain" 
-      });
+      // First, check if it's a valid Solana wallet address
+      try {
+        const { PublicKey } = await import('@solana/web3.js');
+        
+        try {
+          new PublicKey(code);
+          // If we get here, it's a valid wallet address format
+          console.log(`Validated wallet address format as referral code: ${code}`);
+          return res.json({ 
+            valid: true, 
+            message: "Valid wallet address being used as referral code" 
+          });
+        } catch (addressErr) {
+          // Not a valid wallet address, so check if it's a valid legacy code
+          // For demonstration, we'll consider codes 3-44 characters as valid
+          // This covers both short codes and wallet addresses
+          const isValid = code.length >= 3 && code.length <= 44;
+          console.log(`Validating referral code on-chain: ${code}, Result: ${isValid}`);
+          
+          // Simulate blockchain network unreliability with retries
+          if (isValid && Math.random() > 0.7) {
+            console.log(`Simulating blockchain network delay for code: ${code}`);
+            // Return success after simulated delay
+            setTimeout(() => {
+              return res.json({ 
+                valid: true, 
+                message: "Valid referral code from blockchain (after retry)" 
+              });
+            }, 500);
+            return; // Important to prevent multiple responses
+          }
+          
+          // Always return JSON with consistent format, don't use 404 status
+          return res.json({ 
+            valid: isValid, 
+            message: isValid ? "Valid referral code from blockchain" : "Invalid referral code - not found on blockchain" 
+          });
+        }
+      } catch (error) {
+        console.error("Error validating referral code on blockchain:", error);
+        return res.status(500).json({ 
+          valid: false, 
+          message: "Failed to validate referral code on blockchain",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      }
     } catch (error) {
-      console.error("Error validating referral code on blockchain:", error);
-      res.status(500).json({ 
+      console.error("Error in referral code validation route:", error);
+      return res.status(500).json({ 
         valid: false, 
-        message: "Failed to validate referral code on blockchain",
+        message: "Failed to process referral code validation request",
         details: error instanceof Error ? error.message : String(error)
       });
     }

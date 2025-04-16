@@ -47,26 +47,55 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   
   const validateReferralCode = async (code: string): Promise<boolean> => {
     try {
-      // Make sure code is valid format before making API call
-      if (!code || code.length !== 6) {
+      // Basic validation before making API call
+      if (!code || code.trim() === '') {
         return false;
       }
       
-      const response = await fetch(`/api/validate-referral/${code}`);
-      const data = await response.json();
+      // Solana wallet addresses are 32-44 characters
+      // Legacy codes are 3-10 characters
+      // Allow all formats to be validated by the server
+      console.log(`Validating referral code: ${code}`);
       
-      if (response.ok) {
-        // If valid, also save to context and session storage
-        if (data.valid) {
-          setReferralCode(code);
-          setReferralFromLink(false);
+      // Implement retry logic for blockchain connection issues
+      let retries = 3;
+      let success = false;
+      let result = false;
+      
+      while (retries > 0 && !success) {
+        try {
+          const response = await fetch(`/api/validate-referral/${code}`);
+          success = true;
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Referral validation response:', data);
+            
+            // If valid, also save to context and session storage
+            if (data.valid) {
+              setReferralCode(code);
+              setReferralFromLink(false);
+              result = true;
+            } else {
+              result = false;
+            }
+          } else {
+            console.log(`Referral validation failed with status: ${response.status}`);
+            result = false;
+          }
+        } catch (retryError) {
+          console.warn(`Retry attempt ${3 - retries + 1} failed:`, retryError);
+          retries--;
+          if (retries > 0) {
+            console.log(`Retrying validation in 1 second... (${retries} attempts left)`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
-        return data.valid;
       }
       
-      return false;
+      return result;
     } catch (error) {
-      console.error('Error validating referral code:', error);
+      console.error("Error validating referral code:", error);
       return false;
     }
   };
