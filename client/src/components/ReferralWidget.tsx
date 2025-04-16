@@ -55,19 +55,19 @@ const ReferralWidget: React.FC = () => {
     }
   };
 
-  // Function to copy referral link to clipboard
+  // Function to copy wallet address as referral code to clipboard
   const copyReferralLink = () => {
     if (!publicKey) return;
     
-    // Now using wallet address as the referral code - this is on-chain
-    const referralLink = `${window.location.origin}?ref=${publicKey.toString()}`;
+    // Only copy the wallet address as the referral code - not the full URL
+    const referralCode = publicKey.toString();
     
-    navigator.clipboard.writeText(referralLink)
+    navigator.clipboard.writeText(referralCode)
       .then(() => {
         setCopied(true);
         toast({
           title: 'Copied!',
-          description: 'Referral link copied to clipboard',
+          description: 'Referral code copied to clipboard',
         });
         
         setTimeout(() => setCopied(false), 2000);
@@ -76,7 +76,7 @@ const ReferralWidget: React.FC = () => {
         console.error('Failed to copy:', err);
         toast({
           title: 'Error',
-          description: 'Failed to copy link',
+          description: 'Failed to copy referral code',
           variant: 'destructive',
         });
       });

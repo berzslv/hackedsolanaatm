@@ -493,11 +493,11 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
               <div className="flex items-center gap-2">
                 <Input 
                   id="referral-code"
-                  placeholder="ENTER REFERRAL CODE" 
+                  placeholder="ENTER WALLET ADDRESS AS REFERRAL CODE" 
                   className="bg-background/30 border-border/30"
                   value={localReferralCode}
                   onChange={handleReferralCodeChange}
-                  maxLength={6}
+                  maxLength={44} // Allows full Solana wallet addresses
                 />
                 <Button 
                   variant="outline" 

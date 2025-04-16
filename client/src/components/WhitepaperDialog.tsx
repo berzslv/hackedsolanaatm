@@ -7,15 +7,41 @@ interface WhitepaperDialogProps {
 }
 
 export default function WhitepaperDialog({ open, onOpenChange }: WhitepaperDialogProps) {
-  // Lock body scroll when modal is open
+  // Lock body scroll and disable header when modal is open
   useEffect(() => {
     if (open) {
+      // Hide scrollbar and prevent scrolling
       document.body.style.overflow = 'hidden';
+      
+      // Make header inactive by adding high z-index overlay div
+      const overlay = document.createElement('div');
+      overlay.id = 'header-overlay';
+      overlay.style.position = 'fixed';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.right = '0';
+      overlay.style.bottom = '0';
+      overlay.style.zIndex = '9998'; // Just below dialog but above header
+      overlay.style.pointerEvents = 'all'; // Capture all clicks
+      document.body.appendChild(overlay);
     } else {
+      // Restore scrolling
       document.body.style.overflow = '';
+      
+      // Remove overlay
+      const overlay = document.getElementById('header-overlay');
+      if (overlay) {
+        document.body.removeChild(overlay);
+      }
     }
+    
     return () => {
+      // Cleanup
       document.body.style.overflow = '';
+      const overlay = document.getElementById('header-overlay');
+      if (overlay) {
+        document.body.removeChild(overlay);
+      }
     };
   }, [open]);
 
