@@ -300,7 +300,7 @@ const ReferralDashboardSmartContract: React.FC = () => {
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="text-xl font-bold">Referral Program</CardTitle>
-        <CardDescription>Earn 5% on every purchase made with your referral code</CardDescription>
+        <CardDescription>Earn 3% when friends stake using your referral code</CardDescription>
       </CardHeader>
       
       <CardContent className="space-y-6">
@@ -482,7 +482,7 @@ const ReferralDashboardSmartContract: React.FC = () => {
                       <p className="text-sm text-green-500">+{activity.reward} HATM</p>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Purchase: {activity.amount} SOL
+                      Staking: {activity.amount} HATM
                     </p>
                     <p className="text-xs font-mono text-muted-foreground">
                       {activity.transaction.substring(0, 8)}...{activity.transaction.substring(activity.transaction.length - 8)}
@@ -527,7 +527,7 @@ const ReferralDashboardSmartContract: React.FC = () => {
       
       <CardFooter className="flex justify-between border-t border-slate-800 px-6 py-4">
         <p className="text-xs text-muted-foreground">
-          Referral rewards are calculated at 5% of purchase amount
+          Referral rewards are calculated at 3% of staking amount
         </p>
       </CardFooter>
     </Card>
