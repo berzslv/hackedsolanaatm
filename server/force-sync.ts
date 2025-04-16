@@ -6,7 +6,7 @@
  */
 import { Request, Response } from 'express';
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
-import * as railwayApi from './railway-api';
+import * as railwayApi from './railway-api.js';
 
 /**
  * Force a sync of staking data for a wallet
