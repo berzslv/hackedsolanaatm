@@ -59,99 +59,85 @@ const DirectStakingWidget: React.FC = () => {
     setIsStaking(true);
     
     try {
-      // Get referral code from URL if present
-      const searchParams = new URLSearchParams(window.location.search);
-      const referralCode = searchParams.get('ref');
-      
       toast({
         title: 'Processing Stake Request',
-        description: 'Creating buy and stake transaction...',
+        description: 'Creating stake transaction...',
       });
       
-      // Step 1: Use our direct-solana-client to get the transaction
-      const buyStakeResult = await buyAndStakeTokens(
+      // Use stakeExistingTokens instead of buyAndStakeTokens since we're just staking tokens
+      const stakeResult = await stakeExistingTokens(
         publicKey.toString(),
-        amount,
-        referralCode || undefined
+        amount
       );
       
       // Check if there was an error in creating the transaction
-      if (buyStakeResult.error) {
-        throw new Error(buyStakeResult.error);
+      if (stakeResult.error) {
+        throw new Error(stakeResult.error);
       }
       
-      // Check if we have transaction details
-      if (!buyStakeResult.transactionDetails) {
-        throw new Error('No transaction details received');
+      // Check if we have the staking transaction
+      if (!stakeResult.stakingTransaction) {
+        throw new Error('No staking transaction received');
       }
       
-      const txDetails = buyStakeResult.transactionDetails;
+      const transaction = stakeResult.stakingTransaction;
       
-      // If the transaction needs to be signed by the user
-      if (txDetails.solTransferTransaction) {
+      toast({
+        title: 'Waiting for approval',
+        description: 'Please approve the staking transaction in your wallet',
+      });
+      
+      // Decode the transaction
+      const txBuffer = Uint8Array.from(atob(transaction), c => c.charCodeAt(0));
+      const decodedTransaction = Transaction.from(txBuffer);
+      
+      // Setup Solana connection
+      const connection = new Connection(clusterApiUrl('devnet'));
+      
+      // Sign and send the transaction
+      const signature = await sendTransaction(decodedTransaction, connection);
+      
+      toast({
+        title: 'Transaction submitted',
+        description: 'Waiting for confirmation...',
+      });
+      
+      // Wait for confirmation
+      await connection.confirmTransaction(signature, 'confirmed');
+      
+      // Notify server about the completed staking transaction
+      const confirmResponse = await fetch('/api/confirm-staking', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: publicKey.toString(),
+          amount: amount,
+          transactionSignature: signature
+        }),
+      });
+      
+      if (!confirmResponse.ok) {
+        const errorData = await confirmResponse.json();
+        throw new Error(errorData.error || 'Failed to confirm staking transaction');
+      }
+      
+      const confirmData = await confirmResponse.json();
+      
+      if (confirmData.success) {
         toast({
-          title: 'Waiting for approval',
-          description: 'Please approve the SOL transfer transaction in your wallet',
+          title: 'Staking successful',
+          description: `Successfully staked ${amount} HATM tokens`,
+          variant: 'default'
         });
         
-        // Decode the transaction
-        const txBuffer = Uint8Array.from(atob(txDetails.solTransferTransaction), c => c.charCodeAt(0));
-        const transaction = Transaction.from(txBuffer);
+        // Update all data
+        refreshAllData();
+        refreshBalance();
         
-        // Setup Solana connection
-        const connection = new Connection(clusterApiUrl('devnet'));
-        
-        // Sign and send the transaction
-        const signature = await sendTransaction(transaction, connection);
-        
-        toast({
-          title: 'Transaction submitted',
-          description: 'Waiting for confirmation...',
-        });
-        
-        // Wait for confirmation
-        await connection.confirmTransaction(signature, 'confirmed');
-        
-        // Step 2: After SOL transfer, call confirm-purchase endpoint
-        const confirmResponse = await fetch('/api/complete-purchase-and-stake', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            walletAddress: publicKey.toString(),
-            tokenAmount: txDetails.tokenAmount,
-            solAmount: txDetails.solAmount,
-            solTransferSignature: signature,
-            referralCode
-          }),
-        });
-        
-        if (!confirmResponse.ok) {
-          const errorData = await confirmResponse.json();
-          throw new Error(errorData.error || 'Failed to complete purchase and stake');
-        }
-        
-        const confirmData = await confirmResponse.json();
-        
-        if (confirmData.success) {
-          const referralMessage = referralCode 
-            ? ` using referral code ${referralCode}`
-            : '';
-          
-          toast({
-            title: 'Staking successful',
-            description: `Successfully purchased and staked ${txDetails.tokenAmount} tokens${referralMessage}`,
-            variant: 'default'
-          });
-          
-          // Update all data
-          refreshAllData();
-          refreshBalance();
-          
-          // Clear the input
-          setStakeAmount('');
-        }
+        // Clear the input
+        setStakeAmount('');
       }
     } catch (error) {
       console.error('Staking error:', error);
