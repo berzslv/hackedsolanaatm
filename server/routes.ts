@@ -1489,9 +1489,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Import staking-vault-utils to get the correct staking vault address
         const stakingVaultUtils = await import('./staking-vault-utils-simplified');
         
-        // Get staking vault address from staking utilities
-        // This ensures consistency between buying and staking
-        const stakingVaultAddress = '2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap';
+        // Use the actual staking vault address
+        // This ensures consistency and tracks real transaction data
+        const stakingVaultAddress = 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp';
         
         console.log(`Using staking vault address: ${stakingVaultAddress}`);
         
@@ -1755,8 +1755,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // In a real implementation, the smart contract would have updated the staking state
         // For now, we'll mock the response with simulated on-chain data
         
-        // Use the correct staking vault address
-        const stakingVaultAddress = '2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap';
+        // Use the actual staking vault address
+        const stakingVaultAddress = 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp';
         
         // Mock staking entry as it would be returned from the smart contract
         const stakingEntry = {

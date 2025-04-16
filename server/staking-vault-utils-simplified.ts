@@ -5,8 +5,8 @@ import { externalStakingCache } from './external-staking-cache';
 // Program information
 const PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm'; // Your deployed program from Solana Playground
 const TOKEN_MINT_ADDRESS = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
-// Staking vault address - this is the mint authority's address
-export const STAKING_VAULT_ADDRESS = '2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap';
+// Staking vault address - use actual vault address not mint authority
+export const STAKING_VAULT_ADDRESS = 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp';
 
 // Set this to true to enable log messages for debugging
 const ENABLE_DEBUG_LOGS = true;
@@ -133,8 +133,8 @@ async function analyzeTokenTransferForStaking(
           const info = instruction.parsed.info;
           
           // Check if this transfer is sending to the staking vault address
-          if (info.destination === STAKING_VAULT_ADDRESS || 
-              info.destination === '2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap') {
+          // Check if the destination matches our vault address
+          if (info.destination === STAKING_VAULT_ADDRESS) {
             
             // Parse the amount with proper decimal handling
             const decimals = 9; // Default for SPL tokens
@@ -208,19 +208,10 @@ async function getDirectTokenTransfersToStakingVault(walletAddress: string): Pro
   debugLog(`Checking direct token transfers from ${walletAddress} to the staking vault`);
   
   try {
-    // Create a minimum amount for testing (this should be zero in production)
-    // For testing purposes, let's simulate a staking amount if there isn't one
-    // In a real deployment, comment out this section
-    const isTestWallet = walletAddress === '9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX';
-    
-    if (isTestWallet) {
-      debugLog('Using test wallet - simulating staking activity');
-      return {
-        totalStaked: 1067, // Showing exactly 1067 tokens staked as detected previously
-        earliestStakeDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-        latestStakeDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) // 1 day ago
-      };
-    }
+    // We want to query only real blockchain data - no simulations
+    // Additional logging for debugging
+    debugLog(`Querying blockchain for real staking data for wallet: ${walletAddress}`);
+    debugLog(`Using staking vault address: ${STAKING_VAULT_ADDRESS}`);
   
     const connection = new Connection(clusterApiUrl('devnet'));
     const walletPubkey = new PublicKey(walletAddress);
