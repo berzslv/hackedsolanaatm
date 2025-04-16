@@ -228,10 +228,11 @@ export async function createTokenStakingTransaction(
     );
     
     // Get destination token account (authority/staking vault token account)
+    // For PDA addresses like the staking vault, we need to use allowOwnerOffCurve=true
     const destinationTokenAccount = await getAssociatedTokenAddress(
       mintPublicKey,
       destinationPublicKey,
-      false,
+      true, // Set allowOwnerOffCurve to true for PDA addresses
       TOKEN_PROGRAM_ID,
       ASSOCIATED_TOKEN_PROGRAM_ID
     );
@@ -404,10 +405,11 @@ export async function createCombinedBuyAndStakeTransaction(
       const stakingVaultAddress = new PublicKey(STAKING_VAULT_ADDRESS);
       
       // Get the associated token account for the staking vault
+      // Since the staking vault is a PDA, we need to use allowOwnerOffCurve=true
       const vaultTokenAccount = await getAssociatedTokenAddress(
         mintPublicKey,
         stakingVaultAddress,
-        false,
+        true, // Set allowOwnerOffCurve to true for PDA addresses
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );

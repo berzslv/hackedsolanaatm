@@ -2,8 +2,8 @@ import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 
 // Token configuration
 const tokenMintAddress = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
-// Use the correct staking vault address (mint authority)
-const stakingVaultAddress = '2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap';
+// Use the correct staking vault address (PDA derived from program and token mint)
+const stakingVaultAddress = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
 // Program ID for the staking program
 const stakingVaultProgramId = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm';
 
