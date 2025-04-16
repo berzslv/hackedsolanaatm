@@ -14,7 +14,7 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID
 } from '@solana/spl-token';
-import { getConnection, getMintAuthority, getOrCreateTokenAccount } from './simple-token';
+import { getConnection, getMintAuthority, getOrCreateTokenAccount, getTokenMint } from './simple-token';
 
 /**
  * Transfer tokens from one wallet to another
@@ -193,7 +193,7 @@ export async function authorityTransferTokens(
 
 // Import here to avoid circular dependency
 import { createMintToInstruction } from '@solana/spl-token';
-import { SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 /**
  * Create a transaction for staking tokens (transferring tokens from a user to the staking vault)
@@ -394,8 +394,44 @@ export async function createCombinedBuyAndStakeTransaction(
       // In a complete implementation, we'd fetch this from the blockchain
       // For now, we'll use the transfer instruction as a simplification
       
-      // Get the vault token account or the staking program's PDA
-      const vaultTokenAccount = new PublicKey('2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap');
+      // Get the vault token account for the staking vault program
+      // Using the proper staking vault address from the error investigation
+      const stakingVaultAddress = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
+      
+      // Get the associated token account for the staking vault
+      const vaultTokenAccount = await getAssociatedTokenAddress(
+        mintPublicKey,
+        stakingVaultAddress,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      
+      console.log(`Using staking vault token account: ${vaultTokenAccount.toString()}`);
+      
+      // Check if vault token account exists, create if needed
+      try {
+        await getAccount(connection, vaultTokenAccount);
+        console.log("Vault token account exists");
+      } catch (error) {
+        if (error instanceof TokenAccountNotFoundError) {
+          console.log("Vault token account doesn't exist, creating instruction to create it");
+          
+          // Create the associated token account for the vault
+          const createVaultAtaInstruction = createAssociatedTokenAccountInstruction(
+            userPublicKey,           // payer
+            vaultTokenAccount,       // associated token account to create
+            stakingVaultAddress,     // owner of the token account
+            mintPublicKey,           // token mint
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+          
+          transaction.add(createVaultAtaInstruction);
+        } else {
+          throw error;
+        }
+      }
       
       // Create transfer instruction to stake tokens
       const stakeInstruction = createTransferInstruction(

@@ -105,8 +105,31 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
 
     setIsValidatingReferral(true);
     try {
+      // Check if it's a valid wallet address
+      let isValidWalletAddress = false;
+      try {
+        // Attempt to create a PublicKey from the input to check format
+        new PublicKey(localReferralCode);
+        isValidWalletAddress = true;
+        console.log("Valid wallet address format for referral code");
+      } catch (e) {
+        console.log("Not a valid wallet address format");
+        isValidWalletAddress = false;
+      }
+      
+      // Accept wallet addresses directly as referral codes
+      if (isValidWalletAddress) {
+        console.log("Using wallet address as referral code:", localReferralCode);
+        setReferralCode(localReferralCode);
+        setReferralValid(true);
+
+        toast({
+          title: "Wallet address accepted",
+          description: "Using wallet address as referral code (6% fee)",
+        });
+      }
       // Accept "TEST" as a special code without validation
-      if (localReferralCode === "TEST") {
+      else if (localReferralCode === "TEST") {
         console.log("Using TEST referral code");
         setReferralCode("TEST");
         setReferralValid(true);
