@@ -1675,7 +1675,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Endpoint to stake tokens - second step in the two-transaction staking process
-  // Endpoint for combined buying and staking tokens in one transaction
+  // Endpoints for combined buying and staking tokens in one transaction
+  app.post("/api/buy-and-stake-v2", handleBuyAndStakeV2);
+  
+  // For backward compatibility, also register the v1 endpoint with the v2 handler
   app.post("/api/buy-and-stake", handleBuyAndStakeV2);
   
   // Add endpoint to sync staking records - this will help fix the issue with staked tokens not showing up

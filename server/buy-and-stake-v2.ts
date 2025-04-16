@@ -96,7 +96,7 @@ export async function createCombinedBuyAndStakeTransactionV2(
   referrer?: PublicKey
 ): Promise<string> {
   try {
-    console.log(`Creating combined buy and stake transaction (v2) for ${userWalletAddress}, amount: ${amount}, referral: ${referrer?.toString() || 'none'}`);
+    console.log(`Creating combined buy and stake transaction (v2) for ${userWalletAddress}, amount: ${amount}, referrer: ${referrer?.toString() || 'none'}`);
     
     const connection = getConnection();
     const { mintPublicKey, keypair: mintAuthority } = getMintAuthority();
