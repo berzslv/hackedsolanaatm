@@ -476,27 +476,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get global staking stats - from simplified utils without Anchor
+  // Get global staking stats - from Railway or simplified utils without Anchor
   app.get("/api/staking-stats", async (req, res) => {
     try {
-      // Import the simplified staking vault utilities
-      const stakingVaultUtils = await import('./staking-vault-utils-simplified');
+      // Import Railway API
+      const railwayApi = await import('./railway-api');
       
-      // Get global staking statistics 
-      const vaultInfo = await stakingVaultUtils.getStakingVaultInfo();
-      
-      // Format the response with the data
-      const stakingStats = {
-        totalStaked: vaultInfo.totalStaked,
-        rewardPool: vaultInfo.rewardPool,
-        stakersCount: vaultInfo.stakersCount,
-        currentAPY: vaultInfo.currentAPY,
-        stakingVaultAddress: vaultInfo.stakingVaultAddress,
-        lastUpdated: new Date().toISOString()
-      };
-      
-      console.log(`Retrieved global staking stats:`, stakingStats);
-      res.json(stakingStats);
+      try {
+        // Try to get global stats from Railway first (more reliable)
+        console.log('Fetching global stats from Railway API');
+        const railwayStats = await railwayApi.getGlobalStats();
+        
+        // Format the response with Railway data
+        const stakingStats = {
+          totalStaked: railwayStats.totalStaked,
+          rewardPool: railwayStats.totalStaked * 0.5, // Estimate reward pool as 50% of total staked
+          stakersCount: railwayStats.stakersCount,
+          currentAPY: railwayStats.currentAPY,
+          stakingVaultAddress: 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp',
+          lastUpdated: railwayStats.lastUpdated,
+          dataSource: 'railway'
+        };
+        
+        console.log(`Retrieved global staking stats from Railway:`, stakingStats);
+        return res.json(stakingStats);
+      } catch (railwayError) {
+        console.error("Error getting stats from Railway, falling back to blockchain:", railwayError);
+        
+        // Import the simplified staking vault utilities as fallback
+        const stakingVaultUtils = await import('./staking-vault-utils-simplified');
+        
+        // Get global staking statistics 
+        const vaultInfo = await stakingVaultUtils.getStakingVaultInfo();
+        
+        // Format the response with the data
+        const stakingStats = {
+          totalStaked: vaultInfo.totalStaked,
+          rewardPool: vaultInfo.rewardPool,
+          stakersCount: vaultInfo.stakersCount,
+          currentAPY: vaultInfo.currentAPY,
+          stakingVaultAddress: vaultInfo.stakingVaultAddress,
+          lastUpdated: new Date().toISOString(),
+          dataSource: 'blockchain'
+        };
+        
+        console.log(`Retrieved global staking stats from blockchain:`, stakingStats);
+        return res.json(stakingStats);
+      }
     } catch (error) {
       console.error("Error getting global staking stats:", error);
       res.status(500).json({ 
@@ -1334,43 +1360,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { externalStakingCache } = await import('./external-staking-cache');
       externalStakingCache.clearWalletCache(walletAddress);
       
+      // Import Railway API utility
+      const railwayApi = await import('./railway-api');
+      
       try {
-        // Get token balance first
-        const simpleTokenModule = await import('./simple-token');
-        const tokenBalance = await simpleTokenModule.getTokenBalance(walletAddress);
+        // First try to force Railway to update data for this wallet
+        console.log(`Adding ${walletAddress} to Railway monitoring...`);
+        await railwayApi.addWalletToMonitor(walletAddress);
         
-        // Import staking utilities with our correct staking vault address
-        const stakingVaultUtils = await import('./staking-vault-utils-simplified');
+        try {
+          // Try to force a poll if we have an admin key (this is optional)
+          const adminKey = process.env.RAILWAY_ADMIN_KEY;
+          if (adminKey) {
+            console.log('Forcing Railway to poll for new data...');
+            await railwayApi.forcePollNow(adminKey);
+          }
+        } catch (pollError) {
+          console.log('Could not force Railway polling:', pollError);
+          // Continue anyway - this step is optional
+        }
         
-        // Use the getUserStakingInfo to query blockchain data directly
-        console.log(`Querying blockchain for fresh staking data for ${walletAddress}`);
-        const stakingData = await stakingVaultUtils.getUserStakingInfo(walletAddress);
+        // Get fresh data from Railway
+        console.log(`Fetching fresh staking data from Railway for ${walletAddress}`);
+        const railwayStakingData = await railwayApi.getEnhancedStakingData(walletAddress);
         
-        // Add token balance and use the correct vault address
+        // Get token balance from Railway
+        const tokenBalanceData = await railwayApi.getWalletTokenBalance(walletAddress);
+        
+        // Convert the Railway timestamp to a Date for consistency
+        const stakedAt = railwayStakingData.stakedAt ? new Date(railwayStakingData.stakedAt) : new Date();
+        const lastUpdateTime = new Date(railwayStakingData.lastUpdateTime);
+        
+        // Format the response with fresh data
         const stakingResponse = {
-          ...stakingData,
-          walletTokenBalance: tokenBalance,
+          amountStaked: railwayStakingData.amountStaked,
+          pendingRewards: railwayStakingData.pendingRewards,
+          stakedAt: stakedAt,
+          lastClaimAt: lastUpdateTime,
+          lastCompoundAt: lastUpdateTime,
+          timeUntilUnlock: railwayStakingData.timeUntilUnlock,
+          estimatedAPY: railwayStakingData.estimatedAPY,
+          isLocked: railwayStakingData.isLocked,
+          referrer: railwayStakingData.referrer,
+          walletTokenBalance: tokenBalanceData.balance,
           stakingVaultAddress: 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp',
+          dataSource: 'railway',
           refreshed: true
         };
         
-        console.log(`Fresh staking data for ${walletAddress}:`, stakingResponse);
+        console.log(`Fresh Railway data for ${walletAddress}:`, stakingResponse);
         
         return res.json({
           success: true,
-          message: `Retrieved fresh staking data for wallet: ${walletAddress}`,
+          message: `Retrieved fresh staking data from Railway for wallet: ${walletAddress}`,
           stakingInfo: stakingResponse,
           timestamp: new Date()
         });
-      } catch (fetchError) {
-        console.error(`Error fetching fresh staking data: ${fetchError}`);
-        // Even if we can't get fresh data, we still cleared the cache
-        return res.json({
-          success: true,
-          message: `Staking cache cleared for wallet: ${walletAddress}`,
-          error: `Could not fetch fresh data: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`,
-          timestamp: new Date()
-        });
+      } 
+      catch (railwayError) {
+        console.error(`Error fetching from Railway, falling back to blockchain: ${railwayError}`);
+        
+        try {
+          // Fallback to direct blockchain data as a last resort
+          const simpleTokenModule = await import('./simple-token');
+          const tokenBalance = await simpleTokenModule.getTokenBalance(walletAddress);
+          
+          // Import staking utilities with our correct staking vault address
+          const stakingVaultUtils = await import('./staking-vault-utils-simplified');
+          
+          // Use the getUserStakingInfo to query blockchain data directly
+          console.log(`Querying blockchain for fresh staking data for ${walletAddress}`);
+          const stakingData = await stakingVaultUtils.getUserStakingInfo(walletAddress);
+          
+          // Add token balance and use the correct vault address
+          const stakingResponse = {
+            ...stakingData,
+            walletTokenBalance: tokenBalance,
+            stakingVaultAddress: 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp',
+            refreshed: true
+          };
+          
+          console.log(`Fresh blockchain data for ${walletAddress}:`, stakingResponse);
+          
+          return res.json({
+            success: true,
+            message: `Retrieved fresh staking data from blockchain for wallet: ${walletAddress}`,
+            stakingInfo: stakingResponse,
+            timestamp: new Date()
+          });
+        } catch (blockchainError) {
+          console.error(`Error fetching fresh blockchain data: ${blockchainError}`);
+          // Even if we can't get fresh data, we still cleared the cache
+          return res.json({
+            success: true,
+            message: `Staking cache cleared for wallet: ${walletAddress}`,
+            error: `Could not fetch fresh data: ${blockchainError instanceof Error ? blockchainError.message : String(blockchainError)}`,
+            timestamp: new Date()
+          });
+        }
       }
     } catch (error) {
       console.error("Error refreshing staking data:", error);
