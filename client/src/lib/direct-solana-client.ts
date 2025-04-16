@@ -1,7 +1,7 @@
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 
 // Token configuration
-const tokenMintAddress = '12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5';
+const tokenMintAddress = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
 const stakingVaultProgramId = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm';
 
 // Interfaces for staking data

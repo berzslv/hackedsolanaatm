@@ -231,7 +231,7 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
       const { StakingVaultClient } = await import('@/lib/staking-vault-client');
       
       // Use token mint from config (this would come from a central config in production)
-      const tokenMint = "12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5";
+      const tokenMint = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk";
       
       const stakingClient = new StakingVaultClient(connection, publicKey, tokenMint);
       await stakingClient.initialize();
@@ -305,7 +305,7 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
               
               // Initialize StakingVaultClient
               const { StakingVaultClient } = await import('@/lib/staking-vault-client');
-              const tokenMint = "12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5";
+              const tokenMint = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk";
               
               if (publicKey) {
                 const stakingClient = new StakingVaultClient(connection, publicKey, tokenMint);

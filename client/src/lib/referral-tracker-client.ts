@@ -28,7 +28,7 @@ export class ReferralTrackerClient {
   constructor(connection: Connection, userWallet: PublicKey, tokenMint?: string) {
     this.connection = connection;
     this.userWallet = userWallet;
-    this.tokenMint = tokenMint ? new PublicKey(tokenMint) : new PublicKey('12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5');
+    this.tokenMint = tokenMint ? new PublicKey(tokenMint) : new PublicKey('59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk');
     
     // Program ID from Anchor.toml
     this.programId = new PublicKey('Gg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnH');
