@@ -8,7 +8,7 @@ import { getMintAuthority } from './token-utils';
 
 // Program information
 const PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm'; // Your deployed program from Solana Playground
-const TOKEN_MINT_ADDRESS = '12KQqSdN6WEuwo8ah1ykfUPAWME8Sy7XppgfFun4N1D5';
+const TOKEN_MINT_ADDRESS = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
 const IDL_PATH = path.resolve('./idl/staking_vault.json');
 
 // Models for staking data
