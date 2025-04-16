@@ -272,7 +272,7 @@ const ReferralWidget: React.FC = () => {
         <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
           <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           <AlertDescription className="text-sm text-blue-800 dark:text-blue-300">
-            Referrals are now tracked directly on-chain. When friends use your link, 
+            Referrals are tracked directly on-chain. When friends use your code,
             the smart contract automatically records them as your referrals and sends
             you 3% of their staking amount.
           </AlertDescription>
@@ -282,8 +282,8 @@ const ReferralWidget: React.FC = () => {
       <CardFooter className="bg-primary/5 flex flex-col items-start p-4">
         <h4 className="text-sm font-medium mb-2">How It Works</h4>
         <ol className="text-xs text-muted-foreground space-y-1">
-          <li>1. Share your referral link with friends</li>
-          <li>2. When they connect and stake HATM tokens, they're tagged as your referral</li>
+          <li>1. Share your wallet address as a referral code with friends</li>
+          <li>2. They enter your code when staking their HATM tokens</li>
           <li>3. You earn 3% of their stake amount instantly</li>
           <li>4. All referrals are tracked on-chain for complete transparency</li>
         </ol>

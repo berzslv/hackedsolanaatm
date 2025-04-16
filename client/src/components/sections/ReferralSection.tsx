@@ -1,6 +1,6 @@
 import { GradientText } from "@/components/ui/gradient-text";
 import { Badge } from "@/components/ui/badge";
-import { Users, Link } from "lucide-react";
+import { Users, Code } from "lucide-react";
 import ReferralWidget from "../ReferralWidget";
 
 const ReferralSection = () => {
@@ -16,8 +16,8 @@ const ReferralSection = () => {
             <GradientText>Refer Friends</GradientText> and Earn 3% Rewards
           </h2>
           <p className="text-muted-foreground mb-8">
-            Generate your unique referral link and earn 3% of all tokens staked by friends who use your link.
-            Rewards are automatically tracked and distributed on-chain for maximum transparency.
+            Share your wallet address as a referral code and earn 3% of all tokens staked by friends.
+            Referrals are tracked directly on-chain through smart contracts for maximum transparency.
           </p>
           
           <div className="flex flex-col md:flex-row items-center justify-center gap-5 mb-8">
