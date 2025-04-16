@@ -160,15 +160,19 @@ export async function getOrCreateTokenAccount(
 }
 
 // Mint tokens to a wallet using SPL token program
-export async function mintTokens(walletAddress: string, amount: number = 1000): Promise<string> {
+export async function mintTokens(
+  connection: Connection,
+  mintAuthority: Keypair,
+  walletPubkey: PublicKey,
+  amount: number = 1000
+): Promise<string> {
   try {
-    // Get connection and mint authority
-    const connection = getConnection();
-    const { keypair: mintAuthority, mintPublicKey } = getMintAuthority();
+    // Get mint public key from authority
+    const { mintPublicKey } = getMintAuthority();
     
     console.log(`Authority address: ${mintAuthority.publicKey.toString()}`);
     console.log(`Mint address: ${mintPublicKey.toString()}`);
-    console.log(`Target wallet: ${walletAddress}`);
+    console.log(`Target wallet: ${walletPubkey.toString()}`);
     console.log(`Amount to mint: ${amount} tokens`);
     
     // Calculate token amount with decimals
@@ -184,7 +188,7 @@ export async function mintTokens(walletAddress: string, amount: number = 1000): 
       connection,
       mintAuthority,
       mintPublicKey,
-      new PublicKey(walletAddress)
+      walletPubkey
     );
     
     // Create a mint instruction
@@ -210,6 +214,22 @@ export async function mintTokens(walletAddress: string, amount: number = 1000): 
     return signature;
   } catch (error) {
     console.error("Error in mintTokens:", error);
+    throw error;
+  }
+}
+
+// Legacy mintTokens function for backward compatibility
+export async function mintTokensSimple(walletAddress: string, amount: number = 1000): Promise<string> {
+  try {
+    // Get connection and mint authority
+    const connection = getConnection();
+    const { keypair: mintAuthority } = getMintAuthority();
+    const walletPubkey = new PublicKey(walletAddress);
+    
+    // Call the updated mintTokens function
+    return await mintTokens(connection, mintAuthority, walletPubkey, amount);
+  } catch (error) {
+    console.error("Error in mintTokensSimple:", error);
     throw error;
   }
 }

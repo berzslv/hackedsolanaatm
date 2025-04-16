@@ -737,12 +737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
         const { keypair: mintAuthority } = simpleToken.getMintAuthority();
         const walletPubkey = new web3.PublicKey(walletAddress);
-        const signature = await simpleToken.mintTokens(
-          connection,
-          mintAuthority,
-          walletPubkey,
-          1000
-        );
+        const signature = await simpleToken.mintTokensSimple(walletAddress, 1000);
 
         // Get the updated token balance
         const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
@@ -1034,7 +1029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // This is a proper two-step process for buying and staking:
         // 1. First mint tokens to the user's wallet (buy)
-        const mintSignature = await simpleToken.mintTokens(walletAddress, parsedTokenAmount);
+        const mintSignature = await simpleToken.mintTokensSimple(walletAddress, parsedTokenAmount);
         console.log(`Tokens minted to user wallet! Signature: ${mintSignature}`);
         
         // Wait a bit for the mint transaction to be confirmed
@@ -1220,7 +1215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const simpleToken = await import('./simple-token');
         
         // Mint tokens to the user's wallet
-        const mintSignature = await simpleToken.mintTokens(walletAddress, tokenAmount);
+        const mintSignature = await simpleToken.mintTokensSimple(walletAddress, tokenAmount);
         
         // Get updated token balance
         const tokenBalance = await simpleToken.getTokenBalance(walletAddress);
