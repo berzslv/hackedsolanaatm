@@ -1392,41 +1392,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Getting staking info for wallet: ${walletAddress}`);
       
-      // Get token balance - this works reliably
-      const simpleTokenModule = await import('./simple-token');
-      const tokenBalance = await simpleTokenModule.getTokenBalance(walletAddress);
-      const { keypair: authorityKeypair } = simpleTokenModule.getMintAuthority();
-      const stakingVaultAddress = authorityKeypair.publicKey.toString();
+      // Import Railway API utility
+      const railwayApi = await import('./railway-api');
       
-      // Import our simplified staking vault utils
-      const stakingVaultUtils = await import('./staking-vault-utils-simplified');
-      
-      // Get blockchain-based staking info (including transaction analysis)
-      // This method will scan the blockchain directly for token transfers 
-      // to the staking vault address to calculate true staking balances
-      console.log(`Getting on-chain staking info for ${walletAddress}`);
-      const stakingData = await stakingVaultUtils.getUserStakingInfo(walletAddress);
-      
-      // Use the correct staking vault address from our constants
-      const correctStakingVaultAddress = 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp';
-      
-      // Add token balance and ensure staking vault address is correct
-      const stakingResponse = {
-        ...stakingData,
-        walletTokenBalance: tokenBalance,
-        stakingVaultAddress: correctStakingVaultAddress
-      };
-      
-      console.log("Staking info for", walletAddress, ":", JSON.stringify(stakingResponse, null, 2));
-      
-      return res.json({
-        success: true,
-        stakingInfo: stakingResponse,
-      });
+      // First, try to get the data from Railway API (more reliable and no rate limits)
+      try {
+        console.log(`Fetching staking data from Railway API for ${walletAddress}`);
+        
+        // Try to add the wallet to monitoring
+        await railwayApi.addWalletToMonitor(walletAddress);
+        
+        // Get enhanced staking data from Railway (which also includes time until unlock)
+        const railwayStakingData = await railwayApi.getEnhancedStakingData(walletAddress);
+        
+        // Get token balance from Railway
+        const tokenBalanceData = await railwayApi.getWalletTokenBalance(walletAddress);
+        
+        console.log(`Railway API returned data successfully for ${walletAddress}`);
+        
+        // Convert the Railway timestamp to a Date for consistency
+        const stakedAt = railwayStakingData.stakedAt ? new Date(railwayStakingData.stakedAt) : new Date();
+        const lastUpdateTime = new Date(railwayStakingData.lastUpdateTime);
+        
+        // Format the staking response
+        const stakingResponse = {
+          amountStaked: railwayStakingData.amountStaked,
+          pendingRewards: railwayStakingData.pendingRewards,
+          stakedAt: stakedAt,
+          lastClaimAt: lastUpdateTime,
+          lastCompoundAt: lastUpdateTime,
+          timeUntilUnlock: railwayStakingData.timeUntilUnlock,
+          estimatedAPY: railwayStakingData.estimatedAPY,
+          isLocked: railwayStakingData.isLocked,
+          referrer: railwayStakingData.referrer,
+          walletTokenBalance: tokenBalanceData.balance,
+          stakingVaultAddress: 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp',
+          dataSource: 'railway' // Indicate this came from Railway
+        };
+        
+        console.log("Railway staking info for", walletAddress, ":", JSON.stringify(stakingResponse, null, 2));
+        
+        return res.json({
+          success: true,
+          stakingInfo: stakingResponse,
+        });
+      }
+      catch (railwayError) {
+        console.error("Error fetching from Railway API, falling back to blockchain:", railwayError);
+        
+        // If Railway fails, fall back to blockchain query
+        // Get token balance - this works reliably
+        const simpleTokenModule = await import('./simple-token');
+        const tokenBalance = await simpleTokenModule.getTokenBalance(walletAddress);
+        
+        // Import our simplified staking vault utils
+        const stakingVaultUtils = await import('./staking-vault-utils-simplified');
+        
+        // Get blockchain-based staking info (including transaction analysis)
+        // This method will scan the blockchain directly for token transfers 
+        // to the staking vault address to calculate true staking balances
+        console.log(`Getting on-chain staking info for ${walletAddress}`);
+        const stakingData = await stakingVaultUtils.getUserStakingInfo(walletAddress);
+        
+        // Use the correct staking vault address from our constants
+        const correctStakingVaultAddress = 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp';
+        
+        // Add token balance and ensure staking vault address is correct
+        const stakingResponse = {
+          ...stakingData,
+          walletTokenBalance: tokenBalance,
+          stakingVaultAddress: correctStakingVaultAddress
+        };
+        
+        console.log("Blockchain staking info for", walletAddress, ":", JSON.stringify(stakingResponse, null, 2));
+        
+        return res.json({
+          success: true,
+          stakingInfo: stakingResponse,
+        });
+      }
     } catch (error) {
-      console.error("Error fetching staking info from smart contract:", error);
+      console.error("Error fetching staking info:", error);
       return res.status(500).json({
-        error: "Failed to fetch staking information from smart contract",
+        error: "Failed to fetch staking information",
         details: error instanceof Error ? error.message : String(error)
       });
     }
