@@ -13,9 +13,12 @@ export interface StakingUserInfo {
   pendingRewards: number;
   stakedAt: Date;
   lastClaimAt: Date | null;
+  lastCompoundAt?: Date | null;
   timeUntilUnlock: number | null; // milliseconds until unlock
   estimatedAPY: number;
-  dataSource: 'blockchain' | 'helius' | 'default';
+  dataSource: 'blockchain' | 'helius' | 'external' | 'default';
+  walletTokenBalance?: number;
+  stakingVaultAddress?: string;
 }
 
 export interface StakingVaultInfo {
@@ -131,7 +134,14 @@ export const getUserStakingInfo = async (
       throw new Error('Failed to fetch staking information');
     }
     
-    const stakingData = await response.json();
+    const responseData = await response.json();
+    
+    // The API returns the staking info in a nested 'stakingInfo' property
+    const stakingData = responseData.success && responseData.stakingInfo 
+      ? responseData.stakingInfo 
+      : responseData;
+    
+    console.log("Received staking data:", stakingData); // Debug log
     
     // Also add wallet token balance
     const tokenBalance = await getTokenBalance(walletAddress, connection);
@@ -141,7 +151,8 @@ export const getUserStakingInfo = async (
       amountStaked: stakingData.amountStaked || 0,
       pendingRewards: stakingData.pendingRewards || 0,
       stakedAt: new Date(stakingData.stakedAt || Date.now()),
-      lastClaimAt: stakingData.lastClaimAt ? new Date(stakingData.lastClaimAt) : null,
+      lastClaimAt: stakingData.lastClaimAt ? new Date(stakingData.lastClaimAt) : null, 
+      lastCompoundAt: stakingData.lastCompoundAt ? new Date(stakingData.lastCompoundAt) : null,
       timeUntilUnlock: stakingData.timeUntilUnlock || null,
       estimatedAPY: stakingData.estimatedAPY || 0,
       dataSource: stakingData.dataSource || 'blockchain',
@@ -156,9 +167,11 @@ export const getUserStakingInfo = async (
       pendingRewards: 0,
       stakedAt: new Date(),
       lastClaimAt: null,
+      lastCompoundAt: null,
       timeUntilUnlock: null,
       estimatedAPY: 0,
       dataSource: 'default',
+      stakingVaultAddress: stakingVaultAddress
     };
   }
 };
