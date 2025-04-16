@@ -395,7 +395,7 @@ export async function createTokenStakingTransaction(
  * This will create a transaction that:
  * 1. Transfers SOL to purchase tokens
  * 2. Mints those tokens to the user's wallet
- * 3. Immediately stakes those tokens to the staking vault
+ * 3. Immediately stakes those tokens to the staking vault using the proper staking program instruction
  * 
  * @param userWalletAddress The user's wallet address
  * @param amount The amount of tokens to buy and stake
@@ -526,42 +526,23 @@ export async function createCombinedBuyAndStakeTransaction(
       }
       
       // Instead of directly transferring tokens, use the staking contract
-      // Import the staking contract client
-      const stakingContractClient = await import('./staking-contract-client');
+      // Import our direct staking utilities
+      const directStakingUtils = await import('./direct-staking-utils');
       
       // Create a stake transaction using the proper program instruction
       console.log("Creating stake instruction through staking program");
       
       try {
-        // Get the staking program
-        const program = stakingContractClient.initializeStakingProgram();
-        if (!program) {
-          throw new Error('Failed to initialize staking program');
-        }
-        
         // Get user stake account PDA
-        const [userStakeAccount] = await stakingContractClient.findUserStakeAccountPDA(
-          program, 
-          userPublicKey
-        );
+        const [userStakeAccount] = directStakingUtils.findUserStakeAccount(userPublicKey);
         
-        console.log(`Found user stake account PDA: ${userStakeAccount}`);
+        console.log(`Found user stake account PDA: ${userStakeAccount.toString()}`);
         
-        // Create the instruction for staking
-        const stakeInstruction = program.instruction.stake(
+        // Create the instruction for staking using our simpler approach
+        const stakeInstruction = directStakingUtils.createStakingInstruction(
+          userPublicKey,
           adjustedAmount,
-          {
-            accounts: {
-              user: userPublicKey,
-              stakingVault: stakingVaultAddress,
-              userStakeInfo: userStakeAccount,
-              tokenMint: mintPublicKey,
-              tokenVault: vaultTokenAccount,
-              userTokenAccount: userTokenAccount,
-              tokenProgram: TOKEN_PROGRAM_ID,
-              systemProgram: anchor.web3.SystemProgram.programId
-            }
-          }
+          userTokenAccount
         );
         
         transaction.add(stakeInstruction);
