@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 use std::convert::TryFrom;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("EnGhdovdYhHk4nsHEJr6gmV5cYfrx49Swm3H3Nr8A2scNygHS8");
 
 const DAY_IN_SECONDS: i64 = 86400;
 const EARLY_UNSTAKE_FEE_BASIS_POINTS: u64 = 500; // 5%
