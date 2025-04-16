@@ -1,12 +1,4 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import React, { useRef, useEffect } from 'react';
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -16,24 +8,64 @@ interface WhitepaperDialogProps {
 }
 
 export default function WhitepaperDialog({ open, onOpenChange }: WhitepaperDialogProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (modalRef.current && contentRef.current && 
+          !contentRef.current.contains(e.target as Node) && 
+          modalRef.current.contains(e.target as Node)) {
+        onOpenChange(false);
+      }
+    };
+
+    // Close on ESC key
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onOpenChange(false);
+    };
+
+    if (open) {
+      document.body.style.overflow = 'hidden';
+      document.addEventListener('mousedown', handleOutsideClick);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [open, onOpenChange]);
+
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[85vh] p-0" hideCloseButton>
+    <div 
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center overflow-y-auto" 
+      ref={modalRef}
+    >
+      <div 
+        className="bg-[#0f0b19] w-full max-w-4xl h-[85vh] relative rounded-lg shadow-lg"
+        ref={contentRef}
+      >
         <Button 
           onClick={() => onOpenChange(false)}
-          variant="ghost"
-          className="absolute right-4 top-4 p-1 h-auto rounded-full bg-gray-800 text-white opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#6366f1] z-10"
+          className="absolute right-4 top-4 z-10 bg-gray-800 hover:bg-gray-700 rounded-full p-1.5 text-gray-200"
         >
           <X className="h-5 w-5" />
           <span className="sr-only">Close</span>
         </Button>
-        <DialogHeader className="px-6 pt-6 pb-2 bg-[#0f0b19] sticky top-0 z-10 border-b border-gray-800">
-          <DialogTitle className="text-xl font-bold">Hacked ATM Token Whitepaper</DialogTitle>
-          <DialogDescription className="text-gray-400">
+        
+        <div className="px-6 pt-6 pb-2 bg-[#0f0b19] sticky top-0 z-10 border-b border-gray-800">
+          <h2 className="text-xl font-bold">Hacked ATM Token Whitepaper</h2>
+          <p className="text-gray-400 text-sm">
             Technical overview and tokenomics
-          </DialogDescription>
-        </DialogHeader>
-        <ScrollArea className="h-full max-h-[calc(85vh-5rem)] p-6">
+          </p>
+        </div>
+        
+        <div className="h-full max-h-[calc(85vh-5rem)] p-6 overflow-y-auto">
           <div className="prose prose-invert max-w-none">
             <h1>Hacked ATM Token (HATM)</h1>
             <p className="lead">
@@ -104,7 +136,7 @@ export default function WhitepaperDialog({ open, onOpenChange }: WhitepaperDialo
             <h3>4.1 Core Contracts</h3>
             <ul>
               <li><strong>Staking Vault:</strong> Manages stake deposits, withdrawals, and rewards calculations</li>
-              <li><strong>Referral Tracker:</strong> Handles referral code generation, validation, and reward distribution</li>
+              <li><strong>Referral Tracker:</strong> Handles referral code validation and reward distribution</li>
               <li><strong>Token Distributor:</strong> Controls token distribution and vesting schedules</li>
             </ul>
 
@@ -171,8 +203,8 @@ export default function WhitepaperDialog({ open, onOpenChange }: WhitepaperDialo
               Cryptocurrency investments are subject to high market risk.</p>
             </div>
           </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </div>
   );
 }
