@@ -80,23 +80,29 @@ const DirectStakingWidget: React.FC = () => {
         throw new Error('No staking transaction received');
       }
       
-      const transaction = stakeResult.stakingTransaction;
+      const transactionData = stakeResult.stakingTransaction;
       
       toast({
         title: 'Waiting for approval',
         description: 'Please approve the staking transaction in your wallet',
       });
       
-      // Get the base64 encoded transaction
-      const transactionBase64 = transaction.transaction || transaction;
+      // Log the transaction data structure to debug
+      console.log('Transaction data received:', JSON.stringify(transactionData, null, 2));
+      
+      if (!transactionData.transaction) {
+        console.error('Missing transaction field in response data');
+        throw new Error('Missing transaction field in server response');
+      }
       
       // Safely decode the base64 transaction
       let txBuffer;
       try {
-        txBuffer = Buffer.from(transactionBase64, 'base64');
-      } catch (e) {
+        txBuffer = Buffer.from(transactionData.transaction, 'base64');
+        console.log('Successfully decoded transaction of length:', txBuffer.length);
+      } catch (e: any) {
         console.error('Error decoding transaction:', e);
-        throw new Error('Failed to decode the transaction. Invalid format.');
+        throw new Error(`Failed to decode the transaction. Invalid format: ${e.message}`);
       }
       
       // Deserialize the transaction

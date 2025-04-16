@@ -1496,6 +1496,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           parsedAmount         // amount of tokens to transfer
         );
         
+        // Log the transaction for debugging
+        console.log(`Returning serialized transaction of length: ${serializedTransaction.length}`);
+        
         // We'll return this transaction to the client to be signed
         return res.json({
           success: true,

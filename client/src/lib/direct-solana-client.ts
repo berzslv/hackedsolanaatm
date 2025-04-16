@@ -296,6 +296,16 @@ export const stakeExistingTokens = async (
     
     const stakingData = await response.json();
     
+    // Log the response to help with debugging
+    console.log('Stake transaction response:', stakingData);
+    
+    // Validate that there's transaction data in the response
+    if (!stakingData.success || !stakingData.transaction) {
+      return { 
+        error: 'Invalid response from server - missing transaction data' 
+      };
+    }
+    
     // Return the transaction details to be signed by the wallet
     return { 
       stakingTransaction: stakingData
