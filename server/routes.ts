@@ -1340,47 +1340,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { keypair: authorityKeypair } = simpleTokenModule.getMintAuthority();
       const stakingVaultAddress = authorityKeypair.publicKey.toString();
       
-      // Check if we have data from external provider
-      const { externalStakingCache } = await import('./external-staking-cache');
-      const externalData = externalStakingCache.getStakingData(walletAddress);
-      
       // Import our simplified staking vault utils
       const stakingVaultUtils = await import('./staking-vault-utils-simplified');
       
-      let stakingResponse;
+      // Get blockchain-based staking info (including transaction analysis)
+      // This method will scan the blockchain directly for token transfers 
+      // to the staking vault address to calculate true staking balances
+      console.log(`Getting on-chain staking info for ${walletAddress}`);
+      const stakingData = await stakingVaultUtils.getUserStakingInfo(walletAddress);
       
-      if (externalData) {
-        console.log(`Using external staking data for ${walletAddress}:`, externalData);
-        
-        // Use data from external source
-        stakingResponse = {
-          amountStaked: externalData.amountStaked,
-          pendingRewards: externalData.pendingRewards,
-          stakedAt: externalData.stakedAt,
-          lastCompoundAt: externalData.lastUpdateTime,
-          estimatedAPY: externalData.estimatedAPY,
-          timeUntilUnlock: externalData.timeUntilUnlock,
-          stakingVaultAddress,
-          walletTokenBalance: tokenBalance,
-          dataSource: 'external',
-          lastUpdated: externalData.timestamp
-        };
-      } else {
-        console.log(`No external staking data available for ${walletAddress}, using zeros`);
-        
-        // No external data, use default values
-        stakingResponse = {
-          amountStaked: 0,
-          pendingRewards: 0,
-          stakedAt: new Date(),
-          lastCompoundAt: new Date(),
-          estimatedAPY: 120, // Default APY
-          timeUntilUnlock: null,
-          stakingVaultAddress,
-          walletTokenBalance: tokenBalance,
-          dataSource: 'default'
-        };
-      }
+      // Add token balance and ensure staking vault address is correct
+      const stakingResponse = {
+        ...stakingData,
+        walletTokenBalance: tokenBalance,
+        stakingVaultAddress: stakingVaultAddress
+      };
       
       console.log("Staking info for", walletAddress, ":", JSON.stringify(stakingResponse, null, 2));
       
