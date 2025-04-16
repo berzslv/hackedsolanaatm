@@ -1484,10 +1484,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       try {
-        // Transfer tokens to staking vault (the mint authority for simplicity)
+        // Transfer tokens to staking vault
         const tokenTransferModule = await import('./token-transfer');
-        const { keypair: authorityKeypair } = simpleTokenModule.getMintAuthority();
-        const stakingVaultAddress = authorityKeypair.publicKey.toString();
+        
+        // Import staking-vault-utils to get the correct staking vault address
+        const stakingVaultUtils = await import('./staking-vault-utils-simplified');
+        
+        // Get staking vault address from staking utilities
+        // This ensures consistency between buying and staking
+        const stakingVaultAddress = '2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap';
+        
+        console.log(`Using staking vault address: ${stakingVaultAddress}`);
         
         // Create a transaction for the user to sign that will transfer tokens to the staking vault
         const serializedTransaction = await tokenTransferModule.createTokenStakingTransaction(
@@ -1748,9 +1755,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // In a real implementation, the smart contract would have updated the staking state
         // For now, we'll mock the response with simulated on-chain data
-        const tokenUtils = await import('./token-utils');
-        const mintAuthority = tokenUtils.getMintAuthority();
-        const stakingVaultAddress = mintAuthority.keypair.publicKey.toString();
+        
+        // Use the correct staking vault address
+        const stakingVaultAddress = '2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap';
         
         // Mock staking entry as it would be returned from the smart contract
         const stakingEntry = {
