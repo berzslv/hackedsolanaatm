@@ -493,7 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rewardPool: railwayStats.totalStaked * 0.5, // Estimate reward pool as 50% of total staked
           stakersCount: railwayStats.stakersCount,
           currentAPY: railwayStats.currentAPY,
-          stakingVaultAddress: 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp',
+          stakingVaultAddress: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8',
           lastUpdated: railwayStats.lastUpdated,
           dataSource: 'railway'
         };
@@ -1513,7 +1513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isLocked: railwayStakingData.isLocked,
           referrer: railwayStakingData.referrer,
           walletTokenBalance: tokenBalanceData.balance,
-          stakingVaultAddress: 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp',
+          stakingVaultAddress: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8',
           dataSource: 'railway' // Indicate this came from Railway
         };
         
@@ -1542,7 +1542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const stakingData = await stakingVaultUtils.getUserStakingInfo(walletAddress);
         
         // Use the correct staking vault address from our constants
-        const correctStakingVaultAddress = 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp';
+        const correctStakingVaultAddress = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
         
         // Add token balance and ensure staking vault address is correct
         const stakingResponse = {
@@ -1662,7 +1662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Use the actual staking vault address
         // This ensures consistency and tracks real transaction data
-        const stakingVaultAddress = 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp';
+        const stakingVaultAddress = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
         
         console.log(`Using staking vault address: ${stakingVaultAddress}`);
         
@@ -1927,7 +1927,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // For now, we'll mock the response with simulated on-chain data
         
         // Use the actual staking vault address
-        const stakingVaultAddress = 'H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp';
+        const stakingVaultAddress = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
         
         // Mock staking entry as it would be returned from the smart contract
         const stakingEntry = {
