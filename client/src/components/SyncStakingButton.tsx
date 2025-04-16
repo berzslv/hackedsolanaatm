@@ -50,8 +50,10 @@ export function SyncStakingButton({ onSuccess }: SyncStakingButtonProps) {
       if (data.success) {
         toast({
           title: 'Staking records synced',
-          description: `Successfully synced ${Number(data.stakingData.amountStaked).toFixed(2)} tokens`,
-          variant: 'default'
+          description: data.stakingData.amountStaked > 0 
+            ? `Successfully synced ${Number(data.stakingData.amountStaked).toFixed(2)} tokens` 
+            : "No tokens to sync were found",
+          variant: data.stakingData.amountStaked > 0 ? 'default' : 'destructive'
         });
         
         // Call the success callback if provided

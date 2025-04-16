@@ -714,7 +714,7 @@ const DirectStakingWidget: React.FC = () => {
         
         {/* Sync Staking Records Button */}
         <div className="mt-6 pt-4 border-t">
-          <Alert variant="outline" className="mb-3">
+          <Alert className="mb-3">
             <Info className="h-4 w-4" />
             <AlertTitle>Stake not showing?</AlertTitle>
             <AlertDescription>
