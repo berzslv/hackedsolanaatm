@@ -18,7 +18,7 @@ import path from 'path';
  */
 export async function handleBuyAndStakeV2(req: Request, res: Response) {
   try {
-    const { walletAddress, amount, referralAddress } = req.body;
+    const { walletAddress, amount, referrer } = req.body;
     
     if (!walletAddress || !amount) {
       return res.status(400).json({ error: "Wallet address and amount are required" });
@@ -30,21 +30,21 @@ export async function handleBuyAndStakeV2(req: Request, res: Response) {
       return res.status(400).json({ error: "Invalid token amount" });
     }
     
-    console.log(`Processing combined buy and stake request for wallet: ${walletAddress}, amount: ${parsedAmount}, referral: ${referralAddress || 'none'}`);
+    console.log(`Processing combined buy and stake request for wallet: ${walletAddress}, amount: ${parsedAmount}, referrer: ${referrer || 'none'}`);
     
     try {
-      // Validate referral address if provided
-      let referralPublicKey: PublicKey | undefined = undefined;
-      let referralMessage = '';
+      // Validate referrer address if provided
+      let referrerPublicKey: PublicKey | undefined = undefined;
+      let referrerMessage = '';
       
-      if (referralAddress) {
+      if (referrer) {
         try {
-          // Validate that the referral address is a valid Solana address
-          referralPublicKey = new PublicKey(referralAddress);
-          referralMessage = `Using referral from ${referralAddress}`;
-          console.log(`Valid referral address: ${referralAddress}`);
+          // Validate that the referrer address is a valid Solana address
+          referrerPublicKey = new PublicKey(referrer);
+          referrerMessage = `Using referrer ${referrer}`;
+          console.log(`Valid referrer address: ${referrer}`);
         } catch (error) {
-          console.error("Invalid referral address format:", error);
+          console.error("Invalid referrer address format:", error);
           // Continue even if validation fails, but don't pass the referral
         }
       }
@@ -53,16 +53,16 @@ export async function handleBuyAndStakeV2(req: Request, res: Response) {
       const serializedTransaction = await createCombinedBuyAndStakeTransactionV2(
         walletAddress,
         parsedAmount,
-        referralPublicKey
+        referrerPublicKey
       );
       
       // Return the transaction to be signed by the user
       return res.json({
         success: true,
-        message: `Transaction created to buy and stake ${parsedAmount} HATM tokens. ${referralMessage}`,
+        message: `Transaction created to buy and stake ${parsedAmount} HATM tokens. ${referrerMessage}`,
         transaction: serializedTransaction,
         amount: parsedAmount,
-        referralValid: !!referralPublicKey,
+        referrerValid: !!referrerPublicKey,
         isStaking: true
       });
     } catch (error) {
