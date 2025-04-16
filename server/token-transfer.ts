@@ -533,12 +533,12 @@ export async function createCombinedBuyAndStakeTransaction(
       console.log("Creating stake instruction through staking program");
       
       try {
-        // Get user stake account PDA
-        const [userStakeAccount] = directStakingUtils.findUserStakeAccount(userPublicKey);
+        // Get user info PDA for the referral staking program
+        const [userInfoPDA] = directStakingUtils.findUserInfoPDA(userPublicKey);
         
-        console.log(`Found user stake account PDA: ${userStakeAccount.toString()}`);
+        console.log(`Found user info PDA: ${userInfoPDA.toString()}`);
         
-        // Create the instruction for staking using our simpler approach
+        // Create the instruction for staking using the proper referral staking program
         const stakeInstruction = directStakingUtils.createStakingInstruction(
           userPublicKey,
           adjustedAmount,
