@@ -1,0 +1,47 @@
+Creating connection to Solana devnet
+User token account address: H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp
+User token account exists
+Adjusted amount with decimals: 22000000000 (22 tokens with 9 decimals)
+Checking if user 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX is registered with the staking program
+User Info PDA: A4BCSorbj2J4mG8pQUaAgyoDLbnMAJd99xC2HJaNKs6L (bump: 254)
+
+    User registration check result for 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX:
+    - Account exists: No
+    
+    
+    
+    - Is registered: No ✗
+    
+User registration check result: false
+User 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX is not registered with the staking program, adding registration instruction
+Creating staking program in referral-staking-client:
+      - Program ID: EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm
+      - Connection endpoint: https://api.devnet.solana.com
+      - IDL name: referral_staking, version: 0.1.0
+      - Wallet public key: 3NkEgiu9mwVGgPX9LK2HMJ6PhwBnKYn5srSFtPvDw9dp
+    
+Provider created successfully, creating program instance...
+Error creating staking program: TypeError: Cannot read properties of undefined (reading '_bn')
+    at isPublicKeyData (/home/runner/workspace/node_modules/@solana/web3.js/src/publickey.ts:39:35)
+    at new constructor (/home/runner/workspace/node_modules/@solana/web3.js/src/publickey.ts:58:9)
+    at translateAddress (/home/runner/workspace/node_modules/@coral-xyz/anchor/src/program/common.ts:59:51)
+    at new Program (/home/runner/workspace/node_modules/@coral-xyz/anchor/src/program/index.ts:295:39)
+    at createStakingProgram (/home/runner/workspace/server/referral-staking-client.ts:89:12)
+    at Module.createRegisterUserInstruction (/home/runner/workspace/server/referral-staking-client.ts:202:21)
+    at createDirectStakingTransaction (/home/runner/workspace/server/direct-stake.ts:219:53)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async handleDirectStake (/home/runner/workspace/server/direct-stake.ts:58:37)
+Error creating registration instruction: Error: Failed to create staking program
+    at Module.createRegisterUserInstruction (/home/runner/workspace/server/referral-staking-client.ts:204:13)
+    at createDirectStakingTransaction (/home/runner/workspace/server/direct-stake.ts:219:53)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async handleDirectStake (/home/runner/workspace/server/direct-stake.ts:58:37)
+Error creating direct staking transaction: Error: Failed to create registration instruction: Failed to create staking program
+    at createDirectStakingTransaction (/home/runner/workspace/server/direct-stake.ts:226:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async handleDirectStake (/home/runner/workspace/server/direct-stake.ts:58:37)
+Error in direct stake process: Error: Failed to create registration instruction: Failed to create staking program
+    at createDirectStakingTransaction (/home/runner/workspace/server/direct-stake.ts:226:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async handleDirectStake (/home/runner/workspace/server/direct-stake.ts:58:37)
+8:31:20 PM [express] POST /api/direct-stake 500 in 127ms :: {"error":"Failed to create staking trans…

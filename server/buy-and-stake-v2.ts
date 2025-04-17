@@ -4,7 +4,7 @@
  * properly uses the referral staking smart contract
  */
 import { Request, Response } from 'express';
-import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createMintToInstruction, createAssociatedTokenAccountInstruction, getAccount, TokenAccountNotFoundError } from '@solana/spl-token';
 import { getConnection, getMintAuthority } from './simple-token';
 import * as referralStaking from './referral-staking-client';
@@ -152,30 +152,142 @@ export async function createCombinedBuyAndStakeTransactionV2(
     
     transaction.add(mintInstruction);
 
-    // 5. Check if user is registered with the staking program
-    const isUserRegistered = await referralStaking.isUserRegistered(userPublicKey);
+    // 5. Check if user is registered with the staking program by directly querying the PDA
+    let isUserRegistered: boolean;
+    try {
+      // Find the user's PDA
+      const [userInfoPDA] = referralStaking.findUserInfoPDA(userPublicKey);
+      console.log(`Checking if user account exists at PDA: ${userInfoPDA.toString()}`);
+      
+      // Get account info directly from connection
+      const accountInfo = await connection.getAccountInfo(userInfoPDA);
+      
+      // User is registered if the account exists and is owned by our program
+      isUserRegistered = accountInfo !== null && 
+        accountInfo.owner.equals(referralStaking.PROGRAM_ID);
+      
+      console.log(`User registration check result: ${isUserRegistered}`);
+      console.log(`Account exists: ${accountInfo !== null ? 'Yes' : 'No'}`);
+      if (accountInfo !== null) {
+        console.log(`Account owner: ${accountInfo.owner.toString()}`);
+        console.log(`Owner matches program: ${accountInfo.owner.equals(referralStaking.PROGRAM_ID)}`);
+      }
+    } catch (error) {
+      console.error(`Error checking user registration, assuming not registered: ${error instanceof Error ? error.message : String(error)}`);
+      isUserRegistered = false;
+    }
     
     // If not registered, add registration instruction
     if (!isUserRegistered) {
-      console.log(`User ${userWalletAddress} is not registered with the staking program, adding registration instruction`);
-      const registerInstruction = referralStaking.createRegisterUserInstruction(
-        userPublicKey,
-        referrer
-      );
-      transaction.add(registerInstruction);
+      console.log(`User ${userWalletAddress} is not registered with the staking program, adding manual registration instruction`);
+      try {
+        // Create manual registration instruction
+        // Find the user info PDA
+        const [userInfoPDA] = referralStaking.findUserInfoPDA(userPublicKey);
+        console.log(`User Info PDA for registration: ${userInfoPDA.toString()}`);
+        
+        // Create a hardcoded instruction data buffer directly
+        // Format: [discriminator(8 bytes)][has_referrer(1 byte)][referrer_pubkey(optional 32 bytes)]
+        let instructionData: Buffer;
+        
+        // The discriminator bytes for 'registerUser' instruction
+        const registerUserDiscriminator = Buffer.from([
+          204, 126, 85, 7, 158, 17, 197, 211
+        ]);
+        
+        // If referrer is provided, include it in the instruction data
+        if (referrer) {
+          console.log(`Creating registration with referrer: ${referrer.toString()}`);
+          // 1 byte for 'has referrer' flag (1 = true)
+          const hasReferrerByte = Buffer.from([1]);
+          // 32 bytes for the referrer public key
+          const referrerBytes = referrer.toBuffer();
+          // Combine all parts
+          instructionData = Buffer.concat([registerUserDiscriminator, hasReferrerByte, referrerBytes]);
+        } else {
+          console.log(`Creating registration without referrer`);
+          // 1 byte for 'has referrer' flag (0 = false)
+          const hasReferrerByte = Buffer.from([0]);
+          // Combine the parts (no referrer pubkey included)
+          instructionData = Buffer.concat([registerUserDiscriminator, hasReferrerByte]);
+        }
+        
+        // Create the manual instruction
+        const registerInstruction = new TransactionInstruction({
+          keys: [
+            { pubkey: userPublicKey, isSigner: true, isWritable: true },           // owner
+            { pubkey: userInfoPDA, isSigner: false, isWritable: true },            // userInfo
+            { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // SystemProgram.programId
+            { pubkey: new PublicKey('SysvarRent111111111111111111111111111111111'), isSigner: false, isWritable: false }, // SYSVAR_RENT_PUBKEY
+          ],
+          programId: referralStaking.PROGRAM_ID,
+          data: instructionData,
+        });
+        
+        console.log(`Manual registration instruction created successfully`);
+        transaction.add(registerInstruction);
+      } catch (error) {
+        throw new Error(`Failed to create registration instruction: ${error instanceof Error ? error.message : String(error)}`);
+      }
     } else {
       console.log(`User ${userWalletAddress} is already registered with the staking program`);
     }
     
-    // 6. Add staking instruction
-    console.log(`Adding staking instruction for ${amount} tokens`);
-    const stakeInstruction = referralStaking.createStakingInstruction(
-      userPublicKey,
-      adjustedAmount,
-      userTokenAccount
-    );
-    
-    transaction.add(stakeInstruction);
+    // 6. Add manual staking instruction
+    console.log(`Creating manual staking instruction for ${amount} tokens`);
+    try {
+      // Get necessary PDAs
+      const [globalStatePDA] = referralStaking.findGlobalStatePDA();
+      const [userInfoPDA] = referralStaking.findUserInfoPDA(userPublicKey);
+      
+      console.log(`
+      Manual staking instruction accounts:
+      - Global state PDA: ${globalStatePDA.toString()}
+      - User info PDA: ${userInfoPDA.toString()}
+      - User token account: ${userTokenAccount.toString()}
+      - Vault token account: ${referralStaking.VAULT_TOKEN_ACCOUNT.toString()}
+      `);
+      
+      // Create a hardcoded instruction data buffer directly
+      // Format: [discriminator(8 bytes)][amount(8 bytes)]
+      
+      // The discriminator bytes for 'stake' instruction
+      const stakeDiscriminator = Buffer.from([
+        111, 18, 107, 137, 251, 29, 19, 105
+      ]);
+      
+      // Convert the bigint amount to an 8-byte buffer (little-endian)
+      const amountBuffer = Buffer.alloc(8);
+      // Handle BigInt conversion to buffer without BN
+      const amountBigInt = BigInt(adjustedAmount.toString());
+      // Write the amount as a little-endian 64-bit value
+      for (let i = 0; i < 8; i++) {
+        amountBuffer[i] = Number((amountBigInt >> BigInt(i * 8)) & BigInt(0xff));
+      }
+      
+      // Combine instruction data parts
+      const instructionData = Buffer.concat([stakeDiscriminator, amountBuffer]);
+      
+      // Create the manual staking instruction
+      const stakeInstruction = new TransactionInstruction({
+        keys: [
+          { pubkey: userPublicKey, isSigner: true, isWritable: true },           // owner
+          { pubkey: globalStatePDA, isSigner: false, isWritable: true },         // globalState
+          { pubkey: userInfoPDA, isSigner: false, isWritable: true },            // userInfo
+          { pubkey: userTokenAccount, isSigner: false, isWritable: true },       // userTokenAccount
+          { pubkey: referralStaking.VAULT_TOKEN_ACCOUNT, isSigner: false, isWritable: true }, // vault token account
+          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },      // tokenProgram
+          { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false } // systemProgram
+        ],
+        programId: referralStaking.PROGRAM_ID,
+        data: instructionData,
+      });
+      
+      console.log(`Manual staking instruction created successfully`);
+      transaction.add(stakeInstruction);
+    } catch (error) {
+      throw new Error(`Failed to create staking instruction: ${error instanceof Error ? error.message : String(error)}`);
+    }
     
     // 7. Get the latest blockhash
     const { blockhash } = await connection.getLatestBlockhash();
