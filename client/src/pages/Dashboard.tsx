@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import StakingDashboard from "@/components/StakingDashboard";
 import ReferralSystem from "@/components/ReferralSystem";
+import { OnChainStakingVerifier } from "@/components/OnChainStakingVerifier";
 import { Button } from "@/components/ui/button";
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
@@ -42,7 +43,20 @@ export default function Dashboard() {
         </div>
         
         <TabsContent value="staking" className="mt-0">
-          <StakingDashboard />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="col-span-1 md:col-span-2">
+              <StakingDashboard />
+            </div>
+            
+            {/* Add on-chain verification tool */}
+            <div className="col-span-1 md:col-span-2 mt-6">
+              <h2 className="text-2xl font-bold mb-4">On-Chain Verification Tool</h2>
+              <p className="text-neutral-600 dark:text-neutral-400 mb-4">
+                Having trouble with Railway data? Use this direct blockchain verification tool to check your staking status.
+              </p>
+              <OnChainStakingVerifier />
+            </div>
+          </div>
         </TabsContent>
         
         <TabsContent value="referrals" className="mt-0">

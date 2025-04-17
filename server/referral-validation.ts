@@ -47,7 +47,7 @@ export async function validateReferralCode(req: Request, res: Response) {
             message: "Valid referral code verified on blockchain" 
           });
         }
-      } catch (e1) {
+      } catch (e1: any) {
         console.log(`Original key format failed: ${e1.message || 'Unknown error'}`);
         
         // Second attempt - try with normalized case (lowercase)
@@ -66,7 +66,7 @@ export async function validateReferralCode(req: Request, res: Response) {
               message: "Valid referral code verified on blockchain" 
             });
           }
-        } catch (e2) {
+        } catch (e2: any) {
           console.log(`Lowercase key format failed: ${e2.message || 'Unknown error'}`);
           
           // Third attempt - try with uppercase
@@ -85,7 +85,7 @@ export async function validateReferralCode(req: Request, res: Response) {
                 message: "Valid referral code verified on blockchain" 
               });
             }
-          } catch (e3) {
+          } catch (e3: any) {
             console.log(`Uppercase key format failed: ${e3.message || 'Unknown error'}`);
             
             // Last attempt - try common character substitutions
