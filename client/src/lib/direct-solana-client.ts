@@ -69,7 +69,7 @@ export const getUserStakingPDA = async (
   
   const [stakingAccountPDA] = await PublicKey.findProgramAddress(
     [
-      Buffer.from('staking_account'),
+      new TextEncoder().encode('staking_account'),
       walletPubkey.toBuffer()
     ],
     programId
