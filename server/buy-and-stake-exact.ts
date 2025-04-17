@@ -2,14 +2,36 @@
  * Buy And Stake - Exact Implementation for the Staking Vault Contract
  * 
  * This creates a transaction that buys and stakes tokens in one step
- * using the exact account structure required by the staking vault contract
+ * using the exact account structure required by the staking vault contract,
+ * with the correct PDA seed ("user_info").
  */
+
 import { Request, Response } from 'express';
-import { Connection, PublicKey, Transaction } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createMintToInstruction, createAssociatedTokenAccountInstruction, getAccount, TokenAccountNotFoundError } from '@solana/spl-token';
-import { getConnection, getMintAuthority } from './simple-token';
-import * as stakingVault from './staking-vault-exact';
-import * as contractFunctions from './staking-contract-functions';
+import {
+  PublicKey,
+  Transaction,
+  Connection,
+  clusterApiUrl,
+  SystemProgram,
+  LAMPORTS_PER_SOL
+} from '@solana/web3.js';
+import {
+  TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountInstruction,
+  getAssociatedTokenAddress
+} from '@solana/spl-token';
+import {
+  findUserStakingPDA,
+  findVaultPDA,
+  findVaultAuthorityPDA,
+  findAssociatedTokenAccount,
+  createRegisterUserInstruction,
+  createStakeInstruction,
+  TOKEN_MINT
+} from './staking-contract-functions';
+
+// Import token buy utilities
+import { getMintAuthority, getTokenMint } from './token-utils';
 
 /**
  * Handler for the buy-and-stake endpoint
@@ -18,46 +40,56 @@ import * as contractFunctions from './staking-contract-functions';
  */
 export async function handleBuyAndStake(req: Request, res: Response) {
   try {
-    const { walletAddress, amount } = req.body;
+    const { walletAddress, amount, referrer } = req.body;
+
+    if (!walletAddress) {
+      return res.status(400).json({ error: "Wallet address is required" });
+    }
+
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return res.status(400).json({ error: "Valid amount is required" });
+    }
+
+    console.log(`Creating buy-and-stake transaction for wallet: ${walletAddress}, amount: ${amount} SOL`);
     
-    if (!walletAddress || !amount) {
-      return res.status(400).json({ error: "Wallet address and amount are required" });
+    // Parse the amount as a number
+    const parsedAmount = parseFloat(amount);
+    
+    // Convert wallet address to PublicKey
+    const userPublicKey = new PublicKey(walletAddress);
+    
+    // Convert referrer to PublicKey if provided
+    let referrerPublicKey: PublicKey | undefined;
+    if (referrer) {
+      try {
+        referrerPublicKey = new PublicKey(referrer);
+        console.log(`Using referrer: ${referrer}`);
+      } catch (error) {
+        console.warn(`Invalid referrer public key: ${referrer}. Proceeding without referrer.`);
+      }
     }
     
-    // Parse token amount
-    const parsedAmount = parseInt(amount, 10);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      return res.status(400).json({ error: "Invalid token amount" });
-    }
+    // Create the transaction
+    const transaction = await createCombinedBuyAndStakeTransaction(
+      userPublicKey,
+      parsedAmount,
+      referrerPublicKey
+    );
     
-    console.log(`Processing combined buy and stake request for wallet: ${walletAddress}, amount: ${parsedAmount}`);
+    console.log('Buy-and-stake transaction created successfully');
     
-    try {
-      // Create the combined transaction
-      const serializedTransaction = await createCombinedBuyAndStakeTransaction(
-        walletAddress,
-        parsedAmount
-      );
-      
-      // Return the transaction to be signed by the user
-      return res.json({
-        success: true,
-        message: `Transaction created to buy and stake ${parsedAmount} HATM tokens.`,
-        transaction: serializedTransaction,
-        amount: parsedAmount,
-        isStaking: true
-      });
-    } catch (error) {
-      console.error("Error in buy and stake process:", error);
-      return res.status(500).json({
-        error: "Failed to create buy and stake transaction",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
+    // Serialize and return the transaction
+    const serializedTransaction = Buffer.from(transaction.serialize()).toString('base64');
+    
+    return res.json({
+      success: true,
+      message: "Buy-and-stake transaction created",
+      transaction: serializedTransaction
+    });
   } catch (error) {
-    console.error("Error processing buy and stake request:", error);
+    console.error('Error creating buy-and-stake transaction:', error);
     return res.status(500).json({
-      error: "Failed to process buy and stake request",
+      error: "Failed to create buy-and-stake transaction",
       details: error instanceof Error ? error.message : String(error)
     });
   }
@@ -69,108 +101,90 @@ export async function handleBuyAndStake(req: Request, res: Response) {
  * 
  * @param userWalletAddress The user's wallet address
  * @param amount The amount of tokens to buy and stake
+ * @param referrer Optional referral public key
  * @returns The serialized transaction as base64 string
  */
 export async function createCombinedBuyAndStakeTransaction(
-  userWalletAddress: string,
-  amount: number
-): Promise<string> {
+  userWalletAddress: PublicKey,
+  solAmount: number,
+  referrer?: PublicKey
+): Promise<Transaction> {
+  // Get a connection to the Solana cluster
+  const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+  
+  // Get token mint and authority for the purchase part
+  const mintAuthority = getMintAuthority();
+  const mintPubkey = getTokenMint();
+  
+  // Calculate token amount based on conversion rate (1 SOL = 1000 tokens)
+  const tokenAmount = solAmount * 1000;
+  
+  // Get the token account addresses
+  const userTokenAccount = await getAssociatedTokenAddress(
+    mintPubkey,
+    userWalletAddress,
+    false,
+    TOKEN_PROGRAM_ID
+  );
+  
+  // Get the recent blockhash
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+  
+  // Create a new transaction
+  const transaction = new Transaction({
+    feePayer: userWalletAddress,
+    blockhash,
+    lastValidBlockHeight
+  });
+  
+  // Check if user token account exists
   try {
-    console.log(`Creating combined buy and stake transaction for ${userWalletAddress}, amount: ${amount}`);
-    
-    const connection = getConnection();
-    const { mintPublicKey, keypair: mintAuthority } = getMintAuthority();
-    const userPublicKey = new PublicKey(userWalletAddress);
-    
-    // Create transaction object
-    let transaction = new Transaction();
-    
-    // 1. Get user's token account
-    const userTokenAccount = await getAssociatedTokenAddress(
-      mintPublicKey,
-      userPublicKey,
-      false,
-      TOKEN_PROGRAM_ID
-    );
-    
-    // 2. Check if user's token account exists, create if needed
-    try {
-      await getAccount(connection, userTokenAccount);
-      console.log("User token account exists");
-    } catch (error) {
-      if (error instanceof TokenAccountNotFoundError) {
-        console.log("User token account doesn't exist, will create it");
-        
-        // Create the associated token account for the user
-        const createAtaInstruction = createAssociatedTokenAccountInstruction(
-          userPublicKey,           // payer
-          userTokenAccount,        // associated token account to create
-          userPublicKey,           // owner of the token account
-          mintPublicKey,           // token mint
-          TOKEN_PROGRAM_ID
-        );
-        
-        transaction.add(createAtaInstruction);
-      } else {
-        throw error;
-      }
+    const tokenAccount = await connection.getAccountInfo(userTokenAccount);
+    if (!tokenAccount) {
+      // If the token account doesn't exist, create it
+      const createTokenAccountIx = createAssociatedTokenAccountInstruction(
+        userWalletAddress,  // Payer
+        userTokenAccount,   // Associated token account address
+        userWalletAddress,  // Owner
+        mintPubkey,         // Mint
+        TOKEN_PROGRAM_ID
+      );
+      transaction.add(createTokenAccountIx);
     }
-    
-    // 3. Calculate token amount with decimals
-    const decimals = 9;
-    const adjustedAmount = BigInt(amount * Math.pow(10, decimals));
-    
-    // 4. Add mint instruction to send tokens to user
-    const mintInstruction = createMintToInstruction(
-      mintPublicKey,
-      userTokenAccount,
-      mintAuthority.publicKey,
-      adjustedAmount,
-      [],
-      TOKEN_PROGRAM_ID
-    );
-    
-    transaction.add(mintInstruction);
-
-    // 5. Check if the user is already registered with the staking program
-    const isRegistered = await stakingVault.isUserRegistered(userPublicKey);
-    
-    // If not registered, add the register user instruction first
-    if (!isRegistered) {
-      console.log(`User ${userWalletAddress} is not registered. Adding registration instruction.`);
-      const registerInstruction = contractFunctions.createRegisterUserInstruction(userPublicKey);
-      transaction.add(registerInstruction);
-    } else {
-      console.log(`User ${userWalletAddress} is already registered.`);
-    }
-    
-    // 6. Add staking instruction using the proper staking vault program with exact account layout
-    console.log(`Creating staking instruction for ${amount} tokens using exact smart contract layout`);
-    const stakeInstruction = await contractFunctions.createStakingInstruction(
-      userPublicKey,
-      Number(amount) // Convert to number for the contract function
-    );
-    
-    transaction.add(stakeInstruction);
-    
-    // 7. Get the latest blockhash
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = userPublicKey;
-    
-    // 8. Partially sign with mint authority (for the mint instruction)
-    transaction.partialSign(mintAuthority);
-    
-    // 9. Serialize the transaction
-    const serializedTransaction = transaction.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false
-    }).toString('base64');
-    
-    console.log(`Combined buy and stake transaction created for ${amount} tokens`);
-    return serializedTransaction;
   } catch (error) {
-    console.error("Error creating combined buy and stake transaction:", error);
-    throw error;
+    console.log("Error checking token account, adding creation instruction:", error);
+    // If there's an error, assume we need to create the token account
+    const createTokenAccountIx = createAssociatedTokenAccountInstruction(
+      userWalletAddress,  // Payer
+      userTokenAccount,   // Associated token account address
+      userWalletAddress,  // Owner
+      mintPubkey,         // Mint
+      TOKEN_PROGRAM_ID
+    );
+    transaction.add(createTokenAccountIx);
   }
+  
+  // Add payment instruction (SOL transfer to mint authority)
+  const transferSolIx = SystemProgram.transfer({
+    fromPubkey: userWalletAddress,
+    toPubkey: mintAuthority.publicKey,
+    lamports: solAmount * LAMPORTS_PER_SOL
+  });
+  transaction.add(transferSolIx);
+  
+  // Check if the user is already registered with the staking vault
+  const [userStakingAccount, _userBump] = findUserStakingPDA(userWalletAddress);
+  const userStakingAccountInfo = await connection.getAccountInfo(userStakingAccount);
+  
+  // If the user isn't registered, add a registration instruction
+  if (!userStakingAccountInfo) {
+    const registerInstruction = await createRegisterUserInstruction(userWalletAddress, referrer);
+    transaction.add(registerInstruction);
+  }
+  
+  // Add the staking instruction
+  const stakeInstruction = await createStakeInstruction(userWalletAddress, tokenAmount, referrer);
+  transaction.add(stakeInstruction);
+  
+  return transaction;
 }

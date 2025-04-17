@@ -2,39 +2,22 @@
  * On-Chain Synchronization Module
  * 
  * This module provides utilities to synchronize on-chain staking data
- * with our Railway database/API
+ * with our Railway database/API.
+ * 
+ * It uses the correct PDA seed ("user_info") to query staking information.
  */
-import { Connection, PublicKey } from '@solana/web3.js';
-import * as stakingVault from './staking-vault-exact';
-import * as contractFunctions from './staking-contract-functions';
+
+import {
+  Connection,
+  PublicKey,
+  clusterApiUrl
+} from '@solana/web3.js';
 import fs from 'fs';
 import path from 'path';
+import { getStakingInfo, isUserRegistered } from './staking-contract-functions';
 
-// Directory for Railway data
-const DATA_DIR = path.join(process.cwd(), 'railway');
-const STAKING_DATA_FILE = path.join(DATA_DIR, 'staking.json');
-
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-// Initialize staking data file if it doesn't exist
-if (!fs.existsSync(STAKING_DATA_FILE)) {
-  fs.writeFileSync(STAKING_DATA_FILE, JSON.stringify({
-    stakingData: {},
-    globalStats: {
-      totalStaked: 0,
-      stakersCount: 0,
-      currentAPY: 12,
-      lastUpdated: new Date().toISOString(),
-      totalReferrals: 0,
-      unlock_duration: 604800, // 7 days in seconds
-      early_unstake_penalty: 1000, // 10% as basis points
-      referral_reward_rate: 300 // 3% as basis points
-    }
-  }, null, 2));
-}
+// Path to data storage
+const RAILWAY_DATA_PATH = path.join(process.cwd(), 'railway', 'data.json');
 
 /**
  * Synchronize on-chain staking data for a wallet
@@ -43,79 +26,122 @@ if (!fs.existsSync(STAKING_DATA_FILE)) {
  * @returns The updated staking data
  */
 export async function syncOnChainStakingData(walletAddress: string): Promise<any> {
+  console.log(`Synchronizing on-chain staking data for wallet: ${walletAddress}`);
+  
   try {
-    console.log(`Synchronizing on-chain staking data for wallet: ${walletAddress}`);
+    // Get the connection
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
     
-    // Get staking data directly from the blockchain
-    const userPublicKey = new PublicKey(walletAddress);
-    const onChainData = await contractFunctions.getOnChainStakingInfo(userPublicKey);
-    console.log(`On-chain staking data:`, onChainData);
-    
-    // Add special log messages for Railway log parser to detect
-    if (onChainData.isRegistered && onChainData.amountStaked > 0) {
-      console.log(`Program log: Instruction: stake`);
-      console.log(`Program log: Staking amount: ${onChainData.amountStaked}`);
-      console.log(`Program log: owner: ${walletAddress}`);
-      console.log(`Program log: Staking operation completed successfully`);
-      
-      // Log successful staking for Railway detection
-      console.log(`STAKING_EVENT: User ${walletAddress} staked ${onChainData.amountStaked / Math.pow(10, 9)} tokens at ${new Date().toISOString()}`);
-    }
-    
-    // Load Railway staking data
+    // Load data from Railway
     const railwayData = loadRailwayData();
     
-    // If wallet not in staking data, initialize it
-    if (!railwayData.stakingData[walletAddress]) {
-      railwayData.stakingData[walletAddress] = {
+    // Get wallet's staking data from Railway
+    const stakingData = railwayData.wallets[walletAddress] || {
+      amountStaked: 0,
+      pendingRewards: 0,
+      lastUpdateTime: new Date().toISOString(),
+      stakedAt: null,
+      eventCount: 0,
+      referrer: null,
+      timeUntilUnlock: null,
+      isLocked: false,
+      estimatedAPY: 12
+    };
+    
+    // Get token balance from Railway
+    const tokenData = railwayData.tokenBalances[walletAddress] || {
+      walletAddress: walletAddress,
+      balance: 0
+    };
+    
+    // Get on-chain staking data
+    const walletPublicKey = new PublicKey(walletAddress);
+    
+    // Check if user is registered on-chain
+    const isRegistered = await isUserRegistered(walletPublicKey);
+    
+    let onChainData;
+    if (isRegistered) {
+      // User is registered, fetch their staking data
+      onChainData = await getStakingInfo(walletPublicKey);
+    } else {
+      // User is not registered, use default values
+      onChainData = {
+        isRegistered: false,
         amountStaked: 0,
         pendingRewards: 0,
-        lastUpdateTime: new Date().toISOString(),
-        stakedAt: null,
-        eventCount: 0,
-        timeUntilUnlock: null,
-        isLocked: false,
-        estimatedAPY: railwayData.globalStats.currentAPY
+        lastStakeTime: null,
+        lastClaimTime: null,
+        referrer: null
       };
     }
     
-    // If the user is registered and has staked tokens on-chain
-    if (onChainData.isRegistered && onChainData.amountStaked) {
-      const amountStaked = onChainData.amountStaked / 1000000000; // Convert from lamports
-      console.log(`On-chain staked amount: ${amountStaked}`);
-      
-      // Update the staking data
-      railwayData.stakingData[walletAddress].amountStaked = amountStaked;
-      railwayData.stakingData[walletAddress].stakedAt = onChainData.lastStakeTime 
-        ? new Date(onChainData.lastStakeTime).toISOString() 
-        : new Date().toISOString();
-      railwayData.stakingData[walletAddress].lastUpdateTime = new Date().toISOString();
-      railwayData.stakingData[walletAddress].isLocked = true;
-      
-      // Set time until unlock (7 days from stake time)
-      const stakedDate = new Date(railwayData.stakingData[walletAddress].stakedAt);
-      const unlockDate = new Date(stakedDate.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days in ms
-      const now = new Date();
-      
-      if (unlockDate > now) {
-        const timeUntilUnlock = Math.floor((unlockDate.getTime() - now.getTime()) / 1000); // in seconds
-        railwayData.stakingData[walletAddress].timeUntilUnlock = timeUntilUnlock;
-      } else {
-        railwayData.stakingData[walletAddress].timeUntilUnlock = 0;
-        railwayData.stakingData[walletAddress].isLocked = false;
-      }
-      
-      // Update global stats
-      updateGlobalStats(railwayData);
-    }
+    console.log('On-chain staking data:', onChainData);
     
-    // Save the updated data
+    // Create the merged object with both on-chain and Railway data
+    // We prefer the on-chain data for staking amount and rewards
+    // but keep the Railway timeouts and other metadata
+    const mergedData = {
+      amountStaked: onChainData.amountStaked,
+      pendingRewards: onChainData.pendingRewards,
+      stakedAt: new Date(),
+      lastClaimAt: stakingData.lastUpdateTime ? new Date(stakingData.lastUpdateTime) : new Date(),
+      lastCompoundAt: stakingData.lastUpdateTime ? new Date(stakingData.lastUpdateTime) : new Date(),
+      timeUntilUnlock: stakingData.timeUntilUnlock || null,
+      estimatedAPY: railwayData.globalStats.currentAPY || 12,
+      isLocked: stakingData.isLocked || false,
+      referrer: onChainData.referrer || stakingData.referrer || null,
+      walletTokenBalance: tokenData.balance,
+      stakingVaultAddress: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8',
+      dataSource: 'blockchain',
+      onChainVerified: true,
+      isRegistered: isRegistered
+    };
+    
+    console.log(`On-chain data synchronized for ${walletAddress}:`, mergedData);
+    
+    // Update the Railway data
+    railwayData.wallets[walletAddress] = {
+      amountStaked: onChainData.amountStaked,
+      pendingRewards: onChainData.pendingRewards,
+      lastUpdateTime: new Date().toISOString(),
+      stakedAt: mergedData.stakedAt.toISOString(),
+      eventCount: (stakingData.eventCount || 0) + 1,
+      referrer: onChainData.referrer || stakingData.referrer || null,
+      timeUntilUnlock: stakingData.timeUntilUnlock || null,
+      isLocked: stakingData.isLocked || false,
+      estimatedAPY: railwayData.globalStats.currentAPY || 12,
+      isRegistered: isRegistered
+    };
+    
+    // Update the global stats
+    updateGlobalStats(railwayData);
+    
+    // Save the data
     saveRailwayData(railwayData);
     
-    return railwayData.stakingData[walletAddress];
+    return mergedData;
   } catch (error) {
-    console.error(`Error synchronizing on-chain staking data: ${error instanceof Error ? error.message : String(error)}`);
-    throw error;
+    console.error(`Error synchronizing on-chain data for ${walletAddress}:`, error);
+    
+    // Return a default response on error so the application can continue
+    return {
+      amountStaked: 0,
+      pendingRewards: 0,
+      stakedAt: new Date(),
+      lastClaimAt: new Date(),
+      lastCompoundAt: new Date(),
+      timeUntilUnlock: null,
+      estimatedAPY: 12,
+      isLocked: false,
+      referrer: null,
+      walletTokenBalance: 0,
+      stakingVaultAddress: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8',
+      dataSource: 'error',
+      onChainVerified: false,
+      isRegistered: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
   }
 }
 
@@ -124,23 +150,26 @@ export async function syncOnChainStakingData(walletAddress: string): Promise<any
  */
 export async function syncAllStakingData(): Promise<void> {
   try {
-    console.log('Synchronizing on-chain staking data for all wallets');
-    
-    // Load Railway staking data
+    // Load Railway data
     const railwayData = loadRailwayData();
     
     // Get all wallet addresses
-    const walletAddresses = Object.keys(railwayData.stakingData);
-    console.log(`Found ${walletAddresses.length} wallets to synchronize`);
+    const walletAddresses = Object.keys(railwayData.wallets);
     
-    // Synchronize each wallet
+    console.log(`Synchronizing on-chain data for ${walletAddresses.length} wallets`);
+    
+    // Process each wallet
     for (const walletAddress of walletAddresses) {
-      await syncOnChainStakingData(walletAddress);
+      try {
+        await syncOnChainStakingData(walletAddress);
+      } catch (error) {
+        console.error(`Error synchronizing wallet ${walletAddress}:`, error);
+      }
     }
     
-    console.log('All wallet staking data synchronized');
+    console.log('On-chain synchronization completed');
   } catch (error) {
-    console.error(`Error synchronizing all staking data: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('Error in syncAllStakingData:', error);
   }
 }
 
@@ -150,28 +179,23 @@ export async function syncAllStakingData(): Promise<void> {
  * @param railwayData The Railway data object
  */
 function updateGlobalStats(railwayData: any): void {
-  try {
-    // Calculate total staked
-    let totalStaked = 0;
-    let stakersCount = 0;
+  // Calculate total staked amount
+  let totalStaked = 0;
+  let stakersCount = 0;
+  
+  for (const walletAddress in railwayData.wallets) {
+    const wallet = railwayData.wallets[walletAddress];
     
-    for (const walletAddress in railwayData.stakingData) {
-      const walletData = railwayData.stakingData[walletAddress];
-      if (walletData.amountStaked > 0) {
-        totalStaked += walletData.amountStaked;
-        stakersCount++;
-      }
+    if (wallet.amountStaked > 0) {
+      totalStaked += wallet.amountStaked;
+      stakersCount++;
     }
-    
-    // Update global stats
-    railwayData.globalStats.totalStaked = totalStaked;
-    railwayData.globalStats.stakersCount = stakersCount;
-    railwayData.globalStats.lastUpdated = new Date().toISOString();
-    
-    console.log(`Updated global stats: Total staked: ${totalStaked}, Stakers: ${stakersCount}`);
-  } catch (error) {
-    console.error(`Error updating global stats: ${error instanceof Error ? error.message : String(error)}`);
   }
+  
+  // Update the global stats
+  railwayData.globalStats.totalStaked = totalStaked;
+  railwayData.globalStats.stakersCount = stakersCount;
+  railwayData.globalStats.lastUpdated = new Date().toISOString();
 }
 
 /**
@@ -181,26 +205,40 @@ function updateGlobalStats(railwayData: any): void {
  */
 function loadRailwayData(): any {
   try {
-    const data = fs.readFileSync(STAKING_DATA_FILE, 'utf8');
-    return JSON.parse(data);
+    if (fs.existsSync(RAILWAY_DATA_PATH)) {
+      const data = fs.readFileSync(RAILWAY_DATA_PATH, 'utf8');
+      return JSON.parse(data);
+    }
   } catch (error) {
-    console.error(`Error loading Railway data: ${error instanceof Error ? error.message : String(error)}`);
-    
-    // Return default data if file couldn't be loaded
-    return {
-      stakingData: {},
-      globalStats: {
-        totalStaked: 0,
-        stakersCount: 0,
-        currentAPY: 12,
-        lastUpdated: new Date().toISOString(),
-        totalReferrals: 0,
-        unlock_duration: 604800,
-        early_unstake_penalty: 1000,
-        referral_reward_rate: 300
-      }
-    };
+    console.error('Error loading Railway data:', error);
   }
+  
+  // Return a default structure if the file doesn't exist or there's an error
+  return {
+    wallets: {},
+    tokenBalances: {},
+    referrals: {},
+    globalStats: {
+      totalStaked: 0,
+      stakersCount: 0,
+      currentAPY: 12,
+      lastUpdated: new Date().toISOString(),
+      totalReferrals: 0,
+      unlock_duration: 7 * 24 * 60 * 60, // 7 days in seconds
+      early_unstake_penalty: 1000, // 10.00% penalty (multiplied by 100)
+      referral_reward_rate: 300 // 3.00% reward rate (multiplied by 100)
+    },
+    leaderboards: {
+      stakers: {
+        weekly: [],
+        monthly: []
+      },
+      referrers: {
+        weekly: [],
+        monthly: []
+      }
+    }
+  };
 }
 
 /**
@@ -210,11 +248,14 @@ function loadRailwayData(): any {
  */
 function saveRailwayData(data: any): void {
   try {
-    fs.writeFileSync(STAKING_DATA_FILE, JSON.stringify(data, null, 2));
+    // Create directory if it doesn't exist
+    const dir = path.dirname(RAILWAY_DATA_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    fs.writeFileSync(RAILWAY_DATA_PATH, JSON.stringify(data, null, 2));
   } catch (error) {
-    console.error(`Error saving Railway data: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('Error saving Railway data:', error);
   }
 }
-
-// Export utility functions
-export { loadRailwayData, saveRailwayData, updateGlobalStats };

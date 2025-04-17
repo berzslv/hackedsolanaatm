@@ -1,14 +1,24 @@
 /**
- * Direct Staking Implementation - Exact Match for Smart Contract
+ * Direct Staking Implementation - Exact
  * 
- * This module provides direct staking functionality using the exact 
- * account structure required by the staking vault contract
+ * This module provides direct staking functionality using the correct staking vault contract
+ * and PDA seed ("user_info" instead of "user-stake-info").
  */
+
 import { Request, Response } from 'express';
-import { Connection, PublicKey, Transaction } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getAccount, TokenAccountNotFoundError, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
-import * as stakingVault from './staking-vault-exact';
-import * as contractFunctions from './staking-contract-functions';
+import {
+  PublicKey,
+  Transaction,
+  Connection,
+  clusterApiUrl
+} from '@solana/web3.js';
+import {
+  findUserStakingPDA,
+  findVaultPDA,
+  findVaultAuthorityPDA,
+  findAssociatedTokenAccount,
+  createStakeInstruction
+} from './staking-contract-functions';
 
 /**
  * Handle direct staking functionality
@@ -16,46 +26,56 @@ import * as contractFunctions from './staking-contract-functions';
  */
 export async function handleDirectStake(req: Request, res: Response) {
   try {
-    const { walletAddress, amount } = req.body;
+    const { walletAddress, amount, referrer } = req.body;
+
+    if (!walletAddress) {
+      return res.status(400).json({ error: "Wallet address is required" });
+    }
+
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return res.status(400).json({ error: "Valid amount is required" });
+    }
+
+    console.log(`Creating staking transaction for wallet: ${walletAddress}, amount: ${amount}`);
     
-    if (!walletAddress || !amount) {
-      return res.status(400).json({ error: "Wallet address and amount are required" });
+    // Parse the amount as a number
+    const parsedAmount = parseFloat(amount);
+    
+    // Convert wallet address to PublicKey
+    const userPublicKey = new PublicKey(walletAddress);
+    
+    // Convert referrer to PublicKey if provided
+    let referrerPublicKey: PublicKey | undefined;
+    if (referrer) {
+      try {
+        referrerPublicKey = new PublicKey(referrer);
+        console.log(`Using referrer: ${referrer}`);
+      } catch (error) {
+        console.warn(`Invalid referrer public key: ${referrer}. Proceeding without referrer.`);
+      }
     }
     
-    // Parse token amount
-    const parsedAmount = parseInt(amount, 10);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      return res.status(400).json({ error: "Invalid token amount" });
-    }
+    // Create the transaction
+    const transaction = await createDirectStakingTransaction(
+      userPublicKey,
+      parsedAmount,
+      referrerPublicKey
+    );
     
-    console.log(`Processing direct stake request for wallet: ${walletAddress}, amount: ${parsedAmount}`);
+    console.log('Staking transaction created successfully');
     
-    try {
-      // Create the direct staking transaction
-      const serializedTransaction = await createDirectStakingTransaction(
-        walletAddress,
-        parsedAmount
-      );
-      
-      // Return the transaction to be signed by the user
-      return res.json({
-        success: true,
-        message: `Transaction created to stake ${parsedAmount} HATM tokens.`,
-        transaction: serializedTransaction,
-        amount: parsedAmount,
-        isStaking: true
-      });
-    } catch (error) {
-      console.error("Error in staking process:", error);
-      return res.status(500).json({
-        error: "Failed to create staking transaction",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
+    // Serialize and return the transaction
+    const serializedTransaction = Buffer.from(transaction.serialize()).toString('base64');
+    
+    return res.json({
+      success: true,
+      message: "Staking transaction created",
+      transaction: serializedTransaction
+    });
   } catch (error) {
-    console.error("Error processing stake request:", error);
+    console.error('Error creating staking transaction:', error);
     return res.status(500).json({
-      error: "Failed to process stake request",
+      error: "Failed to create staking transaction",
       details: error instanceof Error ? error.message : String(error)
     });
   }
@@ -63,119 +83,35 @@ export async function handleDirectStake(req: Request, res: Response) {
 
 /**
  * Create a direct staking transaction for the staking vault program
- * with the exact account structure required by the smart contract
  * 
- * @param userWalletAddress The user's wallet address
+ * @param userPublicKey The user's wallet address as a PublicKey
  * @param amount The amount of tokens to stake
- * @returns The serialized transaction as base64 string
+ * @param referrer Optional referrer's wallet address as a PublicKey
+ * @returns The transaction for the user to sign
  */
 export async function createDirectStakingTransaction(
-  userWalletAddress: string,
-  amount: number
-): Promise<string> {
-  try {
-    console.log(`Creating direct staking transaction for ${userWalletAddress}, amount: ${amount}`);
-    
-    const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com', 'confirmed');
-    const userPublicKey = new PublicKey(userWalletAddress);
-    
-    // Create transaction object
-    const transaction = new Transaction();
-    
-    // Get the token account for the user
-    const userTokenAccount = await getAssociatedTokenAddress(
-      stakingVault.TOKEN_MINT_ADDRESS,
-      userPublicKey,
-      false,
-      TOKEN_PROGRAM_ID
-    );
-    
-    // Check if user's token account exists, create if needed
-    try {
-      await getAccount(connection, userTokenAccount);
-      console.log("User token account exists");
-    } catch (error) {
-      if (error instanceof TokenAccountNotFoundError) {
-        console.log("User token account doesn't exist, will create it");
-        
-        // Create the associated token account for the user
-        const createAtaInstruction = createAssociatedTokenAccountInstruction(
-          userPublicKey,           // payer
-          userTokenAccount,        // associated token account to create
-          userPublicKey,           // owner of the token account
-          stakingVault.TOKEN_MINT_ADDRESS,  // token mint
-          TOKEN_PROGRAM_ID
-        );
-        
-        transaction.add(createAtaInstruction);
-      } else {
-        throw error;
-      }
-    }
-    
-    // Verify that the token account exists and has tokens
-    try {
-      const tokenAccount = await getAccount(connection, userTokenAccount);
-      console.log(`User token account exists with balance: ${tokenAccount.amount}`);
-      
-      // Check if user has enough tokens
-      const tokenAmount = BigInt(tokenAccount.amount.toString());
-      const adjustedAmount = BigInt(amount * Math.pow(10, 9)); // 9 decimals
-      
-      if (tokenAmount < adjustedAmount) {
-        throw new Error(`Insufficient token balance. Required: ${adjustedAmount}, Available: ${tokenAmount}`);
-      }
-    } catch (error) {
-      if (error instanceof TokenAccountNotFoundError) {
-        throw new Error(`Token account doesn't exist. Please ensure you have HATM tokens in your wallet.`);
-      }
-      throw error;
-    }
-    
-    // Calculate token amount with decimals
-    const decimals = 9;
-    const adjustedAmount: bigint = BigInt(amount * Math.pow(10, decimals));
-    
-    // First check if the user is already registered
-    const isRegistered = await stakingVault.isUserRegistered(userPublicKey);
-    
-    // If not registered, add the register user instruction first
-    if (!isRegistered) {
-      console.log(`User ${userWalletAddress} is not registered. Adding registration instruction.`);
-      const registerInstruction = contractFunctions.createRegisterUserInstruction(userPublicKey);
-      transaction.add(registerInstruction);
-    } else {
-      console.log(`User ${userWalletAddress} is already registered.`);
-    }
-    
-    // Create and add the stake instruction using the proper account structure from the smart contract
-    console.log(`Creating staking instruction for ${amount} tokens using exact smart contract layout`);
-    const stakeInstruction = await contractFunctions.createStakingInstruction(
-      userPublicKey,
-      Number(amount) // Convert bigint to number for the contract function
-    );
-    
-    transaction.add(stakeInstruction);
-    
-    // Get the latest blockhash
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
-    transaction.recentBlockhash = blockhash;
-    transaction.lastValidBlockHeight = lastValidBlockHeight;
-    transaction.feePayer = userPublicKey;
-    
-    // Add a small delay before serializing to ensure proper setup
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Serialize the transaction
-    const serializedTransaction = transaction.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false
-    }).toString('base64');
-    
-    console.log(`Direct staking transaction created for ${amount} tokens`);
-    return serializedTransaction;
-  } catch (error) {
-    console.error("Error creating staking transaction:", error);
-    throw error;
-  }
+  userPublicKey: PublicKey,
+  amount: number,
+  referrer?: PublicKey
+): Promise<Transaction> {
+  // Get a connection to the Solana cluster
+  const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+  
+  // Get the recent blockhash
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+  
+  // Create a new transaction with the blockhash
+  const transaction = new Transaction({
+    feePayer: userPublicKey,
+    blockhash,
+    lastValidBlockHeight
+  });
+  
+  // Create the staking instruction
+  const stakeInstruction = await createStakeInstruction(userPublicKey, amount, referrer);
+  
+  // Add the instruction to the transaction
+  transaction.add(stakeInstruction);
+  
+  return transaction;
 }
