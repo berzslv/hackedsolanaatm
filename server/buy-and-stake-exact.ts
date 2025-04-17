@@ -146,7 +146,7 @@ export async function createCombinedBuyAndStakeTransaction(
     
     // 6. Add staking instruction using the proper staking vault program with exact account layout
     console.log(`Creating staking instruction for ${amount} tokens using exact smart contract layout`);
-    const stakeInstruction = contractFunctions.createStakingInstruction(
+    const stakeInstruction = await contractFunctions.createStakingInstruction(
       userPublicKey,
       Number(amount) // Convert to number for the contract function
     );

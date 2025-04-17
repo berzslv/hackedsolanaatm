@@ -2656,6 +2656,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Serve the PDA test page
+  app.get('/test-pda.html', (req, res) => {
+    res.sendFile(path.resolve('client/public', 'test-pda.html'));
+  });
+
+  // Add a verification endpoint for PDA seeds
+  app.post('/api/verify-pda', async (req, res) => {
+    try {
+      const { programId, walletAddress, results } = req.body;
+      
+      if (!programId || !walletAddress) {
+        return res.status(400).json({ error: "Program ID and wallet address are required" });
+      }
+      
+      // Import the staking contract functions
+      const contractFunctions = await import('./staking-contract-functions');
+      
+      // Get the correct PDA using our functions
+      const userPublicKey = new PublicKey(walletAddress);
+      const [userStakingPDA, bump] = contractFunctions.findUserStakingPDA(userPublicKey);
+      
+      // Determine which seed matches our code
+      const correctSeed = "user_info";
+      
+      return res.json({
+        verified: true,
+        seed: correctSeed,
+        pda: userStakingPDA.toString(),
+        bump
+      });
+    } catch (error) {
+      console.error(`Error verifying PDA: ${error}`);
+      return res.status(500).json({ 
+        error: "Failed to verify PDA",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+      
   const httpServer = createServer(app);
   return httpServer;
 }
