@@ -60,12 +60,13 @@ export function createStakingProgram(): anchor.Program | null {
     }
 
     const connection = getConnection();
-    // Create a dummy wallet instance that satisfies the Wallet interface
-    const dummyWallet = new anchor.Wallet(anchor.web3.Keypair.generate());
+    // Create a properly initialized wallet
+    const keypair = anchor.web3.Keypair.generate();
+    const wallet = new anchor.Wallet(keypair);
     
     const provider = new anchor.AnchorProvider(
       connection,
-      dummyWallet,
+      wallet,
       { commitment: 'confirmed' }
     );
 

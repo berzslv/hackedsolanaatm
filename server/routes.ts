@@ -331,18 +331,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { PublicKey } = await import('@solana/web3.js');
         
         try {
-          // Try to create a PublicKey from the code
-          const pubkey = new PublicKey(code);
-          
-          // For Solana addresses, we're going to accept any valid pubkey
-          // This is a more permissive approach to allow for wallet addresses to be used as referral codes
-          console.log(`Valid Solana wallet address format: ${code}`);
-          
-          // Accept proper Solana wallet address as a valid referral code
-          return res.json({ 
-            valid: true, 
-            message: "Valid wallet address being used as referral code" 
-          });
+          // Try with normalized (lowercase) code first
+          try {
+            const normalizedCode = code.toLowerCase();
+            const pubkey = new PublicKey(normalizedCode);
+            
+            // For Solana addresses, we're going to accept any valid pubkey
+            console.log(`Valid Solana wallet address format (normalized): ${normalizedCode}`);
+            
+            // Accept proper Solana wallet address as a valid referral code
+            return res.json({ 
+              valid: true, 
+              message: "Valid wallet address being used as referral code" 
+            });
+          } catch (e) {
+            // Try with original case if lowercase fails
+            try {
+              const pubkey = new PublicKey(code);
+              console.log(`Valid Solana wallet address format (original case): ${code}`);
+              
+              return res.json({ 
+                valid: true, 
+                message: "Valid wallet address being used as referral code" 
+              });
+            } catch (e2) {
+              // Neither worked, so it's not a valid wallet address
+              throw new Error("Not a valid public key");
+            }
+          }
         } catch (addressErr) {
           // Not a valid wallet address, so check if it's a valid legacy code
           // For demonstration purposes we'll be more strict: only accept codes we know are valid
@@ -395,14 +411,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const { PublicKey } = await import('@solana/web3.js');
         try {
-          // Just checking if it's a valid Solana public key is enough
-          const pubkey = new PublicKey(code);
+          // Code might be uppercase or lowercase, so normalize it
+          const normalizedCode = code.toLowerCase();
+          // Try to create a PublicKey from the code
+          const pubkey = new PublicKey(normalizedCode);
           // If we reach here, it's a valid pubkey
           isValid = true;
-          console.log(`Valid wallet address used as referral code: ${code}`);
+          console.log(`Valid wallet address used as referral code: ${normalizedCode}`);
         } catch (e) {
-          // Not a valid wallet address, isValid is determined by the valid codes check
-          console.log(`Not a valid wallet address: ${code}`);
+          // Try again with the original case
+          try {
+            const pubkey = new PublicKey(code);
+            isValid = true;
+            console.log(`Valid wallet address used as referral code (original case): ${code}`);
+          } catch (e2) {
+            // Not a valid wallet address, isValid is determined by the valid codes check
+            console.log(`Not a valid wallet address: ${code}`);
+          }
         }
       } catch (e) {
         console.error("Error during PublicKey import:", e);

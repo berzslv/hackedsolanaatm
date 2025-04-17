@@ -59,12 +59,9 @@ export function createStakingProgram(): anchor.Program | null {
     }
 
     const connection = getConnection();
-    // Create a dummy wallet instance that satisfies the Wallet interface
-    const dummyWallet: anchor.Wallet = {
-      publicKey: PROGRAM_ID,
-      signTransaction: async (tx) => tx,
-      signAllTransactions: async (txs) => txs,
-    };
+    // Create a proper NodeWallet instance that satisfies the Wallet interface
+    const keypair = anchor.web3.Keypair.generate();
+    const dummyWallet = new anchor.Wallet(keypair);
     
     const provider = new anchor.AnchorProvider(
       connection,
