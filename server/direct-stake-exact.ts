@@ -150,7 +150,7 @@ export async function createDirectStakingTransaction(
     
     // Create and add the stake instruction using the proper account structure from the smart contract
     console.log(`Creating staking instruction for ${amount} tokens using exact smart contract layout`);
-    const stakeInstruction = contractFunctions.createStakingInstruction(
+    const stakeInstruction = await contractFunctions.createStakingInstruction(
       userPublicKey,
       Number(amount) // Convert bigint to number for the contract function
     );

@@ -86,15 +86,15 @@ export const createRegisterUserInstruction = (
  * @param amount The amount to stake (in normal units, not lamports)
  * @returns The created instruction
  */
-export const createStakingInstruction = (
+export const createStakingInstruction = async (
   userPublicKey: PublicKey,
   amount: number
-): TransactionInstruction => {
+): Promise<TransactionInstruction> => {
   // Find the user's staking PDA
   const [userStakingPDA] = findUserStakingPDA(userPublicKey);
   
   // Get the user's token account
-  const userTokenAccount = getAssociatedTokenAddress(
+  const userTokenAccount = await getAssociatedTokenAddress(
     TOKEN_MINT,
     userPublicKey,
     false,
@@ -176,7 +176,7 @@ export const createStakingTransaction = async (
   transaction.feePayer = userPublicKey;
   
   // Add the staking instruction
-  transaction.add(createStakingInstruction(userPublicKey, amount));
+  transaction.add(await createStakingInstruction(userPublicKey, amount));
   
   // Serialize the transaction
   return Buffer.from(transaction.serialize()).toString('base64');

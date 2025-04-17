@@ -9,6 +9,7 @@ import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createMintToInstruction, createAssociatedTokenAccountInstruction, getAccount, TokenAccountNotFoundError } from '@solana/spl-token';
 import { getConnection, getMintAuthority } from './simple-token';
 import * as stakingVault from './staking-vault-exact';
+import * as contractFunctions from './staking-contract-functions';
 
 /**
  * Handler for the buy-and-stake endpoint
@@ -137,7 +138,7 @@ export async function createCombinedBuyAndStakeTransaction(
     // If not registered, add the register user instruction first
     if (!isRegistered) {
       console.log(`User ${userWalletAddress} is not registered. Adding registration instruction.`);
-      const registerInstruction = stakingVault.createRegisterUserInstruction(userPublicKey);
+      const registerInstruction = contractFunctions.createRegisterUserInstruction(userPublicKey);
       transaction.add(registerInstruction);
     } else {
       console.log(`User ${userWalletAddress} is already registered.`);
@@ -145,10 +146,9 @@ export async function createCombinedBuyAndStakeTransaction(
     
     // 6. Add staking instruction using the proper staking vault program with exact account layout
     console.log(`Creating staking instruction for ${amount} tokens using exact smart contract layout`);
-    const stakeInstruction = stakingVault.createStakingInstruction(
+    const stakeInstruction = contractFunctions.createStakingInstruction(
       userPublicKey,
-      adjustedAmount,
-      userTokenAccount
+      Number(amount) // Convert to number for the contract function
     );
     
     transaction.add(stakeInstruction);

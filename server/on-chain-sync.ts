@@ -52,14 +52,14 @@ export async function syncOnChainStakingData(walletAddress: string): Promise<any
     console.log(`On-chain staking data:`, onChainData);
     
     // Add special log messages for Railway log parser to detect
-    if (onChainData.registered && Number(onChainData.amountStaked) > 0) {
+    if (onChainData.isRegistered && onChainData.amountStaked > 0) {
       console.log(`Program log: Instruction: stake`);
       console.log(`Program log: Staking amount: ${onChainData.amountStaked}`);
       console.log(`Program log: owner: ${walletAddress}`);
       console.log(`Program log: Staking operation completed successfully`);
       
       // Log successful staking for Railway detection
-      console.log(`STAKING_EVENT: User ${walletAddress} staked ${Number(onChainData.amountStaked) / Math.pow(10, 9)} tokens at ${new Date().toISOString()}`);
+      console.log(`STAKING_EVENT: User ${walletAddress} staked ${onChainData.amountStaked / Math.pow(10, 9)} tokens at ${new Date().toISOString()}`);
     }
     
     // Load Railway staking data
@@ -80,14 +80,14 @@ export async function syncOnChainStakingData(walletAddress: string): Promise<any
     }
     
     // If the user is registered and has staked tokens on-chain
-    if (onChainData.registered && onChainData.amountStaked) {
-      const amountStaked = parseInt(onChainData.amountStaked) / 1000000000; // Convert from lamports
+    if (onChainData.isRegistered && onChainData.amountStaked) {
+      const amountStaked = onChainData.amountStaked / 1000000000; // Convert from lamports
       console.log(`On-chain staked amount: ${amountStaked}`);
       
       // Update the staking data
       railwayData.stakingData[walletAddress].amountStaked = amountStaked;
-      railwayData.stakingData[walletAddress].stakedAt = onChainData.stakeStartTime 
-        ? new Date(onChainData.stakeStartTime).toISOString() 
+      railwayData.stakingData[walletAddress].stakedAt = onChainData.lastStakeTime 
+        ? new Date(onChainData.lastStakeTime).toISOString() 
         : new Date().toISOString();
       railwayData.stakingData[walletAddress].lastUpdateTime = new Date().toISOString();
       railwayData.stakingData[walletAddress].isLocked = true;
