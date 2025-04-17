@@ -1,18 +1,7 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EthStakingPanel } from '@/components/EthStakingPanel';
-
-// Assume we have a Solana staking panel component
-// Replace this with your actual Solana staking panel component
-const SolanaStakingPanel = () => (
-  <div className="p-6 text-center">
-    <h2 className="text-2xl font-bold mb-4">Solana Staking Panel</h2>
-    <p>This is where your existing Solana staking UI would be.</p>
-    <p className="text-gray-500 mt-2">
-      Connect your Solana wallet to stake HATM tokens on Solana.
-    </p>
-  </div>
-);
+import DirectStakingWidget from '@/components/DirectStakingWidget';
 
 export default function DualStakingPage() {
   const [platform, setPlatform] = useState<'ethereum' | 'solana'>('ethereum');
@@ -50,7 +39,7 @@ export default function DualStakingPage() {
           <TabsContent value="solana">
             <div className="p-1 bg-gradient-to-r from-purple-500 to-violet-600 rounded-lg">
               <div className="bg-white dark:bg-slate-950 rounded-md p-1">
-                <SolanaStakingPanel />
+                <DirectStakingWidget />
               </div>
             </div>
           </TabsContent>

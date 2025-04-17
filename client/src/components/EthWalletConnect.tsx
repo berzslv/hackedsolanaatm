@@ -53,15 +53,16 @@ export function EthWalletConnect({ onConnect }: EthWalletConnectProps) {
 
     const handleChainChanged = (chainId: string) => {
       setNetworkName(getNetworkName(parseInt(chainId, 16)));
-      window.location.reload();
+      // Don't reload the page - just update the network info
+      // This fixes the constant refreshing issue
     };
 
-    window.ethereum.on('accountsChanged', handleAccountsChanged);
-    window.ethereum.on('chainChanged', handleChainChanged);
+    window.ethereum?.on('accountsChanged', handleAccountsChanged);
+    window.ethereum?.on('chainChanged', handleChainChanged);
 
     return () => {
-      window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-      window.ethereum.removeListener('chainChanged', handleChainChanged);
+      window.ethereum?.removeListener('accountsChanged', handleAccountsChanged);
+      window.ethereum?.removeListener('chainChanged', handleChainChanged);
     };
   }, [onConnect]);
 
