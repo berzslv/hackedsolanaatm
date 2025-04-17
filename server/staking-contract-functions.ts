@@ -1,231 +1,331 @@
 /**
  * Staking Contract Functions
  * 
- * This module provides essential functions for interacting with
- * the staking smart contract, including creating and handling
- * the required transaction instructions.
+ * This module provides core functions for interacting with the staking vault contract.
+ * These functions handle PDA derivation, transaction building, and other low-level operations.
+ * 
+ * IMPORTANT: The seed naming has been fixed to match the smart contract:
+ * - Using "user_info" as the seed for user staking account PDAs (NOT "user-stake-info")
  */
 
-import { 
-  Connection, 
-  PublicKey, 
-  Transaction, 
+import {
+  PublicKey,
+  TransactionInstruction,
   SystemProgram,
-  TransactionInstruction 
+  SYSVAR_RENT_PUBKEY,
+  Connection,
+  clusterApiUrl
 } from '@solana/web3.js';
-import { 
-  TOKEN_PROGRAM_ID, 
-  getAssociatedTokenAddress 
+import {
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress
 } from '@solana/spl-token';
 import BN from 'bn.js';
 
-// Constants from configuration
-export const PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
+// Constants for the staking program
+export const STAKING_PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV3cYfrx53ky19RD56eRRGm');
 export const TOKEN_MINT = new PublicKey('59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk');
-export const STAKING_VAULT_PDA = new PublicKey('DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8');
-export const VAULT_TOKEN_ACCOUNT = new PublicKey('3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL');
+
+// Seed constants - CRITICAL that these match the smart contract
+export const USER_STAKING_SEED = 'user_info';
+export const VAULT_SEED = 'vault';
+export const VAULT_AUTH_SEED = 'vault_auth';
 
 /**
- * Get RPC connection to Solana
+ * Find the User Staking PDA for a given wallet
+ * The PDA is derived using 'user_info' + wallet address
  */
-export const getConnection = (): Connection => {
-  return new Connection('https://api.devnet.solana.com', 'confirmed');
-};
-
-/**
- * Find the PDA for the user's staking info
- * @param userPublicKey The user's wallet public key
- * @returns The PDA and bump
- */
-export const findUserStakingPDA = (userPublicKey: PublicKey): [PublicKey, number] => {
+export function findUserStakingPDA(wallet: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from('user_info'), userPublicKey.toBuffer()],
-    PROGRAM_ID
+    [
+      Buffer.from(USER_STAKING_SEED, 'utf-8'),
+      wallet.toBuffer()
+    ],
+    STAKING_PROGRAM_ID
   );
-};
+}
 
 /**
- * Create a register user instruction
- * @param userPublicKey The user's wallet public key
- * @returns The created instruction
+ * Find the Vault PDA
  */
-export const createRegisterUserInstruction = (
-  userPublicKey: PublicKey,
+export function findVaultPDA(): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(VAULT_SEED, 'utf-8')],
+    STAKING_PROGRAM_ID
+  );
+}
+
+/**
+ * Find the Vault Authority PDA
+ */
+export function findVaultAuthorityPDA(): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(VAULT_AUTH_SEED, 'utf-8')],
+    STAKING_PROGRAM_ID
+  );
+}
+
+/**
+ * Find the associated token account for a wallet and token mint
+ */
+export async function findAssociatedTokenAccount(wallet: PublicKey, mint: PublicKey = TOKEN_MINT): Promise<PublicKey> {
+  return await getAssociatedTokenAddress(
+    mint,
+    wallet,
+    false,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  );
+}
+
+/**
+ * Create an instruction to register a user with the staking vault
+ */
+export async function createRegisterUserInstruction(
+  wallet: PublicKey,
   referrer?: PublicKey
-): TransactionInstruction => {
-  // Find the user's staking PDA
-  const [userStakingPDA] = findUserStakingPDA(userPublicKey);
+): Promise<TransactionInstruction> {
+  // Find the program addresses we need
+  const [userStakingAccount, _userBump] = findUserStakingPDA(wallet);
+  const [vaultPDA, _vaultBump] = findVaultPDA();
+  const [vaultAuthority, _vaultAuthBump] = findVaultAuthorityPDA();
   
-  // Prepare the account keys
-  const keys = [
-    { pubkey: userPublicKey, isSigner: true, isWritable: true }, // User/payer
-    { pubkey: userStakingPDA, isSigner: false, isWritable: true }, // User staking account
-    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false } // System program
+  // Prepare the accounts required for the instruction
+  const accounts = [
+    { pubkey: wallet, isSigner: true, isWritable: true },            // Owner (payer)
+    { pubkey: userStakingAccount, isSigner: false, isWritable: true }, // User staking account
+    { pubkey: vaultPDA, isSigner: false, isWritable: false },        // Vault
+    { pubkey: vaultAuthority, isSigner: false, isWritable: false },  // Vault authority
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // System program
+    { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }, // Rent sysvar
   ];
   
-  // Add referrer if provided
+  // If referrer is provided, add it to the accounts
   if (referrer) {
-    keys.push({ pubkey: referrer, isSigner: false, isWritable: false }); // Referrer
+    accounts.push({ pubkey: referrer, isSigner: false, isWritable: false });
   }
   
-  // Create the instruction data
-  // 0 = register user instruction with or without referrer
-  const instructionData = Buffer.from([0]);
+  // Create the instruction data - 0 = Register instruction
+  const data = Buffer.from([0]);
   
-  // Create and return the instruction
+  // Return the transaction instruction
   return new TransactionInstruction({
-    keys,
-    programId: PROGRAM_ID,
-    data: instructionData
-  });
-};
-
-/**
- * Create a staking instruction
- * @param userPublicKey The user's wallet public key
- * @param amount The amount to stake (in normal units, not lamports)
- * @returns The created instruction
- */
-export const createStakingInstruction = async (
-  userPublicKey: PublicKey,
-  amount: number
-): Promise<TransactionInstruction> => {
-  // Find the user's staking PDA
-  const [userStakingPDA] = findUserStakingPDA(userPublicKey);
-  
-  // Get the user's token account
-  const userTokenAccount = await getAssociatedTokenAddress(
-    TOKEN_MINT,
-    userPublicKey,
-    false,
-    TOKEN_PROGRAM_ID
-  );
-  
-  // Convert amount to lamports (assuming 9 decimals for the token)
-  const amountLamports = new BN(amount * Math.pow(10, 9));
-  
-  // Create the instruction data
-  // 1 = stake instruction
-  const instructionCode = Buffer.from([1]);
-  const amountBytes = Buffer.from(amountLamports.toArray('le', 8));
-  
-  // Combine the instruction code and amount
-  const data = Buffer.concat([instructionCode, amountBytes]);
-  
-  // Return the instruction
-  return new TransactionInstruction({
-    keys: [
-      { pubkey: userPublicKey, isSigner: true, isWritable: true }, // User/payer
-      { pubkey: userTokenAccount, isSigner: false, isWritable: true }, // User token account
-      { pubkey: VAULT_TOKEN_ACCOUNT, isSigner: false, isWritable: true }, // Vault token account
-      { pubkey: STAKING_VAULT_PDA, isSigner: false, isWritable: true }, // Vault PDA
-      { pubkey: userStakingPDA, isSigner: false, isWritable: true }, // User staking account
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false } // Token program
-    ],
-    programId: PROGRAM_ID,
+    keys: accounts,
+    programId: STAKING_PROGRAM_ID,
     data
   });
-};
+}
 
 /**
- * Create a complete register user transaction
- * @param userPublicKey The user's wallet public key
- * @returns The serialized transaction
+ * Create an instruction to stake tokens
  */
-export const createRegisterUserTransaction = async (
-  userPublicKey: PublicKey,
+export async function createStakeInstruction(
+  wallet: PublicKey,
+  amount: number,
   referrer?: PublicKey
-): Promise<string> => {
-  // Get connection
-  const connection = getConnection();
+): Promise<TransactionInstruction> {
+  // Create bigint for the amount with proper token decimals (9)
+  const amountBN = new BN(amount * Math.pow(10, 9));
   
-  // Create a new transaction
-  const transaction = new Transaction();
+  // Find the program addresses we need
+  const [userStakingAccount, _userBump] = findUserStakingPDA(wallet);
+  const [vaultPDA, _vaultBump] = findVaultPDA();
+  const [vaultAuthority, _vaultAuthBump] = findVaultAuthorityPDA();
   
-  // Get the latest blockhash
-  const { blockhash } = await connection.getLatestBlockhash('finalized');
-  transaction.recentBlockhash = blockhash;
-  transaction.feePayer = userPublicKey;
+  // Find the token accounts
+  const userTokenAccount = await findAssociatedTokenAccount(wallet);
+  const vaultTokenAccount = await findAssociatedTokenAccount(vaultAuthority);
   
-  // Add the registration instruction
-  transaction.add(createRegisterUserInstruction(userPublicKey, referrer));
+  // Prepare the accounts required for the instruction
+  const accounts = [
+    { pubkey: wallet, isSigner: true, isWritable: true },            // Owner (payer)
+    { pubkey: userStakingAccount, isSigner: false, isWritable: true }, // User staking account
+    { pubkey: userTokenAccount, isSigner: false, isWritable: true },  // User token account
+    { pubkey: vaultPDA, isSigner: false, isWritable: false },        // Vault
+    { pubkey: vaultAuthority, isSigner: false, isWritable: false },  // Vault authority
+    { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // Vault token account
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // Token program
+  ];
   
-  // Serialize the transaction
-  return Buffer.from(transaction.serialize()).toString('base64');
-};
+  // If referrer is provided, add it to the accounts
+  if (referrer) {
+    const [referrerStakingAccount, _referrerBump] = findUserStakingPDA(referrer);
+    
+    // Add referrer staking account
+    accounts.push({ pubkey: referrerStakingAccount, isSigner: false, isWritable: true });
+    
+    // Find referrer token account
+    const referrerTokenAccount = await findAssociatedTokenAccount(referrer);
+    
+    // Add referrer token account
+    accounts.push({ pubkey: referrerTokenAccount, isSigner: false, isWritable: true });
+  }
+  
+  // Create the instruction data - 1 = Stake instruction
+  const dataLayout = Buffer.alloc(9);
+  dataLayout[0] = 1; // Instruction index for stake
+  
+  // Write the amount as a 64-bit little-endian value
+  const amountBuffer = amountBN.toArrayLike(Buffer, 'le', 8);
+  amountBuffer.copy(dataLayout, 1);
+  
+  // Return the transaction instruction
+  return new TransactionInstruction({
+    keys: accounts,
+    programId: STAKING_PROGRAM_ID,
+    data: dataLayout
+  });
+}
 
 /**
- * Create a complete staking transaction
- * @param userPublicKey The user's wallet public key
- * @param amount The amount to stake
- * @returns The serialized transaction
+ * Create an instruction to unstake tokens
  */
-export const createStakingTransaction = async (
-  userPublicKey: PublicKey,
+export async function createUnstakeInstruction(
+  wallet: PublicKey,
   amount: number
-): Promise<string> => {
-  // Get connection
-  const connection = getConnection();
+): Promise<TransactionInstruction> {
+  // Create bigint for the amount with proper token decimals (9)
+  const amountBN = new BN(amount * Math.pow(10, 9));
   
-  // Create a new transaction
-  const transaction = new Transaction();
+  // Find the program addresses we need
+  const [userStakingAccount, _userBump] = findUserStakingPDA(wallet);
+  const [vaultPDA, _vaultBump] = findVaultPDA();
+  const [vaultAuthority, _vaultAuthBump] = findVaultAuthorityPDA();
   
-  // Get the latest blockhash
-  const { blockhash } = await connection.getLatestBlockhash('finalized');
-  transaction.recentBlockhash = blockhash;
-  transaction.feePayer = userPublicKey;
+  // Find the token accounts
+  const userTokenAccount = await findAssociatedTokenAccount(wallet);
+  const vaultTokenAccount = await findAssociatedTokenAccount(vaultAuthority);
   
-  // Add the staking instruction
-  transaction.add(await createStakingInstruction(userPublicKey, amount));
+  // Prepare the accounts required for the instruction
+  const accounts = [
+    { pubkey: wallet, isSigner: true, isWritable: true },            // Owner (payer)
+    { pubkey: userStakingAccount, isSigner: false, isWritable: true }, // User staking account
+    { pubkey: userTokenAccount, isSigner: false, isWritable: true },  // User token account
+    { pubkey: vaultPDA, isSigner: false, isWritable: false },        // Vault
+    { pubkey: vaultAuthority, isSigner: false, isWritable: false },  // Vault authority
+    { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // Vault token account
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }  // Token program
+  ];
   
-  // Serialize the transaction
-  return Buffer.from(transaction.serialize()).toString('base64');
-};
+  // Create the instruction data - 2 = Unstake instruction
+  const dataLayout = Buffer.alloc(9);
+  dataLayout[0] = 2; // Instruction index for unstake
+  
+  // Write the amount as a 64-bit little-endian value
+  const amountBuffer = amountBN.toArrayLike(Buffer, 'le', 8);
+  amountBuffer.copy(dataLayout, 1);
+  
+  // Return the transaction instruction
+  return new TransactionInstruction({
+    keys: accounts,
+    programId: STAKING_PROGRAM_ID,
+    data: dataLayout
+  });
+}
 
 /**
- * Get on-chain staking information for a wallet
- * @param userPublicKey The user's wallet public key
- * @returns The staking information
+ * Create an instruction to claim staking rewards
  */
-export const getOnChainStakingInfo = async (
-  userPublicKey: PublicKey
-): Promise<{
-  isRegistered: boolean;
-  amountStaked: number;
-  pendingRewards: number;
-  lastStakeTime: Date | null;
-  lastClaimTime: Date | null;
-  referrer: string | null;
-}> => {
-  // Get connection
-  const connection = getConnection();
+export async function createClaimRewardsInstruction(
+  wallet: PublicKey
+): Promise<TransactionInstruction> {
+  // Find the program addresses we need
+  const [userStakingAccount, _userBump] = findUserStakingPDA(wallet);
+  const [vaultPDA, _vaultBump] = findVaultPDA();
+  const [vaultAuthority, _vaultAuthBump] = findVaultAuthorityPDA();
   
-  // Find the user's staking PDA
-  const [userStakingPDA] = findUserStakingPDA(userPublicKey);
+  // Find the token accounts
+  const userTokenAccount = await findAssociatedTokenAccount(wallet);
+  const vaultTokenAccount = await findAssociatedTokenAccount(vaultAuthority);
   
-  // Try to get the account info
-  const accountInfo = await connection.getAccountInfo(userStakingPDA);
+  // Prepare the accounts required for the instruction
+  const accounts = [
+    { pubkey: wallet, isSigner: true, isWritable: true },            // Owner (payer)
+    { pubkey: userStakingAccount, isSigner: false, isWritable: true }, // User staking account
+    { pubkey: userTokenAccount, isSigner: false, isWritable: true },  // User token account
+    { pubkey: vaultPDA, isSigner: false, isWritable: false },        // Vault
+    { pubkey: vaultAuthority, isSigner: false, isWritable: false },  // Vault authority
+    { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // Vault token account
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }  // Token program
+  ];
   
-  // If no account info, user is not registered
-  if (!accountInfo) {
+  // Create the instruction data - 3 = Claim rewards instruction
+  const data = Buffer.from([3]);
+  
+  // Return the transaction instruction
+  return new TransactionInstruction({
+    keys: accounts,
+    programId: STAKING_PROGRAM_ID,
+    data
+  });
+}
+
+/**
+ * Check if a user is registered with the staking program
+ */
+export async function isUserRegistered(wallet: PublicKey): Promise<boolean> {
+  try {
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    const [userStakingAccount, _] = findUserStakingPDA(wallet);
+    
+    // Try to get the account info
+    const accountInfo = await connection.getAccountInfo(userStakingAccount);
+    
+    // If the account exists and has data, the user is registered
+    return accountInfo !== null && accountInfo.data.length > 0;
+  } catch (error) {
+    console.error('Error checking user registration:', error);
+    return false;
+  }
+}
+
+/**
+ * Get the staking information for a wallet
+ */
+export async function getStakingInfo(wallet: PublicKey): Promise<any> {
+  try {
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    const [userStakingAccount, _] = findUserStakingPDA(wallet);
+    
+    // Try to get the account info
+    const accountInfo = await connection.getAccountInfo(userStakingAccount);
+    
+    // If the account doesn't exist, return default values
+    if (!accountInfo) {
+      return {
+        isRegistered: false,
+        amountStaked: 0,
+        pendingRewards: 0,
+        lastStakeTime: null,
+        lastClaimTime: null,
+        referrer: null
+      };
+    }
+    
+    // Here we would parse the account data according to the smart contract schema
+    // This is a simplified version - in reality, you'd need to properly decode the data
+    // based on the exact structure of the user staking account
+    
+    // For now, we'll just return a placeholder object
+    return {
+      isRegistered: true,
+      amountStaked: 0, // Would be parsed from account data
+      pendingRewards: 0, // Would be parsed from account data
+      lastStakeTime: new Date(), // Would be parsed from account data
+      lastClaimTime: new Date(), // Would be parsed from account data
+      referrer: null // Would be parsed from account data
+    };
+  } catch (error) {
+    console.error('Error getting staking info:', error);
     return {
       isRegistered: false,
       amountStaked: 0,
       pendingRewards: 0,
       lastStakeTime: null,
       lastClaimTime: null,
-      referrer: null
+      referrer: null,
+      error: error instanceof Error ? error.message : String(error)
     };
   }
-  
-  // Parse the account data (simplified for now)
-  // In reality, you'd use a proper deserialization based on the contract's data layout
-  return {
-    isRegistered: true,
-    amountStaked: 0,  // Would parse from accountInfo.data
-    pendingRewards: 0, // Would parse from accountInfo.data
-    lastStakeTime: new Date(), // Would parse from accountInfo.data
-    lastClaimTime: null, // Would parse from accountInfo.data
-    referrer: null // Would parse from accountInfo.data
-  };
-};
+}

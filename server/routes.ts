@@ -7,6 +7,8 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import { PublicKey } from "@solana/web3.js";
+import path from "path";
 
 // Import Helius webhook handlers
 import { 
@@ -42,7 +44,7 @@ import {
 import {
   Connection,
   Keypair,
-  PublicKey,
+  // PublicKey is already imported at the top
   Transaction,
   clusterApiUrl,
   sendAndConfirmTransaction,
@@ -64,7 +66,6 @@ import {
 console.log("TOKEN_PROGRAM_ID:", TOKEN_PROGRAM_ID.toString());
 console.log("ASSOCIATED_TOKEN_PROGRAM_ID:", ASSOCIATED_TOKEN_PROGRAM_ID.toString());
 import fs from "fs";
-import path from "path";
 
 // These functions are now moved to token-utils.ts
 

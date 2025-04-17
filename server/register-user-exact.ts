@@ -1,108 +1,108 @@
 /**
- * Register User - Exact Implementation for the Staking Vault Contract
+ * Register User - Exact Implementation
  * 
- * This creates a transaction that registers a user with the staking vault contract
- * using the exact account structure required by the smart contract
+ * This is the implementation of user registration that exactly matches
+ * the smart contract's expected account structure and instruction format.
+ * It uses the fixed "user_info" seed for PDAs.
  */
+
 import { Request, Response } from 'express';
-import { Connection, PublicKey, Transaction } from '@solana/web3.js';
-import * as stakingVault from './staking-vault-exact';
-import * as contractFunctions from './staking-contract-functions';
+import {
+  PublicKey,
+  Transaction,
+  Connection,
+  clusterApiUrl,
+  SystemProgram,
+  SYSVAR_RENT_PUBKEY
+} from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import {
+  findUserStakingPDA,
+  findVaultPDA,
+  findVaultAuthorityPDA,
+  createRegisterUserInstruction
+} from './staking-contract-functions';
 
 /**
- * Handle register user functionality
- * This creates a transaction that registers a user using the staking vault program
+ * Handle the register user endpoint
+ * Creates a transaction to register a user with the staking program
  */
 export async function handleRegisterUser(req: Request, res: Response) {
   try {
-    const { walletAddress } = req.body;
-    
+    const { walletAddress, referrer } = req.body;
+
     if (!walletAddress) {
       return res.status(400).json({ error: "Wallet address is required" });
     }
+
+    console.log(`Creating registration transaction for wallet: ${walletAddress}`);
     
-    console.log(`Processing register user request for wallet: ${walletAddress}`);
+    // Convert wallet address to PublicKey
+    const userPublicKey = new PublicKey(walletAddress);
     
-    try {
-      // Check if the user is already registered
-      const userPublicKey = new PublicKey(walletAddress);
-      const isRegistered = await stakingVault.isUserRegistered(userPublicKey);
-      
-      if (isRegistered) {
-        return res.json({
-          success: true,
-          message: `User ${walletAddress} is already registered with the staking program.`,
-          isRegistered: true
-        });
+    // Convert referrer to PublicKey if provided
+    let referrerPublicKey: PublicKey | undefined;
+    if (referrer) {
+      try {
+        referrerPublicKey = new PublicKey(referrer);
+        console.log(`Using referrer: ${referrer}`);
+      } catch (error) {
+        console.warn(`Invalid referrer public key: ${referrer}. Proceeding without referrer.`);
       }
-      
-      // Create the registration transaction
-      const serializedTransaction = await createRegisterUserTransaction(walletAddress);
-      
-      // Return the transaction to be signed by the user
-      return res.json({
-        success: true,
-        message: `Transaction created to register ${walletAddress} with the staking program.`,
-        transaction: serializedTransaction,
-        isRegistered: false
-      });
-    } catch (error) {
-      console.error("Error in registration process:", error);
-      return res.status(500).json({
-        error: "Failed to create registration transaction",
-        details: error instanceof Error ? error.message : String(error)
-      });
     }
+    
+    // Create the transaction
+    const transaction = await createRegisterUserTransaction(
+      userPublicKey,
+      referrerPublicKey
+    );
+    
+    console.log('Registration transaction created successfully');
+    
+    // Serialize and return the transaction
+    const serializedTransaction = Buffer.from(transaction.serialize()).toString('base64');
+    
+    return res.json({
+      success: true,
+      message: "Registration transaction created",
+      transaction: serializedTransaction
+    });
   } catch (error) {
-    console.error("Error processing registration request:", error);
+    console.error('Error creating registration transaction:', error);
     return res.status(500).json({
-      error: "Failed to process registration request",
+      error: "Failed to create registration transaction",
       details: error instanceof Error ? error.message : String(error)
     });
   }
 }
 
 /**
- * Create a user registration transaction for the staking vault program
- * with the exact account structure required by the smart contract
+ * Create a transaction to register a user with the staking program
  * 
- * @param userWalletAddress The user's wallet address
- * @returns The serialized transaction as base64 string
+ * @param userPublicKey The user's wallet address as a PublicKey
+ * @param referrer Optional referrer's wallet address as a PublicKey
+ * @returns The transaction for the user to sign
  */
 export async function createRegisterUserTransaction(
-  userWalletAddress: string
-): Promise<string> {
-  try {
-    console.log(`Creating registration transaction for ${userWalletAddress}`);
-    
-    const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com', 'confirmed');
-    const userPublicKey = new PublicKey(userWalletAddress);
-    
-    // Create transaction object
-    const transaction = new Transaction();
-    
-    // Create and add the register user instruction
-    console.log(`Creating register user instruction using exact smart contract layout`);
-    const registerInstruction = contractFunctions.createRegisterUserInstruction(userPublicKey);
-    
-    transaction.add(registerInstruction);
-    
-    // Get the latest blockhash
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
-    transaction.recentBlockhash = blockhash;
-    transaction.lastValidBlockHeight = lastValidBlockHeight;
-    transaction.feePayer = userPublicKey;
-    
-    // Serialize the transaction
-    const serializedTransaction = transaction.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false
-    }).toString('base64');
-    
-    console.log(`Registration transaction created for ${userWalletAddress}`);
-    return serializedTransaction;
-  } catch (error) {
-    console.error("Error creating registration transaction:", error);
-    throw error;
-  }
+  userPublicKey: PublicKey,
+  referrer?: PublicKey
+): Promise<Transaction> {
+  // Get a connection to the Solana cluster
+  const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+  
+  // Get the recent blockhash
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+  
+  // Create a new transaction with the blockhash
+  const transaction = new Transaction({
+    feePayer: userPublicKey,
+    blockhash,
+    lastValidBlockHeight
+  });
+  
+  // Create the register user instruction and add it to the transaction
+  const registerInstruction = await createRegisterUserInstruction(userPublicKey, referrer);
+  transaction.add(registerInstruction);
+  
+  return transaction;
 }
