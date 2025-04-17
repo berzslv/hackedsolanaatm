@@ -3,11 +3,65 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>Hacked ATM Token - Staking Platform</title>
+    <style>
+      /* Add a basic info banner at the top */
+      .info-banner {
+        background-color: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 4px;
+        padding: 8px 16px;
+        margin: 8px;
+        font-family: Arial, sans-serif;
+        display: none;
+      }
+      
+      /* Style link to our PDA test page */
+      .test-link {
+        display: inline-block;
+        margin-top: 10px;
+        padding: 4px 8px;
+        background: #e0f2fe;
+        border-radius: 4px;
+        color: #0369a1;
+        text-decoration: none;
+      }
+      
+      .test-link:hover {
+        background: #bae6fd;
+      }
+    </style>
+    <!-- Fix for Buffer polyfill -->
+    <script>
+      // Global polyfill for Buffer to avoid errors
+      window.Buffer = window.Buffer || { 
+        from: function(data) { 
+          if (typeof data === 'string') {
+            return new TextEncoder().encode(data);
+          }
+          return new Uint8Array(data);
+        } 
+      };
+    </script>
   </head>
   <body>
+    <!-- Info banner for debugging -->
+    <div id="infoBanner" class="info-banner">
+      If the main app isn't loading, try our <a href="/test-pda.html" class="test-link">PDA Testing Tool</a> to verify that the seed changes are working correctly.
+    </div>
+    
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <!-- This script injects a replit badge into the page, please feel free to remove this line -->
     <script type="text/javascript" src="https://replit.com/public/js/replit-badge-v3.js"></script>
+    
+    <!-- Show banner if app doesn't load after 5 seconds -->
+    <script>
+      setTimeout(() => {
+        if (document.getElementById('root').childElementCount === 0) {
+          document.getElementById('infoBanner').style.display = 'block';
+        }
+      }, 5000);
+    </script>
   </body>
 </html>

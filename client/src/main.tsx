@@ -7,13 +7,24 @@ import { SolanaWalletProvider } from "./components/ui/wallet-adapter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 
-// Browser polyfills for Node.js compatibility
-import { BrowserBuffer } from './lib/browser-polyfills';
+// Make sure our Buffer polyfill is properly configured
+// We've already defined this in index.html
+const ensureBufferPolyfill = () => {
+  if (!window.Buffer) {
+    console.warn('Setting up Buffer polyfill from main.tsx');
+    window.Buffer = {
+      from: (data: string | Uint8Array, encoding?: string) => {
+        if (typeof data === 'string') {
+          return new TextEncoder().encode(data);
+        }
+        return new Uint8Array(data);
+      }
+    } as any;
+  }
+};
 
-// Set up global Buffer polyfill
-window.Buffer = BrowserBuffer as any;
-// Also add it to the global scope
-(globalThis as any).Buffer = BrowserBuffer;
+// Initialize our polyfill
+ensureBufferPolyfill();
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
