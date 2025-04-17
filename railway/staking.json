@@ -1,5 +1,16 @@
 {
-  "stakingData": {},
+  "stakingData": {
+    "9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX": {
+      "amountStaked": 0,
+      "pendingRewards": 0,
+      "lastUpdateTime": "2025-04-17T21:01:06.887Z",
+      "stakedAt": null,
+      "eventCount": 0,
+      "timeUntilUnlock": null,
+      "isLocked": false,
+      "estimatedAPY": 12
+    }
+  },
   "globalStats": {
     "totalStaked": 0,
     "stakersCount": 0,

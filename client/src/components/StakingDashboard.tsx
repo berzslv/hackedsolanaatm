@@ -80,28 +80,58 @@ export default function StakingDashboard() {
       const balance = await balanceResponse.json();
       setTokenBalance(balance);
 
-      // Fetch staking info
-      // First try from Railway
-      const stakingResponse = await fetch(`${RAILWAY_URL}/api/staking-data/${walletAddress}`);
-      const stakingData = await stakingResponse.json();
+      // Fetch staking info - get data directly from our backend with on-chain sync
+      try {
+        // First try getting data from our API with on-chain sync enabled
+        const syncResponse = await fetch(`/api/staking-info/${walletAddress}?sync=true`);
+        if (syncResponse.ok) {
+          const syncData = await syncResponse.json();
+          if (syncData.success && syncData.stakingInfo) {
+            console.log("On-chain staking data synchronized:", syncData.stakingInfo);
+            setStakingInfo(syncData.stakingInfo);
+            
+            // Successfully got on-chain data, we can return
+            return;
+          }
+        }
+      } catch (syncError) {
+        console.error("Error during on-chain sync:", syncError);
+        // Continue with regular API calls if on-chain sync fails
+      }
       
-      // If no staking data found, fall back to getting data from server API
-      if (!stakingData || !stakingData.events || stakingData.events.length === 0) {
+      // If on-chain sync fails, fall back to regular API
+      try {
         const apiResponse = await fetch(`/api/staking-info/${walletAddress}`);
         const apiData = await apiResponse.json();
-        setStakingInfo(apiData);
-      } else {
-        // Process Railway staking data
-        // This is simplified - in a real implementation you'd process events to calculate the current state
-        const data = {
-          amountStaked: 0,
-          pendingRewards: 0,
-          stakedAt: new Date().toISOString(),
-          lastCompoundAt: new Date().toISOString(),
-          estimatedAPY: 120,
-          timeUntilUnlock: null
-        };
-        setStakingInfo(data);
+        if (apiData.success && apiData.stakingInfo) {
+          setStakingInfo(apiData.stakingInfo);
+          return;
+        }
+      } catch (apiError) {
+        console.error("Error fetching from API:", apiError);
+        // Continue with Railway fallback if API fails
+      }
+        
+      // If all else fails, try from Railway 
+      try {
+        const stakingResponse = await fetch(`${RAILWAY_URL}/api/staking-data/${walletAddress}`);
+        const stakingData = await stakingResponse.json();
+          
+        if (stakingData && stakingData.events && stakingData.events.length > 0) {
+          // Process Railway staking data
+          // This is simplified - in a real implementation you'd process events to calculate the current state
+          const data = {
+            amountStaked: 0,
+            pendingRewards: 0,
+            stakedAt: new Date().toISOString(),
+            lastCompoundAt: new Date().toISOString(),
+            estimatedAPY: 120,
+            timeUntilUnlock: null
+          };
+          setStakingInfo(data);
+        }
+      } catch (railwayError) {
+        console.error("Error fetching from Railway:", railwayError);
       }
 
       // Fetch transaction history

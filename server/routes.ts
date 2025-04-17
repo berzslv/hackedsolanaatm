@@ -1754,7 +1754,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         
         // If sync is requested or there's no staked amount in Railway, try on-chain sync
-        if (sync === 'true' || (railwayStakingData.amountStaked === 0 && !railwayStakingData.isForced)) {
+        if (sync === 'true' || railwayStakingData.amountStaked === 0) {
           try {
             console.log(`Synchronizing on-chain data for ${walletAddress}`);
             const onChainData = await addOnChainDataToStakingInfo(walletAddress, stakingResponse);
