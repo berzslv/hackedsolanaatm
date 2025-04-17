@@ -324,8 +324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ valid: false, message: "Referral code is required" });
       }
 
-      // In a real implementation, this would check the smart contract
-      // to validate if the referral code exists
+      console.log(`Validating referral code: ${code}`);
       
       // First, check if it's a valid Solana wallet address
       try {
@@ -335,48 +334,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Try to create a PublicKey from the code
           const pubkey = new PublicKey(code);
           
-          // Check that the string actually has the correct length for a Solana address
-          if (code.length >= 32 && code.length <= 44) {
-            console.log(`Validated wallet address format as referral code: ${code}`);
-            
-            // Accept proper Solana wallet address as a valid referral code
-            return res.json({ 
-              valid: true, 
-              message: "Valid wallet address being used as referral code" 
-            });
-          } else {
-            // Even though it parses as a PublicKey, it's not the right format
-            console.log(`Rejected invalid wallet address format for referral code: ${code}`);
-            return res.json({ 
-              valid: false, 
-              message: "Invalid referral code format" 
-            });
-          }
+          // For Solana addresses, we're going to accept any valid pubkey
+          // This is a more permissive approach to allow for wallet addresses to be used as referral codes
+          console.log(`Valid Solana wallet address format: ${code}`);
+          
+          // Accept proper Solana wallet address as a valid referral code
+          return res.json({ 
+            valid: true, 
+            message: "Valid wallet address being used as referral code" 
+          });
         } catch (addressErr) {
           // Not a valid wallet address, so check if it's a valid legacy code
           // For demonstration purposes we'll be more strict: only accept codes we know are valid
           // This would normally check against a database or smart contract
           const validCodes = ["HATM001", "DEVTEST", "LAUNCH25"];
           const isValid = validCodes.includes(code);
-          console.log(`Validating referral code on-chain: ${code}, Result: ${isValid}`);
+          console.log(`Validating referral code: ${code}, Result: ${isValid}`);
           
-          // Simulate blockchain network unreliability with retries
-          if (isValid && Math.random() > 0.7) {
-            console.log(`Simulating blockchain network delay for code: ${code}`);
-            // Return success after simulated delay
-            setTimeout(() => {
-              return res.json({ 
-                valid: true, 
-                message: "Valid referral code from blockchain (after retry)" 
-              });
-            }, 500);
-            return; // Important to prevent multiple responses
-          }
-          
-          // Always return JSON with consistent format, don't use 404 status
+          // Return result immediately for legacy codes - no more simulated delays
           return res.json({ 
             valid: isValid, 
-            message: isValid ? "Valid referral code from blockchain" : "Invalid referral code - not found on blockchain" 
+            message: isValid ? "Valid referral code" : "Invalid referral code - not found" 
           });
         }
       } catch (error) {
@@ -416,13 +394,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Also check if it's a valid wallet address
       try {
         const { PublicKey } = await import('@solana/web3.js');
-        const pubkey = new PublicKey(code);
-        // Valid wallet addresses with proper length are accepted
-        if (code.length >= 32 && code.length <= 44) {
+        try {
+          // Just checking if it's a valid Solana public key is enough
+          const pubkey = new PublicKey(code);
+          // If we reach here, it's a valid pubkey
           isValid = true;
+          console.log(`Valid wallet address used as referral code: ${code}`);
+        } catch (e) {
+          // Not a valid wallet address, isValid is determined by the valid codes check
+          console.log(`Not a valid wallet address: ${code}`);
         }
       } catch (e) {
-        // Not a valid wallet address, isValid is determined by the valid codes check
+        console.error("Error during PublicKey import:", e);
+        // Import error, isValid is determined by the valid codes check
       }
       console.log(`On-chain validation result for code ${code}: ${isValid}`);
 
