@@ -4,8 +4,8 @@ use anchor_lang::solana_program::program_option::COption;
 
 declare_id!("EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm");
 
-/// Token mint address for the HATM token
-/// This will need to be updated with your actual token mint address
+/// Token mint address for the HATM token on devnet
+/// Taken from originally deployed token
 pub const HATM_TOKEN_MINT: &str = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk";
 
 #[program]
@@ -34,6 +34,7 @@ pub mod referral_staking {
         global_state.stakers_count = 0;
         global_state.reward_pool = 0;
         global_state.last_update_time = Clock::get()?.unix_timestamp;
+        global_state.bump = *ctx.bumps.get("global_state").unwrap();
         
         Ok(())
     }
