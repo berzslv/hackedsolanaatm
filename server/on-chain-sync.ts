@@ -6,6 +6,7 @@
  */
 import { Connection, PublicKey } from '@solana/web3.js';
 import * as stakingVault from './staking-vault-exact';
+import * as contractFunctions from './staking-contract-functions';
 import fs from 'fs';
 import path from 'path';
 
@@ -46,7 +47,8 @@ export async function syncOnChainStakingData(walletAddress: string): Promise<any
     console.log(`Synchronizing on-chain staking data for wallet: ${walletAddress}`);
     
     // Get staking data directly from the blockchain
-    const onChainData = await stakingVault.getOnChainStakingInfo(walletAddress);
+    const userPublicKey = new PublicKey(walletAddress);
+    const onChainData = await contractFunctions.getOnChainStakingInfo(userPublicKey);
     console.log(`On-chain staking data:`, onChainData);
     
     // Add special log messages for Railway log parser to detect

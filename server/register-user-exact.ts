@@ -7,6 +7,7 @@
 import { Request, Response } from 'express';
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import * as stakingVault from './staking-vault-exact';
+import * as contractFunctions from './staking-contract-functions';
 
 /**
  * Handle register user functionality
@@ -82,7 +83,7 @@ export async function createRegisterUserTransaction(
     
     // Create and add the register user instruction
     console.log(`Creating register user instruction using exact smart contract layout`);
-    const registerInstruction = stakingVault.createRegisterUserInstruction(userPublicKey);
+    const registerInstruction = contractFunctions.createRegisterUserInstruction(userPublicKey);
     
     transaction.add(registerInstruction);
     
