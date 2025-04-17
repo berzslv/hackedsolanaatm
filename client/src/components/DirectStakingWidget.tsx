@@ -22,13 +22,31 @@ import { buyAndStakeTokens, stakeExistingTokens } from '@/lib/combined-smart-con
 const HELIUS_API_KEY = '';
 
 // Utility function to convert base64 to Uint8Array in browser environment
+/**
+ * Convert a base64 string to a Uint8Array
+ * This is a reliable implementation that properly handles base64 strings
+ */
 function base64ToUint8Array(base64String: string): Uint8Array {
-  const binaryString = window.atob(base64String);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+  try {
+    // For browsers
+    const binaryString = window.atob(base64String);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  } catch (error) {
+    console.error('Error converting base64 to Uint8Array:', error);
+    
+    // As a fallback, try direct buffer conversion if browser atob fails
+    try {
+      // This might work in some environments
+      return Buffer.from(base64String, 'base64');
+    } catch (fallbackError) {
+      console.error('Fallback conversion also failed:', fallbackError);
+      throw new Error('Failed to convert transaction data to binary format');
+    }
   }
-  return bytes;
 }
 
 const DirectStakingWidget: React.FC = () => {
@@ -596,21 +614,29 @@ const DirectStakingWidget: React.FC = () => {
           // Convert base64 string to Uint8Array
           const transactionBytes = base64ToUint8Array(transactionData.transaction);
           
-          // Create Transaction from bytes
+          // Create Transaction from bytes using fromBuffer for compatibility
           decodedTransaction = Transaction.from(transactionBytes);
           
           console.log('Successfully deserialized registration transaction');
+          console.log('Transaction details:', decodedTransaction);
+          
+          // Ensure fee payer is set
+          if (!decodedTransaction.feePayer) {
+            console.log('Setting fee payer to current wallet');
+            decodedTransaction.feePayer = publicKey;
+          }
+          
+          // Setup connection and check if we need a new blockhash
+          const connection = new Connection(clusterApiUrl('devnet'));
+          
+          if (!decodedTransaction.recentBlockhash) {
+            console.log('Getting fresh blockhash for transaction');
+            const { blockhash } = await connection.getLatestBlockhash('finalized');
+            decodedTransaction.recentBlockhash = blockhash;
+          }
         } catch (e: any) {
           console.error('Error deserializing registration transaction:', e);
-          
-          try {
-            // Try direct method as fallback
-            decodedTransaction = Transaction.from(transactionData.transaction);
-            console.log('Successfully deserialized registration transaction using direct method');
-          } catch (e2: any) {
-            console.error('All deserialization methods failed:', e2);
-            throw new Error(`Failed to decode registration transaction: ${e2.message}`);
-          }
+          throw new Error(`Failed to decode registration transaction: ${e.message}`);
         }
         
         // Setup Solana connection
