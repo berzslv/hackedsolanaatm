@@ -10,11 +10,13 @@ import NotFound from "@/pages/not-found";
 import Header from "@/layout/Header";
 import Footer from "@/layout/Footer";
 import Home from "@/pages/Home";
+import DualStaking from "@/pages/dual-staking";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/staking" component={DualStaking} />
       <Route component={NotFound} />
     </Switch>
   );

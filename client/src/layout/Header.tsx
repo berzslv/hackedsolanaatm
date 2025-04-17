@@ -137,6 +137,9 @@ const Header = () => {
           <NavLink href="/#home">Home</NavLink>
           <NavLink href="/#about">About</NavLink>
           <NavLink href="/#staking">Staking</NavLink>
+          <Link href="/staking" className="px-3 py-2 font-medium text-green-400 hover:text-green-300 transition-colors">
+            Dual Staking
+          </Link>
           <NavLink href="/#referral">Referral</NavLink>
           <NavLink href="/#leaderboard">Leaderboard</NavLink>
           <NavLink href="/#faq">FAQ</NavLink>
@@ -184,6 +187,11 @@ const Header = () => {
                     <NavLink href="/#home" isMobile>Home</NavLink>
                     <NavLink href="/#about" isMobile>About</NavLink>
                     <NavLink href="/#staking" isMobile>Staking</NavLink>
+                    <SheetClose asChild>
+                      <Link href="/staking" className="block w-full px-4 py-3 text-left text-lg font-medium text-green-400 hover:text-green-300 transition-colors border-b border-gray-800">
+                        Dual Staking
+                      </Link>
+                    </SheetClose>
                     <NavLink href="/#referral" isMobile>Referral</NavLink>
                     <NavLink href="/#leaderboard" isMobile>Leaderboard</NavLink>
                     <NavLink href="/#faq" isMobile>FAQ</NavLink>
