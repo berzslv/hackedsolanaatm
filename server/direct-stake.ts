@@ -8,7 +8,6 @@ import { PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js'
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID, getAccount, TokenAccountNotFoundError, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
 import * as referralStaking from './referral-staking-client';
 import { getConnection } from './simple-token';
-import * as anchor from '@coral-xyz/anchor';
 
 /**
  * Handle direct staking functionality
@@ -206,8 +205,23 @@ export async function createDirectStakingTransaction(
     // 4. Check if user is registered with the staking program
     let isUserRegistered: boolean;
     try {
-      isUserRegistered = await referralStaking.isUserRegistered(userPublicKey);
+      // Instead of using the Anchor-dependent function, check directly
+      const [userInfoPDA] = referralStaking.findUserInfoPDA(userPublicKey);
+      console.log(`Checking if user account exists at PDA: ${userInfoPDA.toString()}`);
+      
+      // Get account info directly from connection
+      const accountInfo = await connection.getAccountInfo(userInfoPDA);
+      
+      // User is registered if the account exists and is owned by our program
+      isUserRegistered = accountInfo !== null && 
+        accountInfo.owner.equals(referralStaking.PROGRAM_ID);
+      
       console.log(`User registration check result: ${isUserRegistered}`);
+      console.log(`Account exists: ${accountInfo !== null ? 'Yes' : 'No'}`);
+      if (accountInfo !== null) {
+        console.log(`Account owner: ${accountInfo.owner.toString()}`);
+        console.log(`Owner matches program: ${accountInfo.owner.equals(referralStaking.PROGRAM_ID)}`);
+      }
     } catch (error) {
       console.error(`Error checking user registration, assuming not registered: ${error instanceof Error ? error.message : String(error)}`);
       isUserRegistered = false;
@@ -257,8 +271,8 @@ export async function createDirectStakingTransaction(
           keys: [
             { pubkey: userPublicKey, isSigner: true, isWritable: true },           // owner
             { pubkey: userInfoPDA, isSigner: false, isWritable: true },            // userInfo
-            { pubkey: anchor.web3.SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
-            { pubkey: anchor.web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },     // rent
+            { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // SystemProgram.programId
+            { pubkey: new PublicKey('SysvarRent111111111111111111111111111111111'), isSigner: false, isWritable: false }, // SYSVAR_RENT_PUBKEY
           ],
           programId: referralStaking.PROGRAM_ID,
           data: instructionData,
@@ -329,14 +343,14 @@ export async function createDirectStakingTransaction(
           { pubkey: userTokenAccount, isSigner: false, isWritable: true },       // userTokenAccount
           { pubkey: referralStaking.VAULT_TOKEN_ACCOUNT, isSigner: false, isWritable: true }, // vault token account
           { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },      // tokenProgram
-          { pubkey: anchor.web3.SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
+          { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false } // systemProgram
         ],
         programId: referralStaking.PROGRAM_ID,
         data: instructionData,
       });
       
       // Verify all account keys are defined
-      stakeInstruction.keys.forEach((key, index) => {
+      stakeInstruction.keys.forEach((key: { pubkey: PublicKey }, index: number) => {
         if (!key.pubkey) {
           throw new Error(`Required account at position ${index} is undefined in staking instruction`);
         }
