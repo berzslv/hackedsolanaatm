@@ -5,12 +5,12 @@
  * Update these values after deploying contracts to testnet
  */
 
-// Contract addresses (update after deployment)
+// Contract addresses (manually set for demonstration)
 export const CONTRACT_ADDRESSES = {
   // Sepolia testnet
   sepolia: {
-    token: "0x0000000000000000000000000000000000000000", // Replace after deployment
-    stakingVault: "0x0000000000000000000000000000000000000000" // Replace after deployment
+    token: "0x1234567890AbCdEf1234567890AbCdEf12345678", // Demo token address
+    stakingVault: "0xAbCdEf1234567890AbCdEf1234567890AbCdEf12" // Demo staking address
   },
   // Goerli testnet
   goerli: {

@@ -16,8 +16,12 @@ import {
   handleEthClaimRewards,
   handleEthBuyAndStake
 } from './ethereum-api';
+import { handleEthereumConfig } from './ethereum-config';
 
 export function registerEthereumRoutes(app: Express) {
+  // Get Ethereum configuration (API keys and contract addresses)
+  app.get('/api/ethereum/config', handleEthereumConfig);
+  
   // Get Ethereum staking info for a wallet
   app.get('/api/ethereum/staking-info/:walletAddress', handleEthStakingInfo);
   
