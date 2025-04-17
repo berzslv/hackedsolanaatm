@@ -100,6 +100,40 @@ export function findUserInfoPDA(userWalletAddress: PublicKey): [PublicKey, numbe
 }
 
 /**
+ * Check if a wallet address is a valid referrer by checking if they have a UserInfo account on-chain
+ * @param walletAddress The wallet address to check
+ * @returns Promise resolving to true if the address is a valid referrer, false otherwise
+ */
+export async function isValidReferrerOnChain(walletAddress: string): Promise<boolean> {
+  try {
+    // First check if it's a valid Solana address
+    const walletPubkey = new PublicKey(walletAddress);
+    
+    // Get the connection
+    const connection = getConnection();
+    
+    // Find the user's PDA
+    const [userInfoPDA] = findUserInfoPDA(walletPubkey);
+    
+    console.log(`Checking if ${walletAddress} is a valid referrer on-chain`);
+    console.log(`User Info PDA: ${userInfoPDA.toString()}`);
+    
+    // Check if the account exists on-chain
+    const accountInfo = await connection.getAccountInfo(userInfoPDA);
+    
+    // If the account exists and is owned by our program, it's a valid referrer
+    const isValid = accountInfo !== null && accountInfo.owner.equals(PROGRAM_ID);
+    
+    console.log(`On-chain validation result for ${walletAddress}: ${isValid ? 'Valid ✓' : 'Invalid ✗'}`);
+    
+    return isValid;
+  } catch (error) {
+    console.error(`Error validating referrer ${walletAddress} on chain:`, error);
+    return false;
+  }
+}
+
+/**
  * Create a user registration instruction for the referral staking program
  * @param userWallet The user's wallet public key 
  * @param referrer Optional referrer public key
