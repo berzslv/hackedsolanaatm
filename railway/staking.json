@@ -9,6 +9,16 @@
       "timeUntilUnlock": null,
       "isLocked": false,
       "estimatedAPY": 12
+    },
+    "29M6Dd81rX5TURZx758s7BswDuaGtr2iRv2JuwmineeD": {
+      "amountStaked": 0,
+      "pendingRewards": 0,
+      "lastUpdateTime": "2025-04-17T21:17:36.357Z",
+      "stakedAt": null,
+      "eventCount": 0,
+      "timeUntilUnlock": null,
+      "isLocked": false,
+      "estimatedAPY": 12
     }
   },
   "globalStats": {
