@@ -1895,6 +1895,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add a new endpoint for direct staking using the proper referral staking contract
   app.post("/api/direct-stake", handleDirectStake);
   
+  // Add explicit register user endpoint for manual registration
+  app.post("/api/register-user", handleRegisterUser);
+  
   // Legacy staking endpoint (will be deprecated)
   app.post("/api/stake-tokens", async (req, res) => {
     try {

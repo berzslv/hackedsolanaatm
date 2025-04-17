@@ -274,6 +274,62 @@ export const buyAndStakeTokens = async (
 };
 
 /**
+ * Register a user with the staking program
+ * 
+ * @param walletAddress The wallet address of the user
+ * @returns Transaction details if successful
+ */
+export const registerUser = async (
+  walletAddress: string
+): Promise<{
+  signature?: string;
+  error?: string;
+  transaction?: any;
+  isRegistered?: boolean;
+}> => {
+  try {
+    if (!walletAddress) {
+      return { error: "Wallet address is required" };
+    }
+    
+    // Call the register-user endpoint
+    const response = await fetch('/api/register-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        walletAddress
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { error: errorData.message || "Failed to create registration transaction" };
+    }
+    
+    const registrationData = await response.json();
+    
+    // If user is already registered, return that info
+    if (registrationData.isRegistered) {
+      return { 
+        isRegistered: true,
+        transaction: null
+      };
+    }
+    
+    // Return the transaction that needs to be signed
+    return {
+      transaction: registrationData,
+      isRegistered: false
+    };
+  } catch (error) {
+    console.error('Error in registration process:', error);
+    return { 
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+};
+
+/**
  * Stakes tokens using the referral staking program
  * 
  * @param walletAddress The wallet address of the user
