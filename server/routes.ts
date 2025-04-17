@@ -69,6 +69,9 @@ import fs from "fs";
 
 // These functions are now moved to token-utils.ts
 
+// Import Ethereum routes
+import { registerEthereumRoutes } from './ethereum-routes';
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes
 
