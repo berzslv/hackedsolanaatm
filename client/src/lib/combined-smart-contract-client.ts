@@ -334,13 +334,14 @@ export const registerUser = async (
  * 
  * @param walletAddress The wallet address of the user
  * @param amount Amount of tokens to stake
- * @param referralAddress Optional referral wallet address
+ * @param wallet The connected wallet with sign & send capability
+ * @param referralAddress Optional referral wallet address (not used in this implementation)
  * @returns Transaction details if successful
  */
 export const stakeExistingTokens = async (
   walletAddress: string,
   amount: number,
-  referralAddress?: string
+  wallet: any // wallet with sign & send methods
 ): Promise<{
   signature?: string;
   error?: string;
@@ -349,6 +350,10 @@ export const stakeExistingTokens = async (
   try {
     if (!walletAddress || !amount) {
       return { error: "Wallet address and amount are required" };
+    }
+    
+    if (!wallet) {
+      return { error: "Wallet connection is required" };
     }
     
     // Get token balance first to make sure user has enough tokens
@@ -388,10 +393,43 @@ export const stakeExistingTokens = async (
       };
     }
     
-    // Return the transaction details to be signed by the wallet
-    return { 
-      stakingTransaction: stakingData
-    };
+    // Directly try sending the serialized transaction without deserializing
+    try {
+      const connection = new Connection(clusterApiUrl('devnet'));
+      
+      // Log the transaction
+      console.log('Sending transaction directly to wallet');
+      
+      // Configure transaction options
+      const sendOptions = {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed',
+        maxRetries: 5
+      };
+      
+      // Send and confirm in one step
+      const serializedTransaction = stakingData.transaction;
+      
+      // Let the wallet handle the transaction bytes directly
+      const transactionSignature = await wallet.sendTransaction(
+        serializedTransaction,
+        connection,
+        sendOptions
+      );
+      
+      console.log('Transaction sent with signature:', transactionSignature);
+      
+      // Return the signature for confirmation
+      return { 
+        signature: transactionSignature,
+        stakingTransaction: stakingData
+      };
+    } catch (signError) {
+      console.error('Error signing/sending transaction:', signError);
+      return { 
+        error: `Transaction signing failed: ${signError instanceof Error ? signError.message : String(signError)}`
+      };
+    }
   } catch (error) {
     console.error('Error in staking process:', error);
     return { 

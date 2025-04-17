@@ -96,10 +96,17 @@ const DirectStakingWidget: React.FC = () => {
         description: 'Creating stake transaction...',
       });
       
+      // Create a wallet object to pass to stakeExistingTokens
+      const wallet = { 
+        sendTransaction, 
+        publicKey
+      };
+      
       // Use stakeExistingTokens instead of buyAndStakeTokens since we're just staking tokens
       const stakeResult = await stakeExistingTokens(
         publicKey.toString(),
-        amount
+        amount,
+        wallet
       );
       
       // Check if there was an error in creating the transaction
