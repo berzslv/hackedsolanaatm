@@ -5,7 +5,9 @@
  * bypassing the Railway API to get direct confirmation from on-chain accounts
  */
 import { Request, Response } from 'express';
-import { getOnChainStakingInfo } from './direct-staking-utils';
+import { PublicKey, Connection, clusterApiUrl } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { getOnChainStakingInfo, VAULT_TOKEN_ACCOUNT } from './direct-staking-utils';
 
 /**
  * Handle on-chain staking verification
@@ -17,26 +19,44 @@ export async function handleOnChainStakingVerification(req: Request, res: Respon
     const { walletAddress } = req.params;
     
     if (!walletAddress) {
-      return res.status(400).json({ error: "Wallet address is required" });
+      return res.status(400).json({ 
+        error: "Wallet address is required" 
+      });
     }
     
-    console.log(`Getting direct on-chain staking verification for wallet: ${walletAddress}`);
+    console.log(`Performing on-chain verification for wallet: ${walletAddress}`);
     
-    // Get on-chain staking information directly from blockchain
-    const onChainData = await getOnChainStakingInfo(walletAddress);
+    // Create connection to the Solana network
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
     
-    console.log(`On-chain staking verification for ${walletAddress}:`, onChainData);
+    // 1. Get the user's staking information directly from the blockchain
+    const onChainStakingInfo = await getOnChainStakingInfo(walletAddress);
     
+    // 2. Get the vault token account balance (the amount of tokens in the staking vault)
+    let vaultBalance = 0;
+    try {
+      const vaultTokenAccount = new PublicKey(VAULT_TOKEN_ACCOUNT);
+      const vaultAccountInfo = await connection.getTokenAccountBalance(vaultTokenAccount);
+      vaultBalance = Number(vaultAccountInfo.value.amount);
+      console.log(`Vault token account (${VAULT_TOKEN_ACCOUNT}) balance: ${vaultBalance}`);
+    } catch (vaultError) {
+      console.error("Error getting vault balance:", vaultError);
+      // Continue anyway - we'll still return user info
+    }
+    
+    // 3. Return the combined verification results
     return res.json({
-      ...onChainData,
-      message: onChainData.accountExists 
-        ? `Found on-chain staking account for ${walletAddress}` 
-        : `No on-chain staking account found for ${walletAddress}`
+      success: true,
+      stakingInfo: onChainStakingInfo,
+      vaultBalance,
+      message: "Staking information verified directly from the blockchain",
+      dataSource: "blockchain"
     });
   } catch (error) {
-    console.error("Error in on-chain staking verification:", error);
-    return res.status(500).json({
-      error: "Failed to verify on-chain staking account",
+    console.error("Error verifying staking on blockchain:", error);
+    return res.status(500).json({ 
+      success: false,
+      error: "Failed to verify staking information on blockchain",
       details: error instanceof Error ? error.message : String(error)
     });
   }

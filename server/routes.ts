@@ -326,21 +326,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Validating referral code: ${code}`);
       
-      // First, check if it's a valid Solana wallet address
+      // First check direct on-chain validation
       try {
-        const { PublicKey } = await import('@solana/web3.js');
+        // Import direct staking utilities
+        const directStakingUtils = await import('./direct-staking-utils');
         
+        // Try to validate this as a Solana address
         try {
+          const { PublicKey } = await import('@solana/web3.js');
+          
           // First attempt - try as-is
           try {
             const pubkey = new PublicKey(code);
             console.log(`Valid Solana wallet address format (original case): ${code}`);
             
-            // Accept proper Solana wallet address as a valid referral code
-            return res.json({ 
-              valid: true, 
-              message: "Valid wallet address being used as referral code" 
-            });
+            // Check if this wallet address exists as a referrer on-chain
+            const isValidReferrer = await directStakingUtils.isValidReferrerOnChain(code);
+            
+            if (isValidReferrer) {
+              console.log(`Verified valid referrer on-chain: ${code}`);
+              return res.json({ 
+                valid: true, 
+                message: "Valid referrer wallet verified on blockchain" 
+              });
+            } else {
+              console.log(`Wallet address exists but not registered as referrer on-chain: ${code}`);
+            }
           } catch (e: any) {
             console.log(`Original key format failed: ${e.message || 'Unknown error'}`);
             
@@ -470,48 +481,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Received on-chain referral code validation request for: ${code}`);
       
-      // In a real implementation, this would query the smart contract
-      // For demonstration purposes we'll be more strict: only accept codes we know are valid
+      // Check legacy code format first
       const validCodes = ["HATM001", "DEVTEST", "LAUNCH25"]; 
       let isValid = validCodes.includes(code);
       
-      // Also check if it's a valid wallet address
+      if (isValid) {
+        console.log(`Valid legacy referral code: ${code}`);
+        return res.json({ 
+          valid: true, 
+          message: "Valid legacy referral code" 
+        });
+      }
+      
+      // Now check if it's a valid wallet address and registered on-chain
       try {
         const { PublicKey } = await import('@solana/web3.js');
+        const directStakingUtils = await import('./direct-staking-utils');
         
-        // Prepare a list of valid wallet addresses we want to accept
-        // This lets us explicitly set some addresses as valid even if they fail validation
-        const knownValidAddresses = [
-          // Current connected wallets (all valid as referrers)
-          '9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX',
-          '29M6Dd81rX5TURZx758s7BswDuaGtr2iRv2JuwmineeD',
-          // Add newly connected wallet automatically
-          // Project addresses  
-          'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8', // vault address
-          '3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL', // vault token account
-          'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm', // program ID
-          '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk', // token mint  
-        ];
-        
-        // Check for an exact match first (priority)
-        if (knownValidAddresses.includes(code)) {
-          console.log(`Exact match found for wallet address: ${code}`);
-          isValid = true;
-          return res.json({ 
-            valid: true, 
-            message: "Valid wallet address being used as referral code" 
-          });
-        }
-        
-        // Then try case-insensitive matches for better user experience
-        for (const validAddress of knownValidAddresses) {
-          if (validAddress.toLowerCase() === code.toLowerCase()) {
-            console.log(`Case-insensitive match found: ${validAddress}`);
-            isValid = true;
+        try {
+          // First try as-is (original case)
+          const pubkey = new PublicKey(code);
+          
+          // Check if it's a valid referrer on the blockchain
+          isValid = await directStakingUtils.isValidReferrerOnChain(code);
+          
+          if (isValid) {
+            console.log(`Valid referrer found on-chain (original): ${code}`);
             return res.json({ 
               valid: true, 
-              message: "Valid wallet address being used as referral code" 
+              message: "Valid referrer wallet verified on blockchain" 
             });
+          }
+        } catch (e) {
+          // Try with different case formats
+          try {
+            const normalizedCode = code.toLowerCase();
+            const pubkey = new PublicKey(normalizedCode);
+            
+            // Check if it's a valid referrer
+            isValid = await directStakingUtils.isValidReferrerOnChain(normalizedCode);
+            
+            if (isValid) {
+              console.log(`Valid referrer found on-chain (lowercase): ${normalizedCode}`);
+              return res.json({ 
+                valid: true, 
+                message: "Valid referrer wallet verified on blockchain" 
+              });
+            }
+          } catch {
+            // Continue trying other formats
           }
         }
         
@@ -1653,6 +1671,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({
         success: false,
         message: "Failed to refresh staking data",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Get staking info directly from the blockchain, bypassing Railway
+  app.get("/api/on-chain-verify/:walletAddress", async (req, res) => {
+    try {
+      // Use our new on-chain verification handler
+      const { handleOnChainStakingVerification } = await import('./on-chain-verification');
+      return handleOnChainStakingVerification(req, res);
+    } catch (error) {
+      console.error("Error handling on-chain verification:", error);
+      res.status(500).json({ 
+        error: "Failed to verify staking on blockchain",
         details: error instanceof Error ? error.message : String(error)
       });
     }
