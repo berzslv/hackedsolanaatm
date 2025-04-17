@@ -103,6 +103,60 @@ export function findUserInfoPDA(userWalletAddress: PublicKey): [PublicKey, numbe
 }
 
 /**
+ * Create a user registration instruction for the referral staking program
+ * @param userWallet The user's wallet public key 
+ * @param referrer Optional referrer public key
+ * @returns The transaction instruction for registering a user
+ */
+export function createRegisterUserInstruction(
+  userWallet: PublicKey,
+  referrer?: PublicKey
+): TransactionInstruction {
+  if (!idl) {
+    throw new Error('IDL not loaded, cannot create register user instruction');
+  }
+  
+  try {
+    // Create a temporary program to create the instruction
+    const program = createStakingProgram();
+    if (!program) {
+      throw new Error('Failed to create staking program');
+    }
+    
+    // Find the user info PDA
+    const [userInfoPDA] = findUserInfoPDA(userWallet);
+    console.log(`User Info PDA: ${userInfoPDA.toString()}`);
+    
+    // The instruction data for the registerUser instruction
+    const data = program.coder.instruction.encode('registerUser', { 
+      referrer: referrer ? referrer : null 
+    });
+    
+    // The accounts required for the referral staking instruction
+    // Based on the referral_staking IDL, the registerUser instruction requires:
+    // owner, userInfo, systemProgram, rent
+    const keys = [
+      { pubkey: userWallet, isSigner: true, isWritable: true },           // owner
+      { pubkey: userInfoPDA, isSigner: false, isWritable: true },         // userInfo
+      { pubkey: anchor.web3.SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
+      { pubkey: anchor.web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },     // rent
+    ];
+    
+    console.log(`Creating register user instruction${referrer ? ' with referrer: ' + referrer.toString() : ''}`);
+    
+    // Create the instruction
+    return new TransactionInstruction({
+      keys,
+      programId: PROGRAM_ID,
+      data,
+    });
+  } catch (error) {
+    console.error('Error creating register user instruction:', error);
+    throw error;
+  }
+}
+
+/**
  * Create a staking instruction for the referral staking program
  * @param userWallet The user's wallet public key
  * @param amount The amount to stake (already converted to lamports)
@@ -137,18 +191,20 @@ export function createStakingInstruction(
     const data = program.coder.instruction.encode('stake', { amount: new BN(amount.toString()) });
     
     // The accounts required for the referral staking instruction
-    // Based on the IDL, we need: owner, globalState, userInfo, userTokenAccount, vault, tokenProgram, systemProgram
+    // Based on the referral_staking IDL, the stake instruction requires exactly these accounts in this order:
+    // owner, globalState, userInfo, userTokenAccount, vault, tokenProgram, systemProgram
     const keys = [
       { pubkey: userWallet, isSigner: true, isWritable: true },           // owner
       { pubkey: globalStatePDA, isSigner: false, isWritable: true },      // globalState
       { pubkey: userInfoPDA, isSigner: false, isWritable: true },         // userInfo
       { pubkey: userTokenAccount, isSigner: false, isWritable: true },    // userTokenAccount
-      { pubkey: STAKING_VAULT_ADDRESS, isSigner: false, isWritable: true }, // vault
+      { pubkey: VAULT_TOKEN_ACCOUNT, isSigner: false, isWritable: true }, // vault (this should be the token account, not the vault PDA)
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },   // tokenProgram
       { pubkey: anchor.web3.SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
     ];
     
     console.log(`Creating staking instruction with amount: ${amount.toString()}`);
+    console.log(`Vault token account used: ${VAULT_TOKEN_ACCOUNT.toString()}`);
     
     // Create the instruction
     return new TransactionInstruction({
