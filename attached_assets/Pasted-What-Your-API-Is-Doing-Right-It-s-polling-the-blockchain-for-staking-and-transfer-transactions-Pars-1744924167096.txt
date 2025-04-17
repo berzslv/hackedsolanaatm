@@ -1,0 +1,97 @@
+What Your API Is Doing Right
+It's polling the blockchain for staking and transfer transactions
+
+Parses logs to detect events like stake, unstake, claim
+
+Saves staking info per wallet to a JSON file (staking_data.json)
+
+Provides /api/staking-data?wallet=... to fetch staked info
+
+⚠️ Likely Reason Staked Balance is Missing
+The backend depends entirely on log parsing to detect events:
+
+js
+Copy
+Edit
+if (logText.includes('Program log: Instruction: stake')) {
+  eventType = 'stake';
+}
+But this only works if:
+
+The log actually says "Program log: Instruction: stake"
+
+Your smart contract includes a line like:
+
+rust
+Copy
+Edit
+msg!("Instruction: stake");
+🧪 How to Confirm
+Open your smart contract (lib.rs) and check your stake function. You should see something like this:
+
+rust
+Copy
+Edit
+pub fn stake(ctx: Context<Stake>, amount: u64) -> Result<()> {
+    msg!("Instruction: stake");
+    ...
+}
+If it’s missing, the backend won’t detect stakes.
+
+✅ Fix Option 1: Add Log Markers to Smart Contract
+To ensure backend detects your stake transactions, add logs like this:
+
+rust
+Copy
+Edit
+msg!("Instruction: stake");
+msg!("Staking amount: {}", amount);
+msg!("owner: {}", ctx.accounts.owner.key());
+Do this for:
+
+stake
+
+unstake
+
+claim_rewards
+
+compound_rewards
+
+These make parsing easy and reliable.
+
+✅ Fix Option 2: Use Account Fetching Instead of Just Logs
+For better accuracy, update your backend to:
+
+Derive the user’s staking PDA (e.g., user_stake_info)
+
+Fetch the actual account from chain using Anchor/Web3
+
+Deserialize and get the current staked_amount, rewards, etc.
+
+That way you don’t depend on logs anymore.
+
+I can help you implement this if you share your staking PDA layout or IDL.
+
+🛠️ Quick Check
+Also verify this:
+
+json
+Copy
+Edit
+GET /api/staking-data?wallet=YourWalletHere
+If it shows amountStaked: 0 even after you stake, your backend didn't parse the logs.
+
+✅ What to Do Now
+👉 Step 1: In Smart Contract
+Add this to your stake handler:
+
+rust
+Copy
+Edit
+msg!("Instruction: stake");
+msg!("Staking amount: {}", amount);
+msg!("owner: {}", ctx.accounts.owner.key());
+And similarly for other instructions.
+
+👉 Step 2: Restart Railway
+Redeploy your updated smart contract with logging, and restart Railway. It will now properly detect and update staking balances.

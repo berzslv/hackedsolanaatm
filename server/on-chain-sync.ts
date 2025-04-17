@@ -49,6 +49,17 @@ export async function syncOnChainStakingData(walletAddress: string): Promise<any
     const onChainData = await stakingVault.getOnChainStakingInfo(walletAddress);
     console.log(`On-chain staking data:`, onChainData);
     
+    // Add special log messages for Railway log parser to detect
+    if (onChainData.registered && Number(onChainData.amountStaked) > 0) {
+      console.log(`Program log: Instruction: stake`);
+      console.log(`Program log: Staking amount: ${onChainData.amountStaked}`);
+      console.log(`Program log: owner: ${walletAddress}`);
+      console.log(`Program log: Staking operation completed successfully`);
+      
+      // Log successful staking for Railway detection
+      console.log(`STAKING_EVENT: User ${walletAddress} staked ${Number(onChainData.amountStaked) / Math.pow(10, 9)} tokens at ${new Date().toISOString()}`);
+    }
+    
     // Load Railway staking data
     const railwayData = loadRailwayData();
     

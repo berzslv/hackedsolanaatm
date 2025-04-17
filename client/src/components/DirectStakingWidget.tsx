@@ -138,16 +138,48 @@ const DirectStakingWidget: React.FC = () => {
       // Setup Solana connection
       const connection = new Connection(clusterApiUrl('devnet'));
       
-      // Sign and send the transaction
-      const signature = await sendTransaction(decodedTransaction, connection);
+      // Define signature outside the try block so it's accessible throughout
+      let signature: string;
       
-      toast({
-        title: 'Transaction submitted',
-        description: 'Waiting for confirmation...',
-      });
+      try {
+        console.log('Sending transaction to the network...');
+        
+        // Sign and send the transaction with detailed options
+        signature = await sendTransaction(decodedTransaction, connection, {
+          skipPreflight: false, // Run preflight checks
+          preflightCommitment: 'confirmed', // Use confirmed commitment level for preflight
+          maxRetries: 5 // Try a few times if it fails
+        });
+        
+        console.log('Transaction sent with signature:', signature);
+        
+        toast({
+          title: 'Transaction submitted',
+          description: 'Waiting for confirmation...',
+        });
+        
+        // Wait for confirmation with more detailed options
+        const confirmationResult = await connection.confirmTransaction({
+          signature,
+          blockhash: decodedTransaction.recentBlockhash!, 
+          lastValidBlockHeight: decodedTransaction.lastValidBlockHeight!
+        }, 'confirmed');
+        
+        if (confirmationResult.value.err) {
+          console.error('Transaction confirmed but has errors:', confirmationResult.value.err);
+          throw new Error(`Transaction confirmed but has errors: ${JSON.stringify(confirmationResult.value.err)}`);
+        }
+        
+        console.log('Transaction confirmed successfully:', confirmationResult);
+      } catch (txError) {
+        console.error('Transaction send/confirm error:', txError);
+        throw new Error(`Transaction error: ${txError instanceof Error ? txError.message : String(txError)}`);
+      }
       
-      // Wait for confirmation
-      await connection.confirmTransaction(signature, 'confirmed');
+      // Ensure we have a signature before proceeding
+      if (!signature) {
+        throw new Error('Transaction failed: No signature returned');
+      }
       
       // Notify server about the completed staking transaction
       const confirmResponse = await fetch('/api/confirm-staking', {
