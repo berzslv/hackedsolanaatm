@@ -54,6 +54,36 @@ export function findUserStakeInfoPDA(userWalletAddress: PublicKey): [PublicKey, 
 }
 
 /**
+ * Create a register user instruction that matches the RegisterUser structure in the smart contract
+ * 
+ * @param userWallet The user's wallet public key
+ * @returns The transaction instruction for user registration
+ */
+export function createRegisterUserInstruction(
+  userWallet: PublicKey
+): TransactionInstruction {
+  // Create the register_user instruction data
+  // Format: [discriminator(8 bytes)]
+  const registerDiscriminator = Buffer.from([173, 119, 128, 68, 189, 215, 169, 80]);
+  
+  // Find the user's stake info PDA
+  const [userStakeInfoPDA] = findUserStakeInfoPDA(userWallet);
+
+  // Create the instruction with the exact account order from the RegisterUser struct in the contract
+  return new TransactionInstruction({
+    keys: [
+      { pubkey: userWallet, isSigner: true, isWritable: true },          // owner/user: Signer
+      { pubkey: STAKING_VAULT_ADDRESS, isSigner: false, isWritable: false }, // staking_vault: Account
+      { pubkey: userStakeInfoPDA, isSigner: false, isWritable: true },   // user_info: Account
+      { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false }, // system_program: Program
+      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }  // rent: Sysvar
+    ],
+    programId: PROGRAM_ID,
+    data: registerDiscriminator,
+  });
+}
+
+/**
  * Check if a user is registered with the staking program
  * 
  * @param userWalletAddress The user's wallet public key
