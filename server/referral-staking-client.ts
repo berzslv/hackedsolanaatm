@@ -134,19 +134,21 @@ export function createStakingInstruction(
     const data = program.coder.instruction.encode('stake', { amount: new BN(amount.toString()) });
     
     // The accounts required for the referral staking instruction
-    // Based on the IDL, we need: owner, globalState, userInfo, userTokenAccount, vault, vaultTokenAccount, tokenProgram, systemProgram
+    // Based on the referral_staking IDL, the stake instruction requires exactly these accounts in this order:
+    // owner, globalState, userInfo, userTokenAccount, vault, tokenProgram, systemProgram
     const keys = [
-      { pubkey: userWallet, isSigner: true, isWritable: true },           // owner
-      { pubkey: globalStatePDA, isSigner: false, isWritable: true },      // globalState
-      { pubkey: userInfoPDA, isSigner: false, isWritable: true },         // userInfo
-      { pubkey: userTokenAccount, isSigner: false, isWritable: true },    // userTokenAccount
-      { pubkey: STAKING_VAULT_ADDRESS, isSigner: false, isWritable: true }, // vault
-      { pubkey: VAULT_TOKEN_ACCOUNT, isSigner: false, isWritable: true }, // vaultTokenAccount
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },   // tokenProgram
+      { pubkey: userWallet, isSigner: true, isWritable: true },          // owner
+      { pubkey: globalStatePDA, isSigner: false, isWritable: true },     // globalState
+      { pubkey: userInfoPDA, isSigner: false, isWritable: true },        // userInfo
+      { pubkey: userTokenAccount, isSigner: false, isWritable: true },   // userTokenAccount
+      { pubkey: VAULT_TOKEN_ACCOUNT, isSigner: false, isWritable: true }, // vault (this is the token account for the vault)
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },  // tokenProgram
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
     ];
     
     console.log(`Creating staking instruction with amount: ${amount.toString()}`);
+    console.log(`Using vault token account: ${VAULT_TOKEN_ACCOUNT.toString()}`);
+    console.log(`Using user token account: ${userTokenAccount.toString()}`);
     
     // Create the instruction
     return new TransactionInstruction({
