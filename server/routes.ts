@@ -30,6 +30,13 @@ import { handleSyncStaking } from './sync-staking-handler';
 // Import force sync handler
 import { handleForceSync } from './force-sync';
 
+// Import on-chain verification handlers
+import { 
+  handleForceSyncOnChain, 
+  handleSyncAllOnChain, 
+  addOnChainDataToStakingInfo 
+} from './on-chain-verify-handler';
+
 // Solana imports for airdrop functionality
 import {
   Connection,

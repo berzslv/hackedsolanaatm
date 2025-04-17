@@ -1,0 +1,107 @@
+8:48:17 PM [express] GET /api/staking-info/9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX 200 in 1624m…
+Processing direct stake request for wallet: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX, amount: 22
+Creating direct staking transaction for 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX, amount: 22
+User token account exists
+User token account exists with balance: 68536000000000
+Creating staking instruction for 22 tokens using exact smart contract layout
+Direct staking transaction created for 22 tokens
+8:48:20 PM [express] POST /api/direct-stake 200 in 487ms :: {"success":true,"message":"Transaction c…
+Validating referral code: AHB94ZKUASFTTDQGDFIDSDNPJHKEFP7ZX3YMRCSXABSV
+Successfully loaded referral_staking IDL
+Original key format failed: Non-base58 character
+Lowercase key format failed: Invalid public key input
+Uppercase key format failed: Non-base58 character
+Valid Solana wallet address after character fixes: AHB94ZKUASFTTDQGDF1DSDNPJHKEFP7ZX3YMRCSXABSV
+8:51:46 PM [express] GET /api/validate-referral/AHB94ZKUASFTTDQGDFIDSDNPJHKEFP7ZX3YMRCSXABSV 304 in …
+Received purchase-and-stake request: {
+  walletAddress: '9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX',
+  solAmount: 0.2,
+  referralCode: 'AHB94ZKUASFTTDQGDFIDSDNPJHKEFP7ZX3YMRCSXABSV'
+}
+Processing purchase and stake for wallet: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX, SOL amount: 0.2
+Loading authority from /home/runner/workspace/token-keypair-original.json
+Mint authority public key: 2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap
+Mint public key: 59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk
+8:51:51 PM [express] POST /api/purchase-and-stake 200 in 316ms :: {"success":true,"message":"Purchas…
+Received complete-purchase-and-stake request: {
+  walletAddress: '9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX',
+  solAmount: 0.2,
+  tokenAmount: 18,
+  solTransferSignature: '65db5h8bKnVcqpRy9kX9aHX7eZMrPjwWn6Gw2hnfaqBJ3T49rK7Zc5xhqD5w4BtwoCYEW1Z7SsD3JEhQMKCZ6Tn4',
+  referralCode: 'AHB94ZKUASFTTDQGDFIDSDNPJHKEFP7ZX3YMRCSXABSV'
+}
+Processing on-chain purchase and stake: 18 tokens for 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+Checking transaction status for: 65db5h8bKnVcqpRy9kX9aHX7eZMrPjwWn6Gw2hnfaqBJ3T49rK7Zc5xhqD5w4BtwoCYEW1Z7SsD3JEhQMKCZ6Tn4 (try 1/5)
+Transaction still processing, waiting 1000ms before retry...
+Checking transaction status for: 65db5h8bKnVcqpRy9kX9aHX7eZMrPjwWn6Gw2hnfaqBJ3T49rK7Zc5xhqD5w4BtwoCYEW1Z7SsD3JEhQMKCZ6Tn4 (try 2/5)
+Transaction still processing, waiting 1500ms before retry...
+Checking transaction status for: 65db5h8bKnVcqpRy9kX9aHX7eZMrPjwWn6Gw2hnfaqBJ3T49rK7Zc5xhqD5w4BtwoCYEW1Z7SsD3JEhQMKCZ6Tn4 (try 3/5)
+Transaction still processing, waiting 2250ms before retry...
+Checking transaction status for: 65db5h8bKnVcqpRy9kX9aHX7eZMrPjwWn6Gw2hnfaqBJ3T49rK7Zc5xhqD5w4BtwoCYEW1Z7SsD3JEhQMKCZ6Tn4 (try 4/5)
+Transaction still processing, waiting 3375ms before retry...
+Checking transaction status for: 65db5h8bKnVcqpRy9kX9aHX7eZMrPjwWn6Gw2hnfaqBJ3T49rK7Zc5xhqD5w4BtwoCYEW1Z7SsD3JEhQMKCZ6Tn4 (try 5/5)
+Transaction confirmed on try 5: 65db5h8bKnVcqpRy9kX9aHX7eZMrPjwWn6Gw2hnfaqBJ3T49rK7Zc5xhqD5w4BtwoCYEW1Z7SsD3JEhQMKCZ6Tn4
+SOL transfer verified: 65db5h8bKnVcqpRy9kX9aHX7eZMrPjwWn6Gw2hnfaqBJ3T49rK7Zc5xhqD5w4BtwoCYEW1Z7SsD3JEhQMKCZ6Tn4
+Would process on-chain referral for code: AHB94ZKUASFTTDQGDFIDSDNPJHKEFP7ZX3YMRCSXABSV
+Loading authority from /home/runner/workspace/token-keypair-original.json
+Mint authority public key: 2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap
+Mint public key: 59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk
+Creating connection to Solana devnet
+Loading authority from /home/runner/workspace/token-keypair-original.json
+Mint authority public key: 2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap
+Mint public key: 59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk
+Authority token balance: 999935491.25
+Transferring 18 tokens from 2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap to 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+Creating connection to Solana devnet
+Loading authority from /home/runner/workspace/token-keypair-original.json
+Mint authority public key: 2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap
+Mint public key: 59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk
+Amount with decimals: 18000000000
+Token account address: H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp
+Token account exists
+Sending token transfer transaction...
+Transfer successful! Signature: 5VTkqYk2N4cW2PG3ex7T1FfzWBDAWRZfZPzQeGpPQti5MxxaoyMxd2fbgAnNzDPWS3EYGtMSyUTagxibKMVNhHHQ
+Tokens transferred to user wallet! Signature: 5VTkqYk2N4cW2PG3ex7T1FfzWBDAWRZfZPzQeGpPQti5MxxaoyMxd2fbgAnNzDPWS3EYGtMSyUTagxibKMVNhHHQ
+Would transfer 18 tokens from 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX to staking vault
+Simulating transfer to staking vault from 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+Recording on-chain staking operation for 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX with amount 18
+On-chain staking: Previously staked: 18, New total: 36
+8:52:06 PM [express] POST /api/complete-purchase-and-stake 200 in 12151ms :: {"success":true,"messag…
+Creating connection to Solana devnet
+Loading authority from /home/runner/workspace/token-keypair-original.json
+Mint authority public key: 2B99oKDqPZynTZzrH414tnxHWuf1vsDfcNaHGVzttQap
+Mint public key: 59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk
+Token balance for 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX: 68554
+8:52:07 PM [express] GET /api/token-balance/9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX 200 in 104m…
+Getting staking info for wallet: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+Fetching staking data from Railway API for 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+Adding wallet 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX to Railway monitoring
+No external staking data found for 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+Fetching staking data from Railway API for wallet: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+Railway data for 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX: {
+  amountStaked: 0,
+  pendingRewards: 0,
+  lastUpdateTime: '2025-04-17T20:52:07.819Z',
+  stakedAt: null,
+  eventCount: 0,
+  timeUntilUnlock: null,
+  isLocked: false,
+  estimatedAPY: 12
+}
+Fetching token balance from Railway API for wallet: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+Railway token balance for 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX: {
+  walletAddress: '9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX',
+  balance: 68536000000000
+}
+Railway API returned data successfully for 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+Railway staking info for 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX : {
+  "amountStaked": 0,
+  "pendingRewards": 0,
+  "stakedAt": "2025-04-17T20:52:08.466Z",
+  "lastClaimAt": "2025-04-17T20:52:07.819Z",
+  "lastCompoundAt": "2025-04-17T20:52:07.819Z",
+  "timeUntilUnlock": null,
+  "estimatedAPY": 12,
+  "isLocked": false,
+  "walletTokenBalance": 68536000000000,
+  "stakingVaultAddress": "DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8",
