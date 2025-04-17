@@ -5,7 +5,6 @@
  */
 import { PublicKey, Connection, clusterApiUrl, Transaction, TransactionInstruction } from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
-import BN from 'bn.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 import fs from 'fs';
 import path from 'path';
@@ -437,7 +436,10 @@ export function createStakingInstruction(
     console.log(`User Info PDA: ${userInfoPDA.toString()}`);
     
     // The instruction data for the stake instruction
-    const data = program.coder.instruction.encode('stake', { amount: new BN(amount.toString()) });
+    // Convert the amount to string format for encoding to avoid BN.js import issues
+    const data = program.coder.instruction.encode('stake', { 
+      amount: { toString: () => amount.toString() }
+    });
     
     // Check all accounts and log their details
     console.log(`

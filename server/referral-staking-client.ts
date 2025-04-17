@@ -6,7 +6,6 @@
  */
 import { PublicKey, Connection, clusterApiUrl, Transaction, TransactionInstruction, SystemProgram } from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
-import BN from 'bn.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 import fs from 'fs';
 import path from 'path';
@@ -152,7 +151,10 @@ export function createStakingInstruction(
     console.log(`User Info PDA: ${userInfoPDA.toString()}`);
     
     // The instruction data for the stake instruction
-    const data = program.coder.instruction.encode('stake', { amount: new BN(amount.toString()) });
+    // Convert amount to a string format for encoding to avoid BN.js import issues
+    const data = program.coder.instruction.encode('stake', { 
+      amount: { toString: () => amount.toString() }
+    });
     
     // The accounts required for the referral staking instruction
     // Based on the referral_staking IDL, the stake instruction requires exactly these accounts in this order:
