@@ -28,7 +28,7 @@ const HELIUS_API_KEY = '';
  */
 function base64ToUint8Array(base64String: string): Uint8Array {
   try {
-    // For browsers
+    // Standard browser approach - decode base64 to binary string, then to Uint8Array
     const binaryString = window.atob(base64String);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
@@ -38,10 +38,11 @@ function base64ToUint8Array(base64String: string): Uint8Array {
   } catch (error) {
     console.error('Error converting base64 to Uint8Array:', error);
     
-    // As a fallback, try direct buffer conversion if browser atob fails
+    // As a fallback, try using a different approach if atob fails
     try {
-      // This might work in some environments
-      return Buffer.from(base64String, 'base64');
+      // Try using the TextEncoder approach as a fallback
+      const base64Decoded = atob(base64String);
+      return new TextEncoder().encode(base64Decoded);
     } catch (fallbackError) {
       console.error('Fallback conversion also failed:', fallbackError);
       throw new Error('Failed to convert transaction data to binary format');

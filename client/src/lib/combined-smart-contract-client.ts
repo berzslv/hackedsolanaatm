@@ -4,7 +4,16 @@
  * This module provides client-side functions for interacting with the
  * referral staking smart contract on the Solana blockchain.
  */
-import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
+import { 
+  Connection, 
+  PublicKey, 
+  clusterApiUrl, 
+  Transaction,
+  TransactionInstruction,
+  SystemProgram
+} from '@solana/web3.js';
+import BN from 'bn.js';
+import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 
 // Token configuration
 const tokenMintAddress = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
@@ -330,12 +339,12 @@ export const registerUser = async (
 };
 
 /**
- * Stakes tokens using the referral staking program
+ * Stakes tokens using the referral staking program with a client-side built transaction
+ * This approach avoids any serialization/deserialization issues
  * 
  * @param walletAddress The wallet address of the user
  * @param amount Amount of tokens to stake
  * @param wallet The connected wallet with sign & send capability
- * @param referralAddress Optional referral wallet address (not used in this implementation)
  * @returns Transaction details if successful
  */
 export const stakeExistingTokens = async (
@@ -365,69 +374,148 @@ export const stakeExistingTokens = async (
       };
     }
     
-    // Create a staking transaction via our direct-stake endpoint
-    const response = await fetch('/api/direct-stake', {
+    // Fetch the necessary account info from the server
+    const response = await fetch('/api/staking-accounts-info', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         walletAddress,
-        amount,
-        referrer: referralAddress
+        amount
       })
     });
     
     if (!response.ok) {
       const errorData = await response.json();
-      return { error: errorData.message || "Failed to create staking transaction" };
+      return { error: errorData.message || "Failed to get staking account info" };
     }
     
-    const stakingData = await response.json();
+    const accountsInfo = await response.json();
     
-    // Log the response to help with debugging
-    console.log('Stake transaction response:', stakingData);
-    
-    // Validate that there's transaction data in the response
-    if (!stakingData.success || !stakingData.transaction) {
-      return { 
-        error: 'Invalid response from server - missing transaction data' 
-      };
+    if (!accountsInfo.success) {
+      return { error: accountsInfo.error || "Failed to get staking accounts info" };
     }
     
-    // Directly try sending the serialized transaction without deserializing
+    console.log('Building transaction locally with account info:', accountsInfo);
+    
+    // Now build the transaction on the client side
     try {
       const connection = new Connection(clusterApiUrl('devnet'));
+      const userPubkey = new PublicKey(walletAddress);
       
-      // Log the transaction
-      console.log('Sending transaction directly to wallet');
+      // Parse all the account addresses from the server response
+      const tokenMint = new PublicKey(accountsInfo.tokenMint);
+      const programId = new PublicKey(accountsInfo.programId);
+      const vaultPubkey = new PublicKey(accountsInfo.vault);
+      const vaultTokenAccount = new PublicKey(accountsInfo.vaultTokenAccount);
       
-      // Configure transaction options
-      const sendOptions = {
-        skipPreflight: false,
-        preflightCommitment: 'confirmed',
-        maxRetries: 5
-      };
-      
-      // Send and confirm in one step
-      const serializedTransaction = stakingData.transaction;
-      
-      // Let the wallet handle the transaction bytes directly
-      const transactionSignature = await wallet.sendTransaction(
-        serializedTransaction,
-        connection,
-        sendOptions
+      // Get the user's token account
+      const userTokenAccount = await getAssociatedTokenAddress(
+        tokenMint,
+        userPubkey,
+        false,
+        TOKEN_PROGRAM_ID
       );
       
-      console.log('Transaction sent with signature:', transactionSignature);
+      // 2. Create a new transaction
+      const transaction = new Transaction();
       
-      // Return the signature for confirmation
-      return { 
-        signature: transactionSignature,
-        stakingTransaction: stakingData
+      // 3. Get latest blockhash for the transaction
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+      transaction.recentBlockhash = blockhash;
+      transaction.lastValidBlockHeight = lastValidBlockHeight;
+      transaction.feePayer = userPubkey;
+      
+      // 4. Check if user is registered, and create registration instruction if needed
+      if (!accountsInfo.isRegistered) {
+        console.log('User is not registered. Adding registration instruction.');
+        
+        // Find user stake info PDA
+        const [userStakeInfoPDA] = PublicKey.findProgramAddressSync(
+          [new TextEncoder().encode('user-stake-info'), userPubkey.toBuffer()],
+          programId
+        );
+        
+        console.log('User stake info PDA:', userStakeInfoPDA.toString());
+        
+        // Add register instruction
+        const registerInstruction = new TransactionInstruction({
+          keys: [
+            { pubkey: userPubkey, isSigner: true, isWritable: true }, // user/payer
+            { pubkey: userStakeInfoPDA, isSigner: false, isWritable: true }, // user stake info account
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system program
+          ],
+          programId,
+          data: new Uint8Array([0]) // 0 = register instruction
+        });
+        
+        transaction.add(registerInstruction);
+      }
+      
+      // 5. Add stake instruction
+      const [userStakeInfoPDA] = PublicKey.findProgramAddressSync(
+        [new TextEncoder().encode('user-stake-info'), userPubkey.toBuffer()],
+        programId
+      );
+      
+      // Calculate amount in lamports (9 decimals)
+      const amountLamports = amount * Math.pow(10, 9);
+      
+      // Create stake instruction
+      const stakeInstruction = new TransactionInstruction({
+        keys: [
+          { pubkey: userPubkey, isSigner: true, isWritable: true }, // user/payer
+          { pubkey: userTokenAccount, isSigner: false, isWritable: true }, // user token account
+          { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // vault token account
+          { pubkey: vaultPubkey, isSigner: false, isWritable: true }, // vault account
+          { pubkey: userStakeInfoPDA, isSigner: false, isWritable: true }, // user stake info account
+          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token program
+        ],
+        programId,
+        data: (() => {
+          // Create a Uint8Array with instruction code (1 = stake) followed by amount
+          const instructionCode = new Uint8Array([1]);
+          const amountBytes = new Uint8Array(new BN(amountLamports).toArray('le', 8));
+          
+          // Combine the two arrays
+          const result = new Uint8Array(instructionCode.length + amountBytes.length);
+          result.set(instructionCode);
+          result.set(amountBytes, instructionCode.length);
+          
+          return result;
+        })()
+      });
+      
+      transaction.add(stakeInstruction);
+      
+      console.log('Transaction built successfully');
+      
+      // 6. Sign and send transaction
+      const signature = await wallet.sendTransaction(transaction, connection);
+      
+      console.log('Transaction sent successfully with signature:', signature);
+      
+      // 7. Wait for confirmation (optional)
+      const confirmation = await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight
+      });
+      
+      console.log('Transaction confirmed:', confirmation);
+      
+      // Return success
+      return {
+        signature,
+        stakingTransaction: {
+          success: true,
+          message: `Successfully staked ${amount} tokens`,
+          signature
+        }
       };
-    } catch (signError) {
-      console.error('Error signing/sending transaction:', signError);
-      return { 
-        error: `Transaction signing failed: ${signError instanceof Error ? signError.message : String(signError)}`
+    } catch (txError) {
+      console.error('Error building/sending transaction:', txError);
+      return {
+        error: `Failed to process staking transaction: ${txError instanceof Error ? txError.message : String(txError)}`
       };
     }
   } catch (error) {
