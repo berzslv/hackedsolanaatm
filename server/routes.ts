@@ -331,32 +331,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { PublicKey } = await import('@solana/web3.js');
         
         try {
-          // Try with normalized (lowercase) code first
+          // First attempt - try as-is
           try {
-            const normalizedCode = code.toLowerCase();
-            const pubkey = new PublicKey(normalizedCode);
-            
-            // For Solana addresses, we're going to accept any valid pubkey
-            console.log(`Valid Solana wallet address format (normalized): ${normalizedCode}`);
+            const pubkey = new PublicKey(code);
+            console.log(`Valid Solana wallet address format (original case): ${code}`);
             
             // Accept proper Solana wallet address as a valid referral code
             return res.json({ 
               valid: true, 
               message: "Valid wallet address being used as referral code" 
             });
-          } catch (e) {
-            // Try with original case if lowercase fails
+          } catch (e: any) {
+            console.log(`Original key format failed: ${e.message || 'Unknown error'}`);
+            
+            // Second attempt - try with normalized case (lowercase)
             try {
-              const pubkey = new PublicKey(code);
-              console.log(`Valid Solana wallet address format (original case): ${code}`);
+              const normalizedCode = code.toLowerCase();
+              const pubkey = new PublicKey(normalizedCode);
+              console.log(`Valid Solana wallet address format (normalized): ${normalizedCode}`);
               
               return res.json({ 
                 valid: true, 
                 message: "Valid wallet address being used as referral code" 
               });
-            } catch (e2) {
-              // Neither worked, so it's not a valid wallet address
-              throw new Error("Not a valid public key");
+            } catch (e2: any) {
+              console.log(`Lowercase key format failed: ${e2.message || 'Unknown error'}`);
+              
+              // Third attempt - try with all uppercase 
+              try {
+                const upperCode = code.toUpperCase();
+                const pubkey = new PublicKey(upperCode);
+                console.log(`Valid Solana wallet address format (uppercase): ${upperCode}`);
+                
+                return res.json({ 
+                  valid: true, 
+                  message: "Valid wallet address being used as referral code" 
+                });
+              } catch (e3: any) {
+                console.log(`Uppercase key format failed: ${e3.message || 'Unknown error'}`);
+                
+                // Last attempt - try special case normalization
+                try {
+                  // Some common substitutions/fixes
+                  const fixedCode = code
+                    .replace(/O/g, '0')  // Replace O with 0
+                    .replace(/l/g, '1')  // Replace l with 1
+                    .replace(/I/g, '1'); // Replace I with 1
+                    
+                  const pubkey = new PublicKey(fixedCode);
+                  console.log(`Valid Solana wallet address after character fixes: ${fixedCode}`);
+                  
+                  return res.json({ 
+                    valid: true, 
+                    message: "Valid wallet address being used as referral code" 
+                  });
+                } catch (e4) {
+                  // None of our attempts worked, so it's not a valid wallet address
+                  throw new Error("Not a valid public key after multiple attempts");
+                }
+              }
             }
           }
         } catch (addressErr) {
@@ -410,23 +443,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Also check if it's a valid wallet address
       try {
         const { PublicKey } = await import('@solana/web3.js');
+        
+        // Try several different formats to be flexible with wallet addresses
         try {
-          // Code might be uppercase or lowercase, so normalize it
-          const normalizedCode = code.toLowerCase();
-          // Try to create a PublicKey from the code
-          const pubkey = new PublicKey(normalizedCode);
-          // If we reach here, it's a valid pubkey
+          // First attempt - original case
+          const pubkey = new PublicKey(code);
           isValid = true;
-          console.log(`Valid wallet address used as referral code: ${normalizedCode}`);
+          console.log(`Valid wallet address (original): ${code}`);
         } catch (e) {
-          // Try again with the original case
           try {
-            const pubkey = new PublicKey(code);
+            // Second attempt - lowercase
+            const normalizedCode = code.toLowerCase();
+            const pubkey = new PublicKey(normalizedCode);
             isValid = true;
-            console.log(`Valid wallet address used as referral code (original case): ${code}`);
+            console.log(`Valid wallet address (lowercase): ${normalizedCode}`);
           } catch (e2) {
-            // Not a valid wallet address, isValid is determined by the valid codes check
-            console.log(`Not a valid wallet address: ${code}`);
+            try {
+              // Third attempt - uppercase
+              const upperCode = code.toUpperCase();
+              const pubkey = new PublicKey(upperCode);
+              isValid = true;
+              console.log(`Valid wallet address (uppercase): ${upperCode}`);
+            } catch (e3) {
+              try {
+                // Last attempt - common character substitutions
+                const fixedCode = code
+                  .replace(/O/g, '0')  // Replace O with 0
+                  .replace(/l/g, '1')  // Replace l with 1
+                  .replace(/I/g, '1'); // Replace I with 1
+                
+                const pubkey = new PublicKey(fixedCode);
+                isValid = true;
+                console.log(`Valid wallet address after fixes: ${fixedCode}`);
+              } catch (e4) {
+                // None of our attempts worked
+                console.log(`Not a valid wallet address after multiple attempts: ${code}`);
+              }
+            }
           }
         }
       } catch (e) {
