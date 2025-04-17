@@ -28,7 +28,7 @@ export const getConnection = (): Connection => {
  */
 export const findUserStakeInfoPDA = (userPublicKey: PublicKey): [PublicKey, number] => {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from('user-stake-info'), userPublicKey.toBuffer()],
+    [Buffer.from('user_info'), userPublicKey.toBuffer()],
     PROGRAM_ID
   );
 };

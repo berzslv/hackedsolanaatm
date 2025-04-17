@@ -431,7 +431,7 @@ export const stakeExistingTokens = async (
         
         // Find user stake info PDA
         const [userStakeInfoPDA] = PublicKey.findProgramAddressSync(
-          [new TextEncoder().encode('user-stake-info'), userPubkey.toBuffer()],
+          [new TextEncoder().encode('user_info'), userPubkey.toBuffer()],
           programId
         );
         
@@ -453,7 +453,7 @@ export const stakeExistingTokens = async (
       
       // 5. Add stake instruction
       const [userStakeInfoPDA] = PublicKey.findProgramAddressSync(
-        [new TextEncoder().encode('user-stake-info'), userPubkey.toBuffer()],
+        [new TextEncoder().encode('user_info'), userPubkey.toBuffer()],
         programId
       );
       
