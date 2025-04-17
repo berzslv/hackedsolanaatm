@@ -189,7 +189,7 @@ export function createRegisterUserInstruction(
 
 /**
  * Get on-chain staking information for a user directly from the blockchain
- * This function doesn't use Anchor, just direct Solana web3 calls
+ * This function tries to properly decode account data using Anchor's IDL
  * 
  * @param walletAddress The user's wallet address
  * @returns Staking information fetched directly from the blockchain
@@ -220,26 +220,104 @@ export async function getOnChainStakingInfo(walletAddress: string): Promise<any>
       };
     }
     
-    // 3. This is a simplified approach - in a production environment we would use
-    // a proper borsh deserializer to parse the account data according to its layout
-    // Here we'll look at if the account exists, which confirms it's initialized
     console.log(`Found on-chain staking account for ${walletAddress} with ${accountInfo.data.length} bytes of data`);
     
     // Check if account has our correct owner (staking program)
     const isProgramOwned = accountInfo.owner.equals(PROGRAM_ID);
     
-    // For development purposes, we might try to manually extract some data
-    // For simplicity, this implementation just returns that the account exists
+    // Try to decode the account data using Anchor's Program
+    let decodedData = null;
+    
+    try {
+      const program = createStakingProgram();
+      if (program) {
+        // Get the coder from the program
+        const coder = program.coder;
+        
+        // Create a buffer from the account data
+        const dataBuffer = accountInfo.data;
+        
+        // Try to decode the account data using Anchor's account decoder
+        // This requires that you provided the correct IDL when creating the program
+        try {
+          // We're looking for a UserInfo account type
+          decodedData = coder.accounts.decode('UserInfo', dataBuffer);
+          console.log('Successfully decoded UserInfo account:', decodedData);
+        } catch (decodeError) {
+          console.error('Error decoding UserInfo account:', decodeError);
+          
+          // Fallback: Try to manually parse based on expected layout
+          // This is a simplified example - actual account layout may differ
+          try {
+            // Often Anchor places a discriminator at the start of the account (8 bytes)
+            // Then typically numeric fields like BN are 8 bytes, booleans are 1 byte
+            // PublicKeys are 32 bytes, etc.
+            
+            // Skip the 8-byte discriminator
+            const buffer = dataBuffer.slice(8);
+            
+            // Example layout (adjust based on your actual UserInfo struct):
+            // owner: PublicKey (32 bytes)
+            // staked_amount: u64 (8 bytes)
+            // rewards: u64 (8 bytes)
+            // staked_at: i64 (8 bytes) - timestamp
+            // referrer: Option<Pubkey> (1 + 32 bytes) - 1 byte for Option, then pubkey
+            
+            const owner = new PublicKey(buffer.slice(0, 32));
+            
+            // Convert the next 8 bytes to a BigInt for the staked amount
+            const stakedAmountBytes = buffer.slice(32, 40);
+            const stakedAmount = BigInt('0x' + Buffer.from(stakedAmountBytes).toString('hex'));
+            
+            // Convert the next 8 bytes to a BigInt for rewards
+            const rewardsBytes = buffer.slice(40, 48);
+            const rewards = BigInt('0x' + Buffer.from(rewardsBytes).toString('hex'));
+            
+            // Next 8 bytes for timestamp (staked_at)
+            const stakedAtBytes = buffer.slice(48, 56);
+            const stakedAtValue = new DataView(stakedAtBytes.buffer, stakedAtBytes.byteOffset, stakedAtBytes.byteLength).getBigInt64(0, true);
+            const stakedAt = new Date(Number(stakedAtValue) * 1000);
+            
+            // The next byte would indicate if there's a referrer (1) or not (0)
+            const hasReferrer = buffer[56] === 1;
+            
+            let referrer = null;
+            if (hasReferrer) {
+              // Extract the referrer pubkey
+              referrer = new PublicKey(buffer.slice(57, 89)).toString();
+            }
+            
+            decodedData = {
+              owner: owner.toString(),
+              stakedAmount: stakedAmount.toString(),
+              rewards: rewards.toString(),
+              stakedAt,
+              referrer
+            };
+            
+            console.log('Manually parsed account data:', decodedData);
+          } catch (parseError) {
+            console.error('Error manually parsing account data:', parseError);
+          }
+        }
+      }
+    } catch (programError) {
+      console.error('Error using Anchor program for decoding:', programError);
+    }
+    
+    // Return our parsed information
     return {
-      amountStaked: -1, // Signal to client that we can't determine exact amount
-      pendingRewards: 0,
-      stakedAt: new Date().toISOString(),
-      referrer: null, 
+      amountStaked: decodedData ? Number(decodedData.stakedAmount) / 1_000_000_000 : -1, // Convert from lamports
+      pendingRewards: decodedData ? Number(decodedData.rewards) / 1_000_000_000 : 0,
+      stakedAt: decodedData && decodedData.stakedAt ? decodedData.stakedAt.toISOString() : new Date().toISOString(),
+      referrer: decodedData ? decodedData.referrer : null,
       isInitialized: true,
       accountExists: true,
       isProgramOwned,
       dataSize: accountInfo.data.length,
-      lastUpdateTime: new Date().toISOString()
+      owner: decodedData ? decodedData.owner : null,
+      lastUpdateTime: new Date().toISOString(),
+      rawData: decodedData  // Include the raw decoded data for debugging
     };
   } catch (error) {
     console.error("Error fetching on-chain staking info:", error);

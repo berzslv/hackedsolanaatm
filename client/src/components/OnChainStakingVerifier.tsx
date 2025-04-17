@@ -107,6 +107,49 @@ export function OnChainStakingVerifier() {
                     )}
                   </span>
                 </div>
+
+                {stakingInfo.amountStaked === -1 ? (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Staking Status</span>
+                    <span className="text-sm font-semibold text-green-600">
+                      Account Found ✓
+                    </span>
+                  </div>
+                ) : stakingInfo.amountStaked > 0 ? (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Amount Staked</span>
+                    <span className="text-sm font-semibold text-green-600">
+                      {formatNumber(stakingInfo.amountStaked)} HATM
+                    </span>
+                  </div>
+                ) : null}
+
+                {stakingInfo.pendingRewards > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Pending Rewards</span>
+                    <span className="text-sm font-semibold text-amber-600">
+                      {formatNumber(stakingInfo.pendingRewards)} HATM
+                    </span>
+                  </div>
+                )}
+
+                {stakingInfo.stakedAt && stakingInfo.stakedAt !== 'N/A' && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Staked At</span>
+                    <span className="text-sm text-neutral-500">
+                      {formatDate(new Date(stakingInfo.stakedAt))}
+                    </span>
+                  </div>
+                )}
+                
+                {stakingInfo.referrer && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Referrer</span>
+                    <span className="text-sm text-neutral-500">
+                      {abbreviateAddress(stakingInfo.referrer)}
+                    </span>
+                  </div>
+                )}
                 
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Last Update</span>
@@ -127,6 +170,14 @@ export function OnChainStakingVerifier() {
                     <strong>Note:</strong> This is a direct blockchain verification. If your staking account 
                     exists and is owned by the correct program, your stake is confirmed regardless of 
                     what the Railway API shows.
+                    {stakingInfo.amountStaked === -1 && (
+                      <>
+                        <br /><br />
+                        <strong>Account found but amount couldn't be decoded:</strong> While we've confirmed your staking account exists on-chain, 
+                        we couldn't decode the exact amount due to binary layout differences. This confirms you have staked, 
+                        but we can't display the precise amount.
+                      </>
+                    )}
                   </p>
                 </div>
               </>
