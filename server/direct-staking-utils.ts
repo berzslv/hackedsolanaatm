@@ -57,17 +57,33 @@ export function createStakingProgram(): anchor.Program | null {
       console.error('IDL not loaded, cannot create program');
       return null;
     }
+    
+    if (!PROGRAM_ID) {
+      console.error('Program ID is undefined');
+      return null;
+    }
 
     const connection = getConnection();
     // Create a proper NodeWallet instance that satisfies the Wallet interface
     const keypair = anchor.web3.Keypair.generate();
     const dummyWallet = new anchor.Wallet(keypair);
     
+    // More detailed logging
+    console.log(`Creating staking program with:
+      - Program ID: ${PROGRAM_ID.toString()}
+      - Connection: ${connection.rpcEndpoint}
+      - IDL loaded: ${idl.name}, version ${idl.version}
+    `);
+    
     const provider = new anchor.AnchorProvider(
       connection,
       dummyWallet,
       { commitment: 'confirmed' }
     );
+    
+    // Log all required parameters to make sure they're defined
+    console.log(`Provider created with wallet pubkey: ${dummyWallet.publicKey.toString()}`);
+    console.log(`Creating program instance...`);
 
     return new anchor.Program(idl, PROGRAM_ID, provider);
   } catch (error) {
@@ -143,8 +159,17 @@ export function createRegisterUserInstruction(
   userWallet: PublicKey,
   referrer?: PublicKey
 ): TransactionInstruction {
+  // Validate required parameters
+  if (!userWallet) {
+    throw new Error('User wallet address is required');
+  }
+  
   if (!idl) {
     throw new Error('IDL not loaded, cannot create register user instruction');
+  }
+  
+  if (!PROGRAM_ID) {
+    throw new Error('PROGRAM_ID is undefined, cannot create register user instruction');
   }
   
   try {
@@ -156,7 +181,17 @@ export function createRegisterUserInstruction(
     
     // Find the user info PDA
     const [userInfoPDA] = findUserInfoPDA(userWallet);
-    console.log(`User Info PDA: ${userInfoPDA.toString()}`);
+    
+    // Log all details for debugging
+    console.log(`
+    Creating register user instruction:
+    - User wallet: ${userWallet.toString()}
+    - User Info PDA: ${userInfoPDA.toString()}
+    - System Program ID: ${anchor.web3.SystemProgram.programId.toString()}
+    - Rent Sysvar: ${anchor.web3.SYSVAR_RENT_PUBKEY.toString()}
+    - Referrer: ${referrer ? referrer.toString() : 'none'}
+    - Program ID: ${PROGRAM_ID.toString()}
+    `);
     
     // The instruction data for the registerUser instruction
     const data = program.coder.instruction.encode('registerUser', { 
@@ -173,7 +208,12 @@ export function createRegisterUserInstruction(
       { pubkey: anchor.web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },     // rent
     ];
     
-    console.log(`Creating register user instruction${referrer ? ' with referrer: ' + referrer.toString() : ''}`);
+    // Verify every account key is defined
+    keys.forEach((key, index) => {
+      if (!key.pubkey) {
+        throw new Error(`Required account at position ${index} is undefined`);
+      }
+    });
     
     // Create the instruction
     return new TransactionInstruction({
@@ -345,8 +385,35 @@ export function createStakingInstruction(
   amount: bigint,
   userTokenAccount: PublicKey
 ): TransactionInstruction {
+  // Validate all input parameters
+  if (!userWallet) {
+    throw new Error('User wallet address is required');
+  }
+  
+  if (!amount) {
+    throw new Error('Staking amount is required');
+  }
+  
+  // Convert to number for simple validation
+  const amountNum = Number(amount);
+  if (isNaN(amountNum) || amountNum <= 0) {
+    throw new Error(`Invalid staking amount: ${amount}`);
+  }
+  
+  if (!userTokenAccount) {
+    throw new Error('User token account is required');
+  }
+  
   if (!idl) {
     throw new Error('IDL not loaded, cannot create staking instruction');
+  }
+  
+  if (!PROGRAM_ID) {
+    throw new Error('PROGRAM_ID is undefined, cannot create staking instruction');
+  }
+  
+  if (!VAULT_TOKEN_ACCOUNT) {
+    throw new Error('VAULT_TOKEN_ACCOUNT is undefined, cannot create staking instruction');
   }
   
   try {
@@ -367,6 +434,19 @@ export function createStakingInstruction(
     // The instruction data for the stake instruction
     const data = program.coder.instruction.encode('stake', { amount: new BN(amount.toString()) });
     
+    // Check all accounts and log their details
+    console.log(`
+    Creating staking instruction with:
+    - Amount: ${amount.toString()} lamports (${Number(amount) / 1_000_000_000} tokens)
+    - User wallet: ${userWallet.toString()}
+    - User token account: ${userTokenAccount.toString()}
+    - Global state PDA: ${globalStatePDA.toString()}
+    - User info PDA: ${userInfoPDA.toString()}
+    - Vault token account: ${VAULT_TOKEN_ACCOUNT.toString()}
+    - Token program ID: ${TOKEN_PROGRAM_ID.toString()}
+    - System program ID: ${anchor.web3.SystemProgram.programId.toString()}
+    `);
+    
     // The accounts required for the referral staking instruction
     // Based on the referral_staking IDL, the stake instruction requires exactly these accounts in this order:
     // owner, globalState, userInfo, userTokenAccount, vault, tokenProgram, systemProgram
@@ -380,8 +460,12 @@ export function createStakingInstruction(
       { pubkey: anchor.web3.SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
     ];
     
-    console.log(`Creating staking instruction with amount: ${amount.toString()}`);
-    console.log(`Vault token account used: ${VAULT_TOKEN_ACCOUNT.toString()}`);
+    // Verify every account key is defined
+    keys.forEach((key, index) => {
+      if (!key.pubkey) {
+        throw new Error(`Required account at position ${index} is undefined`);
+      }
+    });
     
     // Create the instruction
     return new TransactionInstruction({

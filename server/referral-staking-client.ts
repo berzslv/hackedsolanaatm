@@ -58,17 +58,32 @@ export function createStakingProgram(): anchor.Program | null {
       console.error('IDL not loaded, cannot create program');
       return null;
     }
+    
+    if (!PROGRAM_ID) {
+      console.error('PROGRAM_ID is undefined');
+      return null;
+    }
 
     const connection = getConnection();
     // Create a properly initialized wallet
     const keypair = anchor.web3.Keypair.generate();
     const wallet = new anchor.Wallet(keypair);
     
+    // More extensive logging to help with debugging
+    console.log(`Creating staking program in referral-staking-client:
+      - Program ID: ${PROGRAM_ID.toString()}
+      - Connection endpoint: ${connection.rpcEndpoint}
+      - IDL name: ${idl.name}, version: ${idl.version}
+      - Wallet public key: ${wallet.publicKey.toString()}
+    `);
+    
     const provider = new anchor.AnchorProvider(
       connection,
       wallet,
       { commitment: 'confirmed' }
     );
+    
+    console.log(`Provider created successfully, creating program instance...`);
 
     return new anchor.Program(idl, PROGRAM_ID, provider);
   } catch (error) {
