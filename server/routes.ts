@@ -2699,6 +2699,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
       
+  // Register Ethereum routes
+  registerEthereumRoutes(app);
+  console.log("Ethereum routes registered");
+  
   const httpServer = createServer(app);
   return httpServer;
 }

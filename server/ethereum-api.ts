@@ -215,9 +215,12 @@ export async function handleEthStakingInfo(req: Request, res: Response) {
     // Fetch fresh data
     const info = await fetchStakingInfo(walletAddress);
     return res.json(info);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in handleEthStakingInfo:', error);
-    return res.status(500).json({ error: 'Failed to get staking info', details: error.message });
+    return res.status(500).json({ 
+      error: 'Failed to get staking info', 
+      details: error?.message || 'Unknown error' 
+    });
   }
 }
 
@@ -253,9 +256,12 @@ export async function handleEthStakingStats(req: Request, res: Response) {
     };
     
     return res.json(stats);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in handleEthStakingStats:', error);
-    return res.status(500).json({ error: 'Failed to get staking stats', details: error.message });
+    return res.status(500).json({ 
+      error: 'Failed to get staking stats', 
+      details: error?.message || 'Unknown error' 
+    });
   }
 }
 
@@ -329,7 +335,8 @@ export async function handleEthLeaderboard(req: Request, res: Response) {
     // For referrers leaderboard
     if (type === 'referrers') {
       // Sort referrers by count
-      const sortedReferrers = [...referralCounts.entries()]
+      const entries = Array.from(referralCounts.entries());
+      const sortedReferrers = entries
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
         .map(([walletAddress, count], index) => ({
@@ -345,7 +352,8 @@ export async function handleEthLeaderboard(req: Request, res: Response) {
     // For stakers leaderboard
     if (type === 'stakers') {
       // Sort stakers by amount
-      const sortedStakers = [...stakingAmounts.entries()]
+      const entries = Array.from(stakingAmounts.entries());
+      const sortedStakers = entries
         .sort((a, b) => parseFloat(b[1]) - parseFloat(a[1]))
         .slice(0, 10)
         .map(([walletAddress, amount], index) => ({
