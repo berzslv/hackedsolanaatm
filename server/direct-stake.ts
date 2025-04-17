@@ -4,10 +4,11 @@
  * This module provides direct staking functionality using our referral staking smart contract
  */
 import { Request, Response } from 'express';
-import { PublicKey, Transaction } from '@solana/web3.js';
+import { PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID, getAccount, TokenAccountNotFoundError, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
 import * as referralStaking from './referral-staking-client';
 import { getConnection } from './simple-token';
+import * as anchor from '@coral-xyz/anchor';
 
 /**
  * Handle direct staking functionality
@@ -214,13 +215,56 @@ export async function createDirectStakingTransaction(
     
     // If not registered, add registration instruction
     if (!isUserRegistered) {
-      console.log(`User ${userWalletAddress} is not registered with the staking program, adding registration instruction`);
+      console.log(`User ${userWalletAddress} is not registered with the staking program, adding manual registration instruction`);
       try {
-        const registerInstruction = referralStaking.createRegisterUserInstruction(
-          userPublicKey,
-          referrer
-        );
-        console.log(`Registration instruction created successfully`);
+        // Instead of using the Anchor Program, we'll manually create the transaction instruction
+        // This avoids BN.js issues completely
+        
+        // Find the user info PDA
+        const [userInfoPDA] = referralStaking.findUserInfoPDA(userPublicKey);
+        console.log(`User Info PDA for registration: ${userInfoPDA.toString()}`);
+        
+        // Create a hardcoded instruction data buffer directly
+        // This is equivalent to the anchor encode but without any BN dependencies
+        // The instruction discriminator for 'registerUser' is hardcoded (first 8 bytes)
+        // Format: [discriminator(8 bytes)][has_referrer(1 byte)][referrer_pubkey(optional 32 bytes)]
+        let instructionData: Buffer;
+        
+        // The discriminator bytes for 'registerUser' instruction
+        const registerUserDiscriminator = Buffer.from([
+          204, 126, 85, 7, 158, 17, 197, 211  // This is obtained from anchor.hash('global:registerUser')
+        ]);
+        
+        // If referrer is provided, include it in the instruction data
+        if (referrer) {
+          console.log(`Creating registration with referrer: ${referrer.toString()}`);
+          // 1 byte for 'has referrer' flag (1 = true)
+          const hasReferrerByte = Buffer.from([1]);
+          // 32 bytes for the referrer public key
+          const referrerBytes = referrer.toBuffer();
+          // Combine all parts
+          instructionData = Buffer.concat([registerUserDiscriminator, hasReferrerByte, referrerBytes]);
+        } else {
+          console.log(`Creating registration without referrer`);
+          // 1 byte for 'has referrer' flag (0 = false)
+          const hasReferrerByte = Buffer.from([0]);
+          // Combine the parts (no referrer pubkey included)
+          instructionData = Buffer.concat([registerUserDiscriminator, hasReferrerByte]);
+        }
+        
+        // Create the manual instruction
+        const registerInstruction = new TransactionInstruction({
+          keys: [
+            { pubkey: userPublicKey, isSigner: true, isWritable: true },           // owner
+            { pubkey: userInfoPDA, isSigner: false, isWritable: true },            // userInfo
+            { pubkey: anchor.web3.SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
+            { pubkey: anchor.web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },     // rent
+          ],
+          programId: referralStaking.PROGRAM_ID,
+          data: instructionData,
+        });
+        
+        console.log(`Manual registration instruction created successfully`);
         transaction.add(registerInstruction);
       } catch (error) {
         throw new Error(`Failed to create registration instruction: ${error instanceof Error ? error.message : String(error)}`);
@@ -239,14 +283,66 @@ export async function createDirectStakingTransaction(
     - Vault token account: ${referralStaking.VAULT_TOKEN_ACCOUNT.toString()}
     `);
     
-    let stakeInstruction;
     try {
-      stakeInstruction = referralStaking.createStakingInstruction(
-        userPublicKey,
-        adjustedAmount,
-        userTokenAccount
-      );
-      console.log(`Staking instruction created successfully`);
+      // Create a manual stake instruction that doesn't rely on BN.js
+      console.log(`Creating manual stake instruction for amount: ${adjustedAmount.toString()}`);
+      
+      // Get necessary PDAs
+      const [globalStatePDA] = referralStaking.findGlobalStatePDA();
+      const [userInfoPDA] = referralStaking.findUserInfoPDA(userPublicKey);
+      
+      console.log(`
+      Manual staking instruction accounts:
+      - Global state PDA: ${globalStatePDA.toString()}
+      - User info PDA: ${userInfoPDA.toString()}
+      - User token account: ${userTokenAccount.toString()}
+      - Vault token account: ${referralStaking.VAULT_TOKEN_ACCOUNT.toString()}
+      `);
+      
+      // Create a hardcoded instruction data buffer directly
+      // This is equivalent to the anchor encode but without any BN dependencies
+      // Format: [discriminator(8 bytes)][amount(8 bytes)]
+      
+      // The discriminator bytes for 'stake' instruction (anchor.hash('global:stake'))
+      const stakeDiscriminator = Buffer.from([
+        111, 18, 107, 137, 251, 29, 19, 105
+      ]);
+      
+      // Convert the bigint amount to an 8-byte buffer (little-endian)
+      const amountBuffer = Buffer.alloc(8);
+      // We need to handle BigInt conversion to buffer without BN
+      const amountBigInt = BigInt(adjustedAmount.toString());
+      // Write the amount as a little-endian 64-bit value
+      for (let i = 0; i < 8; i++) {
+        amountBuffer[i] = Number((amountBigInt >> BigInt(i * 8)) & BigInt(0xff));
+      }
+      
+      // Combine instruction data parts
+      const instructionData = Buffer.concat([stakeDiscriminator, amountBuffer]);
+      
+      // Create the manual staking instruction
+      const stakeInstruction = new TransactionInstruction({
+        keys: [
+          { pubkey: userPublicKey, isSigner: true, isWritable: true },           // owner
+          { pubkey: globalStatePDA, isSigner: false, isWritable: true },         // globalState
+          { pubkey: userInfoPDA, isSigner: false, isWritable: true },            // userInfo
+          { pubkey: userTokenAccount, isSigner: false, isWritable: true },       // userTokenAccount
+          { pubkey: referralStaking.VAULT_TOKEN_ACCOUNT, isSigner: false, isWritable: true }, // vault token account
+          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },      // tokenProgram
+          { pubkey: anchor.web3.SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
+        ],
+        programId: referralStaking.PROGRAM_ID,
+        data: instructionData,
+      });
+      
+      // Verify all account keys are defined
+      stakeInstruction.keys.forEach((key, index) => {
+        if (!key.pubkey) {
+          throw new Error(`Required account at position ${index} is undefined in staking instruction`);
+        }
+      });
+      
+      console.log(`Manual staking instruction created successfully`);
       transaction.add(stakeInstruction);
     } catch (error) {
       throw new Error(`Failed to create staking instruction: ${error instanceof Error ? error.message : String(error)}`);

@@ -198,9 +198,18 @@ export function createRegisterUserInstruction(
     `);
     
     // The instruction data for the registerUser instruction
-    const data = program.coder.instruction.encode('registerUser', { 
-      referrer: referrer ? referrer : null 
-    });
+    // We need to handle the referrer specially to avoid BN issues
+    let instructionArgs: any = {};
+    
+    if (referrer) {
+      // Convert the referrer to a simple string representation
+      instructionArgs.referrer = referrer.toString();
+    } else {
+      instructionArgs.referrer = null;
+    }
+    
+    console.log(`Encoding registerUser instruction with args:`, JSON.stringify(instructionArgs));
+    const data = program.coder.instruction.encode('registerUser', instructionArgs);
     
     // The accounts required for the referral staking instruction
     // Based on the referral_staking IDL, the registerUser instruction requires:
