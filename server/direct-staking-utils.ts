@@ -85,7 +85,12 @@ export function createStakingProgram(): anchor.Program | null {
     console.log(`Provider created with wallet pubkey: ${dummyWallet.publicKey.toString()}`);
     console.log(`Creating program instance...`);
 
-    return new anchor.Program(idl, PROGRAM_ID, provider);
+    // Create the program instance with proper typing
+    return new anchor.Program(
+      idl as anchor.Idl,
+      PROGRAM_ID,
+      provider as anchor.Provider
+    );
   } catch (error) {
     console.error('Error creating staking program:', error);
     return null;

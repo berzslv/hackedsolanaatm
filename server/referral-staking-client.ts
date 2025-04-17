@@ -85,7 +85,12 @@ export function createStakingProgram(): anchor.Program | null {
     
     console.log(`Provider created successfully, creating program instance...`);
 
-    return new anchor.Program(idl, PROGRAM_ID, provider);
+    // Create the program instance with proper typing
+    return new anchor.Program(
+      idl as anchor.Idl,
+      PROGRAM_ID,
+      provider as anchor.Provider
+    );
   } catch (error) {
     console.error('Error creating staking program:', error);
     return null;
@@ -233,18 +238,61 @@ export function createRegisterUserInstruction(
 
 /**
  * Check if a user is registered with the staking program
+ * This function verifies if a user has a registered account with the staking program
+ * by checking if their associated PDA account exists on the blockchain
+ * 
  * @param userWallet The user's wallet address
  * @returns True if the user is registered, false otherwise
  */
 export async function isUserRegistered(userWallet: PublicKey): Promise<boolean> {
+  if (!userWallet) {
+    console.error('Invalid wallet address provided to isUserRegistered');
+    return false;
+  }
+  
+  if (!PROGRAM_ID) {
+    console.error('PROGRAM_ID is undefined, cannot check user registration');
+    return false;
+  }
+  
   try {
     const connection = getConnection();
-    const [userInfoPDA] = findUserInfoPDA(userWallet);
+    if (!connection) {
+      throw new Error('Failed to get Solana connection');
+    }
     
+    // Find the user info PDA
+    const [userInfoPDA, bump] = findUserInfoPDA(userWallet);
+    console.log(`Checking if user ${userWallet.toString()} is registered with the staking program`);
+    console.log(`User Info PDA: ${userInfoPDA.toString()} (bump: ${bump})`);
+    
+    // Get the account info from the blockchain
     const accountInfo = await connection.getAccountInfo(userInfoPDA);
-    return accountInfo !== null;
+    
+    // More detailed check: verify both existence and correct program ownership
+    const isRegistered = accountInfo !== null && accountInfo.owner.equals(PROGRAM_ID);
+    
+    console.log(`
+    User registration check result for ${userWallet.toString()}:
+    - Account exists: ${accountInfo !== null ? 'Yes' : 'No'}
+    ${accountInfo !== null ? `- Account owner: ${accountInfo.owner.toString()}` : ''}
+    ${accountInfo !== null ? `- Owner matches program: ${accountInfo.owner.equals(PROGRAM_ID) ? 'Yes' : 'No'}` : ''}
+    ${accountInfo !== null ? `- Data size: ${accountInfo.data.length} bytes` : ''}
+    - Is registered: ${isRegistered ? 'Yes ✓' : 'No ✗'}
+    `);
+    
+    return isRegistered;
   } catch (error) {
-    console.error('Error checking user registration:', error);
+    console.error(`Error checking user registration for ${userWallet.toString()}:`, error);
+    
+    // More detailed error reporting
+    if (error instanceof Error) {
+      console.error(`Error type: ${error.name}, Message: ${error.message}`);
+      if (error.stack) {
+        console.error(`Stack trace: ${error.stack}`);
+      }
+    }
+    
     return false;
   }
 }

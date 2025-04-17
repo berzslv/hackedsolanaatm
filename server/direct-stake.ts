@@ -101,22 +101,73 @@ export async function createDirectStakingTransaction(
   referrer?: PublicKey
 ): Promise<string> {
   try {
-    console.log(`Creating direct staking transaction for ${userWalletAddress}, amount: ${amount}, referral: ${referrer?.toString() || 'none'}`);
+    // Validate parameters
+    if (!userWalletAddress) {
+      throw new Error('User wallet address is required');
+    }
     
+    if (!amount || amount <= 0) {
+      throw new Error(`Invalid staking amount: ${amount}`);
+    }
+    
+    if (!referralStaking.TOKEN_MINT_ADDRESS) {
+      throw new Error('TOKEN_MINT_ADDRESS is undefined');
+    }
+    
+    if (!referralStaking.STAKING_VAULT_ADDRESS) {
+      throw new Error('STAKING_VAULT_ADDRESS is undefined');
+    }
+    
+    if (!referralStaking.VAULT_TOKEN_ACCOUNT) {
+      throw new Error('VAULT_TOKEN_ACCOUNT is undefined');
+    }
+    
+    if (!referralStaking.PROGRAM_ID) {
+      throw new Error('PROGRAM_ID is undefined');
+    }
+    
+    console.log(`
+    Creating direct staking transaction:
+    - User wallet: ${userWalletAddress}
+    - Amount: ${amount} tokens
+    - Referral: ${referrer?.toString() || 'none'}
+    - Token mint: ${referralStaking.TOKEN_MINT_ADDRESS.toString()}
+    - Staking vault: ${referralStaking.STAKING_VAULT_ADDRESS.toString()}
+    - Vault token account: ${referralStaking.VAULT_TOKEN_ACCOUNT.toString()}
+    - Program ID: ${referralStaking.PROGRAM_ID.toString()}
+    `);
+    
+    // Get connection and validate user wallet
     const connection = getConnection();
-    const userPublicKey = new PublicKey(userWalletAddress);
+    if (!connection) {
+      throw new Error('Failed to get Solana connection');
+    }
+    
+    let userPublicKey: PublicKey;
+    try {
+      userPublicKey = new PublicKey(userWalletAddress);
+    } catch (error) {
+      throw new Error(`Invalid wallet address format: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    
     const tokenMintAddress = referralStaking.TOKEN_MINT_ADDRESS;
     
     // Create transaction object
     let transaction = new Transaction();
     
     // 1. Get user's token account
-    const userTokenAccount = await getAssociatedTokenAddress(
-      tokenMintAddress,
-      userPublicKey,
-      false,
-      TOKEN_PROGRAM_ID
-    );
+    let userTokenAccount: PublicKey;
+    try {
+      userTokenAccount = await getAssociatedTokenAddress(
+        tokenMintAddress,
+        userPublicKey,
+        false,
+        TOKEN_PROGRAM_ID
+      );
+      console.log(`User token account address: ${userTokenAccount.toString()}`);
+    } catch (error) {
+      throw new Error(`Failed to derive token account address: ${error instanceof Error ? error.message : String(error)}`);
+    }
     
     // 2. Check if user's token account exists
     try {
@@ -143,48 +194,85 @@ export async function createDirectStakingTransaction(
     
     // 3. Calculate token amount with decimals
     const decimals = 9;
-    const adjustedAmount = BigInt(amount * Math.pow(10, decimals));
+    let adjustedAmount: bigint;
+    try {
+      adjustedAmount = BigInt(Math.floor(amount * Math.pow(10, decimals)));
+      console.log(`Adjusted amount with decimals: ${adjustedAmount.toString()} (${amount} tokens with ${decimals} decimals)`);
+    } catch (error) {
+      throw new Error(`Failed to convert amount to lamports: ${error instanceof Error ? error.message : String(error)}`);
+    }
     
     // 4. Check if user is registered with the staking program
-    const isUserRegistered = await referralStaking.isUserRegistered(userPublicKey);
+    let isUserRegistered: boolean;
+    try {
+      isUserRegistered = await referralStaking.isUserRegistered(userPublicKey);
+      console.log(`User registration check result: ${isUserRegistered}`);
+    } catch (error) {
+      console.error(`Error checking user registration, assuming not registered: ${error instanceof Error ? error.message : String(error)}`);
+      isUserRegistered = false;
+    }
     
     // If not registered, add registration instruction
     if (!isUserRegistered) {
       console.log(`User ${userWalletAddress} is not registered with the staking program, adding registration instruction`);
-      const registerInstruction = referralStaking.createRegisterUserInstruction(
-        userPublicKey,
-        referrer
-      );
-      transaction.add(registerInstruction);
+      try {
+        const registerInstruction = referralStaking.createRegisterUserInstruction(
+          userPublicKey,
+          referrer
+        );
+        console.log(`Registration instruction created successfully`);
+        transaction.add(registerInstruction);
+      } catch (error) {
+        throw new Error(`Failed to create registration instruction: ${error instanceof Error ? error.message : String(error)}`);
+      }
     } else {
       console.log(`User ${userWalletAddress} is already registered with the staking program`);
     }
     
     // 5. Add staking instruction
-    console.log(`Adding staking instruction for ${amount} tokens`);
-    console.log(`User token account: ${userTokenAccount.toString()}`);
-    console.log(`Using vault token account: ${referralStaking.VAULT_TOKEN_ACCOUNT.toString()}`);
-    console.log(`Staking vault address: ${referralStaking.STAKING_VAULT_ADDRESS.toString()}`);
+    console.log(`
+    Creating staking instruction:
+    - User wallet: ${userPublicKey.toString()}
+    - User token account: ${userTokenAccount.toString()}
+    - Amount: ${adjustedAmount.toString()} lamports (${amount} tokens)
+    - Program ID: ${referralStaking.PROGRAM_ID.toString()}
+    - Vault token account: ${referralStaking.VAULT_TOKEN_ACCOUNT.toString()}
+    `);
     
-    const stakeInstruction = referralStaking.createStakingInstruction(
-      userPublicKey,
-      adjustedAmount,
-      userTokenAccount
-    );
-    
-    console.log(`Staking instruction created`);
-    transaction.add(stakeInstruction);
+    let stakeInstruction;
+    try {
+      stakeInstruction = referralStaking.createStakingInstruction(
+        userPublicKey,
+        adjustedAmount,
+        userTokenAccount
+      );
+      console.log(`Staking instruction created successfully`);
+      transaction.add(stakeInstruction);
+    } catch (error) {
+      throw new Error(`Failed to create staking instruction: ${error instanceof Error ? error.message : String(error)}`);
+    }
     
     // 6. Get the latest blockhash
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = userPublicKey;
+    try {
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = userPublicKey;
+      console.log(`Added blockhash: ${blockhash}`);
+    } catch (error) {
+      throw new Error(`Failed to get recent blockhash: ${error instanceof Error ? error.message : String(error)}`);
+    }
     
     // 7. Serialize the transaction
-    const serializedTransaction = transaction.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false
-    }).toString('base64');
+    let serializedTransaction: string;
+    try {
+      serializedTransaction = transaction.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false
+      }).toString('base64');
+      console.log(`Transaction serialized successfully (length: ${serializedTransaction.length})`);
+    } catch (error) {
+      throw new Error(`Failed to serialize transaction: ${error instanceof Error ? error.message : String(error)}`);
+    }
     
     console.log(`Direct staking transaction created for ${amount} tokens`);
     return serializedTransaction;
