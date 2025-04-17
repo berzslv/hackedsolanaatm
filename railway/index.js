@@ -24,6 +24,8 @@ const PORT = process.env.PORT || 3000;
 const TOKEN_MINT = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
 // Use the correct staking vault address (PDA derived from program ID and token mint)
 const STAKING_VAULT_ADDRESS = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
+// Vault token account is where tokens are actually held
+const VAULT_TOKEN_ACCOUNT = '3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL';
 // Program ID is separate from the vault address where tokens are actually sent
 const STAKING_PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm';
 const NETWORK = process.env.SOLANA_NETWORK || 'devnet';
@@ -291,12 +293,30 @@ function isStakingTransaction(txData, stakingProgramId) {
     return false;
   }
   
-  // First check if the program ID is directly involved
-  const directMatch = txData.transaction.message.accountKeys.some(
-    key => key.pubkey === stakingProgramId
-  );
+  // First check if the program ID is directly involved (explicit program call)
+  const accountKeys = txData.transaction.message.accountKeys;
+  const directMatch = accountKeys.some(key => key.pubkey === stakingProgramId);
   
-  if (directMatch) return true;
+  if (directMatch) {
+    console.log('Found direct match with staking program ID');
+    return true;
+  }
+  
+  // Check if the vault token account is involved (token transfers to vault)
+  const vaultMatch = accountKeys.some(key => key.pubkey === VAULT_TOKEN_ACCOUNT);
+  
+  if (vaultMatch) {
+    console.log('Found match with vault token account');
+    return true;
+  }
+  
+  // Check if the staking vault PDA is involved
+  const stakingVaultMatch = accountKeys.some(key => key.pubkey === STAKING_VAULT_ADDRESS);
+  
+  if (stakingVaultMatch) {
+    console.log('Found match with staking vault PDA');
+    return true;
+  }
   
   // If debug mode is enabled, check for alternative signs of staking
   if (DEBUG_MODE) {
@@ -306,21 +326,42 @@ function isStakingTransaction(txData, stakingProgramId) {
     // Check logs for staking-related messages
     if (txData.meta?.logMessages) {
       const logsText = txData.meta.logMessages.join(' ');
+      
+      // Check for explicit staking instructions
+      if (logsText.includes('Program log: Instruction: stake')) {
+        console.log('Found explicit stake instruction in logs');
+        return true;
+      }
+      
+      // Check for other staking-related keywords
       if (
         logsText.includes('stake') || 
         logsText.includes('Stake') || 
         logsText.includes('unstake') || 
         logsText.includes('Unstake') ||
         logsText.includes('claim') ||
-        logsText.includes('referral')
+        logsText.includes('referral') ||
+        logsText.includes('Program EnGhdovdYhHk4nsHEJr6gmV3cYfrx53ky19RD56eRRGm')
       ) {
         console.log('Found staking-related keywords in transaction logs');
         return true;
       }
       
-      // Specifically check for our transaction
-      if (txData.transaction?.signatures?.[0] === 'tDdPdrFWs6QcsGzLXH7caYFvCVdRJ7XrDQgJEoRKtQJskGjK8rqAijkTtzkPveMczkw3Bw6KQSgBavktJjEVdDC') {
-        console.log('Found the specific transaction you mentioned');
+      // Check for token transfers to the vault
+      if (logsText.includes(VAULT_TOKEN_ACCOUNT)) {
+        console.log('Found vault token account in logs');
+        return true;
+      }
+      
+      // Check for token transfers to the vault (manual check)
+      const foundTokenTransfer = txData.meta.preTokenBalances && 
+                                txData.meta.postTokenBalances &&
+                                txData.meta.postTokenBalances.some(bal => 
+                                  bal.owner === STAKING_VAULT_ADDRESS || 
+                                  bal.pubkey === VAULT_TOKEN_ACCOUNT);
+      
+      if (foundTokenTransfer) {
+        console.log('Found token transfer to vault in balance changes');
         return true;
       }
     }
