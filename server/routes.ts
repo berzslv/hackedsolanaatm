@@ -23,6 +23,7 @@ import {
 // Import our buy-and-stake handler
 import { handleBuyAndStake } from './buy-and-stake-exact';
 import { handleDirectStake } from './direct-stake-exact';
+import { handleRegisterUser } from './register-user-exact';
 
 // Import our sync-staking handler to fix staking records
 import { handleSyncStaking } from './sync-staking-handler';

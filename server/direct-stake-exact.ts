@@ -135,6 +135,18 @@ export async function createDirectStakingTransaction(
     const decimals = 9;
     const adjustedAmount: bigint = BigInt(amount * Math.pow(10, decimals));
     
+    // First check if the user is already registered
+    const isRegistered = await stakingVault.isUserRegistered(userPublicKey);
+    
+    // If not registered, add the register user instruction first
+    if (!isRegistered) {
+      console.log(`User ${userWalletAddress} is not registered. Adding registration instruction.`);
+      const registerInstruction = stakingVault.createRegisterUserInstruction(userPublicKey);
+      transaction.add(registerInstruction);
+    } else {
+      console.log(`User ${userWalletAddress} is already registered.`);
+    }
+    
     // Create and add the stake instruction using the proper account structure from the smart contract
     console.log(`Creating staking instruction for ${amount} tokens using exact smart contract layout`);
     const stakeInstruction = stakingVault.createStakingInstruction(

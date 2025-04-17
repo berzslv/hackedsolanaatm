@@ -131,7 +131,19 @@ export async function createCombinedBuyAndStakeTransaction(
     
     transaction.add(mintInstruction);
 
-    // 5. Add staking instruction using the proper staking vault program with exact account layout
+    // 5. Check if the user is already registered with the staking program
+    const isRegistered = await stakingVault.isUserRegistered(userPublicKey);
+    
+    // If not registered, add the register user instruction first
+    if (!isRegistered) {
+      console.log(`User ${userWalletAddress} is not registered. Adding registration instruction.`);
+      const registerInstruction = stakingVault.createRegisterUserInstruction(userPublicKey);
+      transaction.add(registerInstruction);
+    } else {
+      console.log(`User ${userWalletAddress} is already registered.`);
+    }
+    
+    // 6. Add staking instruction using the proper staking vault program with exact account layout
     console.log(`Creating staking instruction for ${amount} tokens using exact smart contract layout`);
     const stakeInstruction = stakingVault.createStakingInstruction(
       userPublicKey,
@@ -141,15 +153,15 @@ export async function createCombinedBuyAndStakeTransaction(
     
     transaction.add(stakeInstruction);
     
-    // 6. Get the latest blockhash
+    // 7. Get the latest blockhash
     const { blockhash } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = userPublicKey;
     
-    // 7. Partially sign with mint authority (for the mint instruction)
+    // 8. Partially sign with mint authority (for the mint instruction)
     transaction.partialSign(mintAuthority);
     
-    // 8. Serialize the transaction
+    // 9. Serialize the transaction
     const serializedTransaction = transaction.serialize({
       requireAllSignatures: false,
       verifySignatures: false
