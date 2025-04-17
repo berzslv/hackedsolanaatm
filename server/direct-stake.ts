@@ -27,7 +27,15 @@ export async function handleDirectStake(req: Request, res: Response) {
       return res.status(400).json({ error: "Invalid token amount" });
     }
     
-    console.log(`Processing direct stake request for wallet: ${walletAddress}, amount: ${parsedAmount}, referrer: ${referrer || 'none'}`);
+    console.log(`========== PROCESSING STAKE REQUEST ==========`);
+    console.log(`Wallet: ${walletAddress}`);
+    console.log(`Amount: ${parsedAmount}`);
+    console.log(`Referrer: ${referrer || 'none'}`);
+    console.log(`Token mint: ${referralStaking.TOKEN_MINT_ADDRESS.toString()}`);
+    console.log(`Staking vault: ${referralStaking.STAKING_VAULT_ADDRESS.toString()}`);
+    console.log(`Vault token account: ${referralStaking.VAULT_TOKEN_ACCOUNT.toString()}`);
+    console.log(`Program ID: ${referralStaking.PROGRAM_ID.toString()}`);
+    console.log(`================================================`);
     
     try {
       // Validate referrer address if provided
@@ -154,12 +162,17 @@ export async function createDirectStakingTransaction(
     
     // 5. Add staking instruction
     console.log(`Adding staking instruction for ${amount} tokens`);
+    console.log(`User token account: ${userTokenAccount.toString()}`);
+    console.log(`Using vault token account: ${referralStaking.VAULT_TOKEN_ACCOUNT.toString()}`);
+    console.log(`Staking vault address: ${referralStaking.STAKING_VAULT_ADDRESS.toString()}`);
+    
     const stakeInstruction = referralStaking.createStakingInstruction(
       userPublicKey,
       adjustedAmount,
       userTokenAccount
     );
     
+    console.log(`Staking instruction created`);
     transaction.add(stakeInstruction);
     
     // 6. Get the latest blockhash
