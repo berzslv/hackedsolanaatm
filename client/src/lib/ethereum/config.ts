@@ -26,8 +26,8 @@ export const CONTRACT_ADDRESSES = {
 
 // JSON RPC endpoints
 export const RPC_ENDPOINTS = {
-  sepolia: "https://sepolia.infura.io/v3/YOUR_INFURA_KEY", // Replace with your Infura key
-  goerli: "https://goerli.infura.io/v3/YOUR_INFURA_KEY", // Replace with your Infura key
+  sepolia: `https://sepolia.infura.io/v3/${import.meta.env.VITE_INFURA_API_KEY || 'INFURA_KEY_PLACEHOLDER'}`,
+  goerli: `https://goerli.infura.io/v3/${import.meta.env.VITE_INFURA_API_KEY || 'INFURA_KEY_PLACEHOLDER'}`,
   localhost: "http://localhost:8545"
 };
 
