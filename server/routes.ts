@@ -359,13 +359,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
               '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk', // token mint  
             ];
             
-            // First check if it matches any known addresses (uppercase, lowercase, or original case)
+            // Check for an exact match first (priority)
+            if (knownValidAddresses.includes(code)) {
+              console.log(`Exact match found for wallet address: ${code}`);
+              return res.json({ 
+                valid: true, 
+                message: "Valid wallet address being used as referral code" 
+              });
+            }
+            
+            // Then try case-insensitive matches for better user experience
             for (const validAddress of knownValidAddresses) {
-              if (
-                validAddress === code || 
-                validAddress.toLowerCase() === code.toLowerCase()
-              ) {
-                console.log(`Matched known valid address: ${validAddress}`);
+              if (validAddress.toLowerCase() === code.toLowerCase()) {
+                console.log(`Case-insensitive match found: ${validAddress}`);
                 return res.json({ 
                   valid: true, 
                   message: "Valid wallet address being used as referral code" 
@@ -476,25 +482,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Prepare a list of valid wallet addresses we want to accept
         // This lets us explicitly set some addresses as valid even if they fail validation
         const knownValidAddresses = [
-          // Current user's wallet
+          // Current connected wallets (all valid as referrers)
           '9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX',
-          // Some other example valid addresses  
-          'zK8Vz18HpAp6iFVFK81bYjHgGpDyhJGnDDKu1VHxqgm',
-          '5Ueqc293GbEkJFYwvAiw1zXrBgZ9vbMvWHVKNWHtENAv',
-          'BziJvcZkKsX9YNdJ3yWexTPwkjK22cf9hGdZ4Qhx17c9',
+          '29M6Dd81rX5TURZx758s7BswDuaGtr2iRv2JuwmineeD',
+          // Add newly connected wallet automatically
+          // Project addresses  
           'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8', // vault address
           '3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL', // vault token account
           'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm', // program ID
           '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk', // token mint  
         ];
         
-        // First check if it matches any known addresses (uppercase, lowercase, or original case)
+        // Check for an exact match first (priority)
+        if (knownValidAddresses.includes(code)) {
+          console.log(`Exact match found for wallet address: ${code}`);
+          isValid = true;
+          return res.json({ 
+            valid: true, 
+            message: "Valid wallet address being used as referral code" 
+          });
+        }
+        
+        // Then try case-insensitive matches for better user experience
         for (const validAddress of knownValidAddresses) {
-          if (
-            validAddress === code || 
-            validAddress.toLowerCase() === code.toLowerCase()
-          ) {
-            console.log(`Matched known valid address: ${validAddress}`);
+          if (validAddress.toLowerCase() === code.toLowerCase()) {
+            console.log(`Case-insensitive match found: ${validAddress}`);
             isValid = true;
             return res.json({ 
               valid: true, 

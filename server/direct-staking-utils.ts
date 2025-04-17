@@ -154,6 +154,74 @@ export function createRegisterUserInstruction(
 }
 
 /**
+ * Get on-chain staking information for a user directly from the blockchain
+ * This function doesn't use Anchor, just direct Solana web3 calls
+ * 
+ * @param walletAddress The user's wallet address
+ * @returns Staking information fetched directly from the blockchain
+ */
+export async function getOnChainStakingInfo(walletAddress: string): Promise<any> {
+  try {
+    const connection = getConnection();
+    const walletPubkey = new PublicKey(walletAddress);
+    
+    // 1. Find user staking account PDA
+    const [userInfoPDA] = findUserInfoPDA(walletPubkey);
+    
+    console.log(`Looking up on-chain staking info for wallet: ${walletAddress}`);
+    console.log(`User Info PDA: ${userInfoPDA.toString()}`);
+    
+    // 2. Get staking account data from the blockchain
+    const accountInfo = await connection.getAccountInfo(userInfoPDA);
+    
+    if (!accountInfo || !accountInfo.data) {
+      console.log(`No staking account found on-chain for ${walletAddress}`);
+      return {
+        amountStaked: 0,
+        pendingRewards: 0,
+        stakedAt: new Date().toISOString(),
+        referrer: null,
+        isInitialized: false,
+        lastUpdateTime: new Date().toISOString()
+      };
+    }
+    
+    // 3. This is a simplified approach - in a production environment we would use
+    // a proper borsh deserializer to parse the account data according to its layout
+    // Here we'll look at if the account exists, which confirms it's initialized
+    console.log(`Found on-chain staking account for ${walletAddress} with ${accountInfo.data.length} bytes of data`);
+    
+    // Check if account has our correct owner (staking program)
+    const isProgramOwned = accountInfo.owner.equals(PROGRAM_ID);
+    
+    // For development purposes, we might try to manually extract some data
+    // For simplicity, this implementation just returns that the account exists
+    return {
+      amountStaked: -1, // Signal to client that we can't determine exact amount
+      pendingRewards: 0,
+      stakedAt: new Date().toISOString(),
+      referrer: null, 
+      isInitialized: true,
+      accountExists: true,
+      isProgramOwned,
+      dataSize: accountInfo.data.length,
+      lastUpdateTime: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("Error fetching on-chain staking info:", error);
+    return {
+      amountStaked: 0,
+      pendingRewards: 0,
+      stakedAt: new Date().toISOString(),
+      referrer: null,
+      isInitialized: false,
+      error: error instanceof Error ? error.message : String(error),
+      lastUpdateTime: new Date().toISOString()
+    };
+  }
+}
+
+/**
  * Create a staking instruction for the referral staking program
  * @param userWallet The user's wallet public key
  * @param amount The amount to stake (already converted to lamports)
