@@ -1698,9 +1698,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add new endpoint for on-chain verification/sync
+  app.post("/api/on-chain/force-sync", handleForceSyncOnChain);
+  
+  // Endpoint to synchronize all wallets with on-chain data
+  app.post("/api/on-chain/sync-all", handleSyncAllOnChain);
+
   app.get("/api/staking-info/:walletAddress", async (req, res) => {
     try {
       const { walletAddress } = req.params;
+      const { sync } = req.query;
       
       if (!walletAddress) {
         return res.status(400).json({ error: "Wallet address is required" });
@@ -1745,6 +1752,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stakingVaultAddress: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8',
           dataSource: 'railway' // Indicate this came from Railway
         };
+        
+        // If sync is requested or there's no staked amount in Railway, try on-chain sync
+        if (sync === 'true' || (railwayStakingData.amountStaked === 0 && !railwayStakingData.isForced)) {
+          try {
+            console.log(`Synchronizing on-chain data for ${walletAddress}`);
+            const onChainData = await addOnChainDataToStakingInfo(walletAddress, stakingResponse);
+            
+            console.log(`On-chain data synchronized for ${walletAddress}:`, onChainData);
+            
+            if (onChainData.amountStaked > 0) {
+              // On-chain staking data found, use it
+              return res.json({
+                success: true,
+                stakingInfo: onChainData,
+              });
+            }
+          } catch (syncError) {
+            console.error(`Error synchronizing on-chain data: ${syncError instanceof Error ? syncError.message : String(syncError)}`);
+            // Continue with the Railway data if on-chain sync fails
+          }
+        }
         
         console.log("Railway staking info for", walletAddress, ":", JSON.stringify(stakingResponse, null, 2));
         
