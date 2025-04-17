@@ -102,6 +102,9 @@ export function createStakingInstruction(
   // Find the user's stake info PDA
   const [userStakeInfoPDA] = findUserStakeInfoPDA(userWallet);
   
+  // Find the vault authority PDA
+  const [vaultAuthority] = findVaultAuthorityPDA();
+  
   // Create the stake instruction with the correct account structure
   // based on the Stake struct in the contract:
   /*
@@ -143,6 +146,7 @@ export function createStakingInstruction(
 
       pub token_program: Program<'info, Token>,
       pub system_program: Program<'info, System>,
+      pub rent: Sysvar<'info, Rent>,
   }
   */
   
@@ -156,7 +160,9 @@ export function createStakingInstruction(
       { pubkey: VAULT_TOKEN_ACCOUNT, isSigner: false, isWritable: true },    // token_vault: Account
       { pubkey: userTokenAccount, isSigner: false, isWritable: true },       // user_token_account: Account
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },      // token_program: Program
-      { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false }      // system_program: Program
+      { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },     // system_program: Program
+      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },    // rent: Sysvar
+      { pubkey: vaultAuthority, isSigner: false, isWritable: false }         // vault_authority: PDA (derived)
     ],
     programId: PROGRAM_ID,
     data: instructionData,

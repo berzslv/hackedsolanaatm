@@ -146,9 +146,13 @@ export async function createDirectStakingTransaction(
     transaction.add(stakeInstruction);
     
     // Get the latest blockhash
-    const { blockhash } = await connection.getLatestBlockhash();
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
     transaction.recentBlockhash = blockhash;
+    transaction.lastValidBlockHeight = lastValidBlockHeight;
     transaction.feePayer = userPublicKey;
+    
+    // Add a small delay before serializing to ensure proper setup
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     // Serialize the transaction
     const serializedTransaction = transaction.serialize({
