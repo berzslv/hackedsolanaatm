@@ -85,7 +85,7 @@ export const getUserStakingPDA = async (
   // Get the PDA for user_info in the referral staking program
   const [userInfoPDA] = await PublicKey.findProgramAddress(
     [
-      Buffer.from('user_info'),
+      new TextEncoder().encode('user_info'),
       walletPubkey.toBuffer()
     ],
     programId
