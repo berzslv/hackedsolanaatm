@@ -94,12 +94,14 @@ export async function handleDirectStake(req: Request, res: Response) {
  * @param userPublicKey The user's wallet address as a PublicKey
  * @param amount The amount of tokens to stake
  * @param referrer Optional referrer's wallet address as a PublicKey
+ * @param serverSide Whether this transaction will be signed by the server (optional, default false)
  * @returns The transaction for the user to sign
  */
 export async function createDirectStakingTransaction(
   userPublicKey: PublicKey,
   amount: number,
-  referrer?: PublicKey
+  referrer?: PublicKey,
+  serverSide: boolean = false
 ): Promise<Transaction> {
   // Get a connection to the Solana cluster
   const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');

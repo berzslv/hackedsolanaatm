@@ -1945,6 +1945,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Full server-side transaction processing endpoint for when wallet adapters fail completely
+  app.post('/api/process-transaction-server-side', async (req, res) => {
+    try {
+      const { walletAddress, amount, referrer, transactionType, useServerSigning = true } = req.body;
+      
+      if (!walletAddress) {
+        return res.status(400).json({
+          success: false,
+          message: "Wallet address is required"
+        });
+      }
+      
+      if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Valid amount is required"
+        });
+      }
+      
+      console.log(`Server-side processing ${transactionType} transaction for wallet ${walletAddress}`);
+      console.log(`Amount: ${amount}, Referrer: ${referrer || 'None'}`);
+      
+      const { Connection, clusterApiUrl, Keypair, PublicKey, Transaction } = await import('@solana/web3.js');
+      const fs = require('fs');
+      
+      // Create connection to Solana
+      const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+      
+      // We need to load the server's keypair to sign the transaction
+      // This should be a dedicated hot wallet that only has permissions to submit transactions
+      let serverKeypair;
+      try {
+        // Load keypair from token-keypair-original.json
+        const keypairData = fs.readFileSync('token-keypair-original.json', 'utf-8');
+        const secretKey = Buffer.from(JSON.parse(keypairData));
+        serverKeypair = Keypair.fromSecretKey(secretKey);
+        console.log("Loaded server keypair for transaction signing");
+      } catch (error) {
+        console.error("Error loading server keypair:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Server configuration error: Failed to load server keypair"
+        });
+      }
+      
+      let signature;
+      
+      // Process based on transaction type
+      if (transactionType === 'stake') {
+        try {
+          // Create a direct staking transaction
+          const userPubkey = new PublicKey(walletAddress);
+          const referrerPubkey = referrer ? new PublicKey(referrer) : undefined;
+          
+          // Import the necessary staking utilities
+          const { createDirectStakingTransaction } = await import("./direct-stake-exact");
+          
+          // Generate the transaction but don't serialize it yet
+          const transaction = await createDirectStakingTransaction(
+            userPubkey,
+            Number(amount),
+            referrerPubkey,
+            true // Special flag for server-side processing
+          );
+          
+          if (!transaction) {
+            throw new Error("Failed to create staking transaction");
+          }
+          
+          // For server-side processing, we need to:
+          // 1. Set the fee payer to the server
+          // 2. Sign with the server's keypair
+          // 3. Submit the transaction
+          transaction.feePayer = serverKeypair.publicKey;
+          
+          // Make sure we have a recent blockhash
+          const { blockhash } = await connection.getLatestBlockhash();
+          transaction.recentBlockhash = blockhash;
+          
+          // Sign with server keypair
+          transaction.sign(serverKeypair);
+          
+          // Send the transaction
+          console.log("Submitting server-signed transaction to network...");
+          signature = await connection.sendRawTransaction(
+            transaction.serialize(),
+            {
+              skipPreflight: false,
+              preflightCommitment: "confirmed",
+              maxRetries: 5
+            }
+          );
+          
+          console.log("Server-side transaction submitted with signature:", signature);
+        } catch (error) {
+          console.error("Error processing staking transaction:", error);
+          return res.status(500).json({
+            success: false,
+            message: "Failed to process staking transaction",
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      } else if (transactionType === 'unstake') {
+        // Implement unstaking logic similarly to staking
+        return res.status(400).json({
+          success: false,
+          message: "Unstaking not implemented for server-side processing yet"
+        });
+      } else if (transactionType === 'claim') {
+        // Implement claim rewards logic
+        return res.status(400).json({
+          success: false,
+          message: "Claim rewards not implemented for server-side processing yet"
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid transaction type"
+        });
+      }
+      
+      // Return the successful result
+      return res.json({
+        success: true,
+        signature,
+        message: "Transaction processed successfully by server",
+        usedServerSide: true
+      });
+      
+    } catch (error) {
+      console.error("Error in server-side transaction processing:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to process transaction on server",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
   /**
    * API endpoint to provide account information for client-side transaction building
    * This avoids serialization/deserialization issues by letting the client build the transaction

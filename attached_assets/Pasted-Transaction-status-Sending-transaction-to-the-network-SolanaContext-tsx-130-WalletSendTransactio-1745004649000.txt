@@ -1,0 +1,236 @@
+Transaction status: Sending transaction to the network...
+SolanaContext.tsx:130 WalletSendTransactionError: Unexpected error
+    at StandardWalletAdapter.sendTransaction (chunk-POSJQJ2Q.js?v=6ed8202a:4193:15)
+    at async chunk-POSJQJ2Q.js?v=6ed8202a:4801:12
+    at async Object.sendTransaction (SolanaContext.tsx:130:14)
+    at async createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:274:21)
+    at async handleBuy (BuyWidgetOnChain.tsx:256:22) StandardWalletAdapter {_events: Events, _eventsCount: 4, signIn: ƒ, signTransaction: ƒ, signAllTransactions: ƒ, …}
+overrideMethod @ hook.js:608
+(anonymous) @ chunk-POSJQJ2Q.js?v=6ed8202a:4700
+handleError @ chunk-POSJQJ2Q.js?v=6ed8202a:4761
+emit @ chunk-2MH4V4YT.js?v=6ed8202a:81
+sendTransaction @ chunk-POSJQJ2Q.js?v=6ed8202a:4196
+await in sendTransaction
+(anonymous) @ chunk-POSJQJ2Q.js?v=6ed8202a:4801
+sendTransaction @ SolanaContext.tsx:130
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:274
+await in createAndSubmitStakingTransaction
+handleBuy @ BuyWidgetOnChain.tsx:256
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+SolanaContext.tsx:132 Error sending transaction: WalletSendTransactionError: Unexpected error
+    at StandardWalletAdapter.sendTransaction (chunk-POSJQJ2Q.js?v=6ed8202a:4193:15)
+    at async chunk-POSJQJ2Q.js?v=6ed8202a:4801:12
+    at async Object.sendTransaction (SolanaContext.tsx:130:14)
+    at async createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:274:21)
+    at async handleBuy (BuyWidgetOnChain.tsx:256:22)
+overrideMethod @ hook.js:608
+sendTransaction @ SolanaContext.tsx:132
+await in sendTransaction
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:274
+await in createAndSubmitStakingTransaction
+handleBuy @ BuyWidgetOnChain.tsx:256
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+CreateStakingTransactionV2.ts:280 ⚠️ First attempt failed, trying with different options: Unexpected error
+overrideMethod @ hook.js:608
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:280
+await in createAndSubmitStakingTransaction
+handleBuy @ BuyWidgetOnChain.tsx:256
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this warning
+BuyWidgetOnChain.tsx:252 Transaction status: First attempt failed, trying with different options...
+SolanaContext.tsx:130 WalletSendTransactionError: Unexpected error
+    at StandardWalletAdapter.sendTransaction (chunk-POSJQJ2Q.js?v=6ed8202a:4193:15)
+    at async chunk-POSJQJ2Q.js?v=6ed8202a:4801:12
+    at async Object.sendTransaction (SolanaContext.tsx:130:14)
+    at async createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:284:21)
+    at async handleBuy (BuyWidgetOnChain.tsx:256:22) StandardWalletAdapter {_events: Events, _eventsCount: 4, signIn: ƒ, signTransaction: ƒ, signAllTransactions: ƒ, …}
+overrideMethod @ hook.js:608
+(anonymous) @ chunk-POSJQJ2Q.js?v=6ed8202a:4700
+handleError @ chunk-POSJQJ2Q.js?v=6ed8202a:4761
+emit @ chunk-2MH4V4YT.js?v=6ed8202a:81
+sendTransaction @ chunk-POSJQJ2Q.js?v=6ed8202a:4196
+await in sendTransaction
+(anonymous) @ chunk-POSJQJ2Q.js?v=6ed8202a:4801
+sendTransaction @ SolanaContext.tsx:130
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:284
+await in createAndSubmitStakingTransaction
+handleBuy @ BuyWidgetOnChain.tsx:256
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+SolanaContext.tsx:132 Error sending transaction: WalletSendTransactionError: Unexpected error
+    at StandardWalletAdapter.sendTransaction (chunk-POSJQJ2Q.js?v=6ed8202a:4193:15)
+    at async chunk-POSJQJ2Q.js?v=6ed8202a:4801:12
+    at async Object.sendTransaction (SolanaContext.tsx:130:14)
+    at async createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:284:21)
+    at async handleBuy (BuyWidgetOnChain.tsx:256:22)
+overrideMethod @ hook.js:608
+sendTransaction @ SolanaContext.tsx:132
+await in sendTransaction
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:284
+await in createAndSubmitStakingTransaction
+handleBuy @ BuyWidgetOnChain.tsx:256
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+CreateStakingTransactionV2.ts:356 🧨 Error sending transaction: WalletSendTransactionError: Unexpected error
+    at StandardWalletAdapter.sendTransaction (chunk-POSJQJ2Q.js?v=6ed8202a:4193:15)
+    at async chunk-POSJQJ2Q.js?v=6ed8202a:4801:12
+    at async Object.sendTransaction (SolanaContext.tsx:130:14)
+    at async createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:284:21)
+    at async handleBuy (BuyWidgetOnChain.tsx:256:22)
+overrideMethod @ hook.js:608
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:356
+await in createAndSubmitStakingTransaction
+handleBuy @ BuyWidgetOnChain.tsx:256
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+CreateStakingTransactionV2.ts:359 📢 Message: Unexpected error
+CreateStakingTransactionV2.ts:373 ⚠️ Wallet returned 'Unexpected error', attempting alternative transaction approach...
+BuyWidgetOnChain.tsx:252 Transaction status: Wallet adapter encountered an issue, trying alternative method... (fallback)
+CreateStakingTransactionV2.ts:377 📡 Attempting alternative transaction handling...
+CreateStakingTransactionV2.ts:380 🔏 Requesting user to sign transaction...
+BuyWidgetOnChain.tsx:252 Transaction status: Requesting transaction signature via alternative method... (fallback)
+CreateStakingTransactionV2.ts:431 ❌ Error during transaction signing: TypeError: wallet.signTransaction is not a function
+    at createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:390:50)
+    at async handleBuy (BuyWidgetOnChain.tsx:256:22)
+overrideMethod @ hook.js:608
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:431
+await in createAndSubmitStakingTransaction
+handleBuy @ BuyWidgetOnChain.tsx:256
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+CreateStakingTransactionV2.ts:442 ❌ Alternative transaction approach failed: TypeError: wallet.signTransaction is not a function
+    at createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:390:50)
+    at async handleBuy (BuyWidgetOnChain.tsx:256:22)
+overrideMethod @ hook.js:608
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:442
+await in createAndSubmitStakingTransaction
+handleBuy @ BuyWidgetOnChain.tsx:256
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+BuyWidgetOnChain.tsx:269 Transaction failed: Unexpected error
+overrideMethod @ hook.js:608
+handleBuy @ BuyWidgetOnChain.tsx:269
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+BuyWidgetOnChain.tsx:403 Error processing purchase: Error: Unexpected error
+    at handleBuy (BuyWidgetOnChain.tsx:296:15)

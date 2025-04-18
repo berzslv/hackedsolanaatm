@@ -376,70 +376,120 @@ export async function createAndSubmitStakingTransaction(
           try {
             console.log("📡 Attempting alternative transaction handling...");
             
-            // We'll use the signTransaction method instead of sendTransaction
-            console.log("🔏 Requesting user to sign transaction...");
-            onStatusUpdate("Requesting transaction signature via alternative method...", true);
-            let signedTransaction;
-            
-            try {
-              if (decodedTransaction instanceof Transaction) {
-                signedTransaction = await wallet.signTransaction(decodedTransaction);
-                console.log("✅ Transaction signed successfully");
-              } else {
-                // For versioned transactions
-                signedTransaction = await wallet.signTransaction(decodedTransaction as VersionedTransaction);
-                console.log("✅ Versioned transaction signed successfully");
-              }
+            // First try: Use signTransaction if the wallet supports it
+            if (typeof wallet.signTransaction === 'function') {
+              console.log("🔏 Requesting user to sign transaction...");
+              onStatusUpdate("Requesting transaction signature via alternative method...", true);
+              let signedTransaction;
               
-              // Now send it manually
-              const wireTransaction = signedTransaction instanceof Transaction 
-                ? signedTransaction.serialize()
-                : (signedTransaction as VersionedTransaction).serialize();
+              try {
+                if (decodedTransaction instanceof Transaction) {
+                  signedTransaction = await wallet.signTransaction(decodedTransaction);
+                  console.log("✅ Transaction signed successfully");
+                } else {
+                  // For versioned transactions
+                  signedTransaction = await wallet.signTransaction(decodedTransaction as VersionedTransaction);
+                  console.log("✅ Versioned transaction signed successfully");
+                }
                 
-              console.log("🚀 Sending signed transaction via server endpoint...");
-              onStatusUpdate("Submitting signed transaction via server...", true);
-              
-              const response = await fetch('/api/submit-signed-transaction', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  serializedTransaction: Buffer.from(wireTransaction).toString('base64'),
-                  skipPreflight: true
-                }),
-              });
-              
-              if (!response.ok) {
-                const errorData = await response.json();
-                onStatusUpdate("Server submission failed, trying another approach...", true);
-                throw new Error(`Server error: ${errorData.message || errorData.error || 'Unknown error'}`);
+                // Now send it manually
+                const wireTransaction = signedTransaction instanceof Transaction 
+                  ? signedTransaction.serialize()
+                  : (signedTransaction as VersionedTransaction).serialize();
+                  
+                console.log("🚀 Sending signed transaction via server endpoint...");
+                onStatusUpdate("Submitting signed transaction via server...", true);
+                
+                const response = await fetch('/api/submit-signed-transaction', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    serializedTransaction: Buffer.from(wireTransaction).toString('base64'),
+                    skipPreflight: true
+                  }),
+                });
+                
+                if (!response.ok) {
+                  const errorData = await response.json();
+                  onStatusUpdate("Server submission failed, trying another approach...", true);
+                  throw new Error(`Server error: ${errorData.message || errorData.error || 'Unknown error'}`);
+                }
+                
+                const data = await response.json();
+                const backupSignature = data.signature;
+                
+                console.log("✅ Transaction sent successfully with signature:", backupSignature);
+                onStatusUpdate(`Transaction sent successfully via alternative pathway (${backupSignature.slice(0, 8)}...)`, true);
+                return { 
+                  success: true, 
+                  message: "Transaction completed using alternative method", 
+                  signature: backupSignature,
+                  usedFallback: true
+                };
+              } catch (signError: any) {
+                console.error("❌ Error during transaction signing:", signError);
+                if (signError.message && signError.message.includes("User rejected")) {
+                  return { 
+                    success: false, 
+                    message: 'Transaction was rejected by the wallet', 
+                    error: signError.message 
+                  };
+                }
+                console.log("⚠️ Sign method failed, trying complete server-side approach...");
+                // Continue to server-side fallback method below
               }
-              
-              const data = await response.json();
-              const backupSignature = data.signature;
-              
-              console.log("✅ Transaction sent successfully with signature:", backupSignature);
-              onStatusUpdate(`Transaction sent successfully via alternative pathway (${backupSignature.slice(0, 8)}...)`, true);
+            } else {
+              console.log("⚠️ Wallet does not support signTransaction method, trying server-side approach");
+            }
+            
+            // Second try: Full server-side approach - send wallet address to server and let it handle everything
+            console.log("🔄 Attempting full server-side transaction processing...");
+            onStatusUpdate("Using server-side transaction processing...", true);
+            
+            // Format the transaction parameters to send to the server
+            const transactionParams = {
+              walletAddress: wallet.publicKey.toString(),
+              amount: amount,
+              referrer: options?.referrer ? options.referrer.toString() : undefined,
+              useServerSigning: true,
+              transactionType: 'stake',
+            };
+            
+            console.log("📤 Sending request to server-side processing endpoint...");
+            
+            const serverResponse = await fetch('/api/process-transaction-server-side', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(transactionParams),
+            });
+            
+            if (!serverResponse.ok) {
+              const errorData = await serverResponse.json();
+              onStatusUpdate("Server-side processing failed", true);
+              throw new Error(`Server error: ${errorData.message || errorData.error || 'Unknown error'}`);
+            }
+            
+            const serverResult = await serverResponse.json();
+            
+            if (serverResult.success && serverResult.signature) {
+              console.log("✅ Server-side transaction processed successfully:", serverResult.signature);
+              onStatusUpdate(`Transaction processed by server (${serverResult.signature.slice(0, 8)}...)`, true);
               return { 
                 success: true, 
-                message: "Transaction completed using alternative method", 
-                signature: backupSignature,
+                message: "Transaction completed using server-side processing", 
+                signature: serverResult.signature,
                 usedFallback: true
               };
-            } catch (signError: any) {
-              console.error("❌ Error during transaction signing:", signError);
-              if (signError.message && signError.message.includes("User rejected")) {
-                return { 
-                  success: false, 
-                  message: 'Transaction was rejected by the wallet', 
-                  error: signError.message 
-                };
-              }
-              throw signError; // Let the outer catch handle other errors
+            } else {
+              throw new Error(serverResult.error || "Unknown server-side error");
             }
-          } catch (directSendError) {
-            console.error("❌ Alternative transaction approach failed:", directSendError);
+          } catch (allMethodsError: any) {
+            console.error("❌ All alternative transaction approaches failed:", allMethodsError);
+            onStatusUpdate("All transaction methods failed, please try again", true);
           }
         }
       }
