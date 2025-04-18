@@ -211,8 +211,79 @@ export async function createAndSubmitStakingTransaction(
         console.log("🔑 Signers:", decodedTransaction.signatures.length);
       }
       
-      // Skip transaction simulation as it's been causing false negatives with ProgramAccountNotFound
-      console.log("🔬 Skipping transaction simulation - proceeding directly to transaction submission");
+      // Make transaction simulation optional - enable for debugging but can skip for production
+      const enableSimulation = true; // Set to false in production if causing false negatives
+      
+      if (enableSimulation) {
+        console.log("🔬 Running transaction simulation for debugging purposes");
+        try {
+          // Simulate the transaction but don't fail if simulation errors
+          // Handle both Transaction and VersionedTransaction types correctly
+          let simulationResult;
+          if (decodedTransaction instanceof Transaction) {
+            simulationResult = await connection.simulateTransaction(
+              decodedTransaction,
+              { sigVerify: false, commitment: 'confirmed' }
+            );
+          } else {
+            // For VersionedTransaction
+            simulationResult = await connection.simulateTransaction(
+              decodedTransaction as VersionedTransaction,
+              { sigVerify: false, commitment: 'confirmed' }
+            );
+          }
+          
+          console.log("🔬 Simulation result:", simulationResult);
+          
+          if (simulationResult.value.err) {
+            console.warn("⚠️ Simulation shows transaction would fail:", simulationResult.value.err);
+            
+            // Enhanced debugging for program errors
+            if (typeof simulationResult.value.err === 'object') {
+              const errorObj = simulationResult.value.err;
+              
+              if ('InstructionError' in errorObj) {
+                const [instructionIndex, errorDetail] = errorObj.InstructionError;
+                console.error(`❌ Instruction at index ${instructionIndex} failed with error:`, errorDetail);
+                
+                if (typeof errorDetail === 'object' && 'Custom' in errorDetail) {
+                  console.error(`❌ Custom program error code: ${errorDetail.Custom}`);
+                  
+                  // Map common error codes to user-friendly messages
+                  const errorMessages: Record<number, string> = {
+                    0: "Instruction not implemented",
+                    1: "Insufficient funds",
+                    2: "Invalid instruction data",
+                    3: "Invalid account data",
+                    100: "Invalid program ID or program not deployed",
+                    // Add more error codes as needed
+                  };
+                  
+                  const friendlyMessage = errorMessages[errorDetail.Custom] || 
+                    `Unknown program error code: ${errorDetail.Custom}`;
+                  console.error(`❌ Error meaning: ${friendlyMessage}`);
+                  
+                  // Toast the user with a more specific error
+                  toast({
+                    title: "Transaction Simulation Error",
+                    description: friendlyMessage,
+                    variant: "destructive",
+                  });
+                }
+              }
+            }
+            
+            // Continue despite simulation error - sometimes these are false negatives
+            console.log("⚠️ Continuing despite simulation error - this might be a false negative");
+          } else {
+            console.log("✅ Simulation successful - transaction should succeed");
+          }
+        } catch (simError) {
+          console.warn("⚠️ Error during simulation (continuing anyway):", simError);
+        }
+      } else {
+        console.log("🔬 Skipping transaction simulation - proceeding directly to transaction submission");
+      }
       
       // Get a fresh blockhash right before sending
       try {
@@ -470,43 +541,93 @@ export async function createAndSubmitStakingTransaction(
             onStatusUpdate("Using server-side transaction processing...", true);
             
             // Format the transaction parameters to send to the server
+            const transactionType = useExistingTokens ? 'stake' : 'buy-and-stake';
             const transactionParams = {
               walletAddress: wallet.publicKey.toString(),
               amount: amount,
               referrer: options?.referrer ? options.referrer.toString() : undefined,
               useServerSigning: true,
-              transactionType: 'stake',
+              transactionType,
             };
             
-            console.log("📤 Sending request to server-side processing endpoint...");
+            console.log("📤 Sending request to server-side processing endpoint with params:", transactionParams);
             
-            const serverResponse = await fetch('/api/process-transaction-server-side', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(transactionParams),
-            });
-            
-            if (!serverResponse.ok) {
-              const errorData = await serverResponse.json();
-              onStatusUpdate("Server-side processing failed", true);
-              throw new Error(`Server error: ${errorData.message || errorData.error || 'Unknown error'}`);
-            }
-            
-            const serverResult = await serverResponse.json();
-            
-            if (serverResult.success && serverResult.signature) {
-              console.log("✅ Server-side transaction processed successfully:", serverResult.signature);
-              onStatusUpdate(`Transaction processed by server (${serverResult.signature.slice(0, 8)}...)`, true);
-              return { 
-                success: true, 
-                message: "Transaction completed using server-side processing", 
-                signature: serverResult.signature,
-                usedFallback: true
-              };
-            } else {
-              throw new Error(serverResult.error || "Unknown server-side error");
+            try {
+              const serverResponse = await fetch('/api/process-transaction-server-side', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(transactionParams),
+              });
+              
+              console.log("📥 Server response status:", serverResponse.status);
+              
+              // Try to parse the response as JSON even if it's an error
+              let responseText: string = '';
+              try {
+                responseText = await serverResponse.text();
+                console.log("📄 Raw server response:", responseText);
+              } catch (textError) {
+                console.error("❌ Failed to get response text:", textError);
+              }
+              
+              let serverResult: any;
+              try {
+                // Make sure we have a non-empty string before parsing
+                if (responseText && responseText.trim()) {
+                  serverResult = JSON.parse(responseText);
+                  console.log("📊 Parsed server response:", serverResult);
+                } else {
+                  console.error("❌ Empty response from server");
+                  onStatusUpdate("Server returned empty response", true);
+                  throw new Error("Server returned empty response");
+                }
+              } catch (jsonError) {
+                console.error("❌ Failed to parse JSON response:", jsonError);
+                onStatusUpdate("Server returned invalid data format", true);
+                throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}...`);
+              }
+              
+              if (!serverResponse.ok) {
+                console.error("❌ Server-side processing failed:", serverResult);
+                onStatusUpdate(`Server-side processing failed: ${serverResult.message || serverResult.error || 'Unknown error'}`, true);
+                
+                // Toast with specific error message
+                toast({
+                  title: "Server Processing Failed",
+                  description: serverResult.message || serverResult.error || 'Unknown server error',
+                  variant: "destructive",
+                });
+                
+                throw new Error(`Server error: ${serverResult.message || serverResult.error || 'Unknown error'}`);
+              }
+              
+              if (serverResult.success && serverResult.signature) {
+                console.log("✅ Server-side transaction processed successfully:", serverResult.signature);
+                onStatusUpdate(`Transaction processed by server (${serverResult.signature.slice(0, 8)}...)`, true);
+                
+                // Toast success message
+                toast({
+                  title: "Transaction Successful",
+                  description: `${useExistingTokens ? 'Staking' : 'Buy and stake'} transaction was processed successfully by the server.`,
+                  variant: "default",
+                });
+                
+                return { 
+                  success: true, 
+                  message: "Transaction completed using server-side processing", 
+                  signature: serverResult.signature,
+                  usedFallback: true
+                };
+              } else {
+                console.error("❌ Server returned success but no signature or invalid data:", serverResult);
+                throw new Error(serverResult.error || "Server did not return a valid transaction signature");
+              }
+            } catch (fetchError) {
+              console.error("❌ Network error during server-side processing:", fetchError);
+              onStatusUpdate("Network error during server communication", true);
+              throw new Error(`Network error: ${fetchError.message}`);
             }
           } catch (allMethodsError: any) {
             console.error("❌ All alternative transaction approaches failed:", allMethodsError);
