@@ -1,7 +1,8 @@
 /**
  * API Client for token staking operations
  */
-import { Connection, PublicKey, clusterApiUrl, Transaction } from '@solana/web3.js';
+import { Connection, PublicKey, clusterApiUrl, Transaction, SystemProgram } from '@solana/web3.js';
+import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 /**
  * Register user for staking
@@ -303,6 +304,121 @@ export const buyAndStakeTokens = async (
   } catch (error) {
     console.error('Error in buy and stake process:', error);
     return { 
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+};
+
+/**
+ * Check if a token account exists for a specified mint and create it if it doesn't
+ * @param walletAddress The wallet address to check/create the token account for
+ * @param tokenMint The token mint address
+ * @param wallet Connected wallet object with sendTransaction capability
+ * @returns Result of the operation
+ */
+export const checkAndCreateTokenAccount = async (
+  walletAddress: string,
+  tokenMint: string,
+  wallet: any
+): Promise<{
+  success: boolean;
+  message: string;
+  tokenAccount?: string;
+  exists?: boolean;
+  signature?: string;
+  error?: string;
+}> => {
+  try {
+    console.log(`Checking token account for wallet ${walletAddress} and mint ${tokenMint}`);
+    
+    // Connect to devnet
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    
+    // Parse the addresses
+    const userPubkey = new PublicKey(walletAddress);
+    const mintPubkey = new PublicKey(tokenMint);
+    
+    // Get the expected token account address
+    const tokenAccount = await getAssociatedTokenAddress(
+      mintPubkey,
+      userPubkey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    
+    console.log(`Expected token account address: ${tokenAccount.toString()}`);
+    
+    // Check if it exists
+    try {
+      const accountInfo = await connection.getAccountInfo(tokenAccount);
+      
+      if (accountInfo) {
+        console.log(`Token account exists with ${accountInfo.lamports} lamports`);
+        return {
+          success: true,
+          message: "Token account already exists",
+          tokenAccount: tokenAccount.toString(),
+          exists: true
+        };
+      }
+    } catch (err) {
+      console.log(`Error checking token account: ${err}`);
+      // Continue to create the account
+    }
+    
+    console.log("Token account doesn't exist, creating it now");
+    
+    // Create a new transaction to create the token account
+    const transaction = new Transaction();
+    
+    // Add instruction to create the associated token account
+    const createATAInstruction = createAssociatedTokenAccountInstruction(
+      userPubkey,          // Payer
+      tokenAccount,        // Associated token account
+      userPubkey,          // Owner
+      mintPubkey,          // Mint
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    
+    transaction.add(createATAInstruction);
+    
+    // Get a recent blockhash
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.lastValidBlockHeight = lastValidBlockHeight;
+    transaction.feePayer = userPubkey;
+    
+    // Sign and send the transaction
+    const signature = await wallet.sendTransaction(transaction, connection);
+    console.log(`Token account creation transaction sent: ${signature}`);
+    
+    // Wait for confirmation
+    const confirmation = await connection.confirmTransaction({
+      signature,
+      blockhash,
+      lastValidBlockHeight
+    }, 'confirmed');
+    
+    if (confirmation.value.err) {
+      throw new Error(`Transaction confirmed but failed: ${JSON.stringify(confirmation.value.err)}`);
+    }
+    
+    console.log("Token account created successfully");
+    
+    return {
+      success: true,
+      message: "Token account created successfully",
+      tokenAccount: tokenAccount.toString(),
+      exists: false,
+      signature
+    };
+  } catch (error) {
+    console.error("Error creating token account:", error);
+    return {
+      success: false,
+      message: "Failed to create token account",
       error: error instanceof Error ? error.message : String(error)
     };
   }

@@ -465,6 +465,54 @@ export const stakeExistingTokens = async (
       transaction.lastValidBlockHeight = lastValidBlockHeight;
       transaction.feePayer = userPubkey;
       
+      // 3.1 Check if the user has a token account and sufficient balance
+      let tokenAccountExists = false;
+      let userTokenBalance = 0;
+      
+      try {
+        console.log(`Checking if user token account ${userTokenAccount.toString()} exists and has sufficient balance...`);
+        const tokenAccountInfo = await connection.getTokenAccountBalance(userTokenAccount);
+        console.log(`User token account balance: ${tokenAccountInfo.value.uiAmount} tokens`);
+        
+        // Account exists, now check if balance is sufficient
+        tokenAccountExists = true;
+        userTokenBalance = tokenAccountInfo.value.uiAmount;
+        
+        if (userTokenBalance < amount) {
+          console.error(`Insufficient token balance: ${userTokenBalance} < ${amount}`);
+          return { error: `Insufficient token balance. You have ${userTokenBalance} tokens, but trying to stake ${amount}.` };
+        }
+      } catch (err) {
+        console.error("Error checking token account:", err);
+        console.log("User may not have a token account for this token mint.");
+        
+        // Check if Railway API reports a token balance
+        try {
+          const railwayBalanceResponse = await fetch(`/api/staking-info/${walletAddress}`);
+          if (railwayBalanceResponse.ok) {
+            const railwayData = await railwayBalanceResponse.json();
+            if (railwayData.success && railwayData.stakingInfo && railwayData.stakingInfo.walletTokenBalance) {
+              const railwayBalance = railwayData.stakingInfo.walletTokenBalance / Math.pow(10, 9);
+              console.log(`Railway API reports token balance: ${railwayBalance}`);
+              
+              if (railwayBalance >= amount) {
+                console.log("Token balance from Railway API is sufficient");
+                userTokenBalance = railwayBalance;
+                
+                // Token account doesn't exist but we have tokens according to Railway
+                // This suggests an issue with the token account - proceed with caution
+                console.warn("Railway reports tokens but token account not accessible - possible token account issue");
+                return { error: "Your wallet has tokens according to our records, but the token account cannot be accessed directly. There might be an issue with your token account." };
+              }
+            }
+          }
+        } catch (railwayErr) {
+          console.error("Error checking Railway API for token balance:", railwayErr);
+        }
+        
+        return { error: "Token account not found or cannot be accessed. You might not have any HATM tokens in your wallet." };
+      }
+      
       // 4. Check if user is registered, and create registration instruction if needed
       if (!accountsInfo.isRegistered) {
         console.log('User is not registered. Adding registration instruction.');

@@ -16,7 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatNumber, formatTimeRemaining } from '@/lib/utils';
 import { Connection, PublicKey, Transaction, clusterApiUrl } from '@solana/web3.js';
 import { buyAndStakeTokens, stakeExistingTokens } from '@/lib/combined-smart-contract-client';
-import { registerUserForStaking } from '@/lib/api-client';
+import { registerUserForStaking, checkAndCreateTokenAccount } from '@/lib/api-client';
 
 
 // Optional Helius API key - would be set from environment in production
@@ -117,6 +117,34 @@ const DirectStakingWidget: React.FC = () => {
       });
       
       // Now proceed with staking
+      // Check if the user has a token account for the HATM token, and create it if needed
+      console.log("🔧 Checking for token account and creating if needed");
+      const tokenMint = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk"; // HATM token mint
+      
+      toast({
+        title: 'Checking token account',
+        description: 'Making sure your wallet can hold HATM tokens...',
+      });
+      
+      const tokenAccountResult = await checkAndCreateTokenAccount(
+        publicKey.toString(),
+        tokenMint,
+        wallet
+      );
+      
+      if (!tokenAccountResult.success) {
+        console.error("❌ Failed to check/create token account:", tokenAccountResult.error);
+        throw new Error(`Failed to prepare token account: ${tokenAccountResult.error || 'Unknown error'}`);
+      }
+      
+      if (tokenAccountResult.exists === false) {
+        // Token account was newly created
+        toast({
+          title: 'Token account created',
+          description: 'Your wallet is now ready to hold HATM tokens',
+        });
+      }
+      
       console.log("🔧 Calling stakeExistingTokens function");
       const stakeResult = await stakeExistingTokens(
         publicKey.toString(),
