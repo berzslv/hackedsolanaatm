@@ -253,6 +253,17 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
         updateTxStatus(status, isFallback);
       };
       
+      // Convert the referral code to a PublicKey if valid
+      let referrerPublicKey: PublicKey | undefined = undefined;
+      if (referralValid && localReferralCode) {
+        try {
+          referrerPublicKey = new PublicKey(localReferralCode);
+          console.log("Using referrer for transaction:", referrerPublicKey.toString());
+        } catch (err) {
+          console.error("Invalid referrer public key:", err);
+        }
+      }
+
       const result = await createAndSubmitStakingTransaction(
         connection,
         publicKey,
@@ -261,7 +272,8 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
         false, // false means "buy and stake" instead of "stake existing"
         {
           // Optional config with status updates
-          onStatusUpdate: statusCallback
+          onStatusUpdate: statusCallback,
+          referrer: referrerPublicKey
         }
       );
       

@@ -63,6 +63,7 @@ interface StakingTransactionOptions {
   onStatusUpdate?: (status: string, isFallback: boolean) => void;
   skipPreflight?: boolean;
   maxRetries?: number;
+  referrer?: PublicKey;  // Optional referrer public key
 }
 
 export async function createAndSubmitStakingTransaction(
