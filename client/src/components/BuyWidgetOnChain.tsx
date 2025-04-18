@@ -299,9 +299,13 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
       const signature = result.signature;
       console.log("Transaction successful with signature:", signature);
       
+      const completionMessage = result.usedFallback
+        ? "Transaction completed via fallback method. Finalizing purchase..."
+        : "Your transaction has been confirmed. Finalizing purchase...";
+      
       toast({
         title: "Transaction successful!",
-        description: `Your transaction has been confirmed. Finalizing purchase...`
+        description: completionMessage
       });
         
       // Complete the purchase and staking process

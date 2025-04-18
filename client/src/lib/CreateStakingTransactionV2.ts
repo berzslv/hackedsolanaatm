@@ -266,6 +266,7 @@ export async function createAndSubmitStakingTransaction(
     
     try {
       console.log('📡 Sending transaction to the network...');
+      onStatusUpdate("Sending transaction to the network...", false);
       
       // Sign and send the transaction with detailed options
       try {
@@ -277,6 +278,7 @@ export async function createAndSubmitStakingTransaction(
         });
       } catch (firstAttemptError: any) {
         console.warn("⚠️ First attempt failed, trying with different options:", firstAttemptError.message);
+        onStatusUpdate("First attempt failed, trying with different options...", false);
         
         // If that fails, try with different options
         signature = await wallet.sendTransaction(decodedTransaction, connection, {
@@ -287,9 +289,11 @@ export async function createAndSubmitStakingTransaction(
       }
       
       console.log('✈️ Transaction sent with signature:', signature);
+      onStatusUpdate(`Transaction sent with signature: ${signature.slice(0, 8)}...`, false);
       
       // Wait for confirmation with more detailed options
       console.log('⏳ Waiting for transaction confirmation...');
+      onStatusUpdate("Waiting for blockchain confirmation...", false);
       
       // Get the latest blockhash for confirmation
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
@@ -344,7 +348,8 @@ export async function createAndSubmitStakingTransaction(
       return {
         success: true,
         message: `Successfully ${useExistingTokens ? 'staked' : 'bought and staked'} ${amount} tokens`,
-        signature
+        signature,
+        usedFallback: false
       };
       
     } catch (sendError: any) {
@@ -366,12 +371,14 @@ export async function createAndSubmitStakingTransaction(
         // Special handling for "Unexpected error" from wallet adapters
         if (sendError.message.includes("Unexpected error")) {
           console.log("⚠️ Wallet returned 'Unexpected error', attempting alternative transaction approach...");
+          onStatusUpdate("Wallet adapter encountered an issue, trying alternative method...", true);
           
           try {
             console.log("📡 Attempting alternative transaction handling...");
             
             // We'll use the signTransaction method instead of sendTransaction
             console.log("🔏 Requesting user to sign transaction...");
+            onStatusUpdate("Requesting transaction signature via alternative method...", true);
             let signedTransaction;
             
             try {
@@ -390,6 +397,8 @@ export async function createAndSubmitStakingTransaction(
                 : (signedTransaction as VersionedTransaction).serialize();
                 
               console.log("🚀 Sending signed transaction via server endpoint...");
+              onStatusUpdate("Submitting signed transaction via server...", true);
+              
               const response = await fetch('/api/submit-signed-transaction', {
                 method: 'POST',
                 headers: {
@@ -403,6 +412,7 @@ export async function createAndSubmitStakingTransaction(
               
               if (!response.ok) {
                 const errorData = await response.json();
+                onStatusUpdate("Server submission failed, trying another approach...", true);
                 throw new Error(`Server error: ${errorData.message || errorData.error || 'Unknown error'}`);
               }
               
@@ -410,10 +420,12 @@ export async function createAndSubmitStakingTransaction(
               const backupSignature = data.signature;
               
               console.log("✅ Transaction sent successfully with signature:", backupSignature);
+              onStatusUpdate(`Transaction sent successfully via alternative pathway (${backupSignature.slice(0, 8)}...)`, true);
               return { 
                 success: true, 
                 message: "Transaction completed using alternative method", 
-                signature: backupSignature 
+                signature: backupSignature,
+                usedFallback: true
               };
             } catch (signError: any) {
               console.error("❌ Error during transaction signing:", signError);
