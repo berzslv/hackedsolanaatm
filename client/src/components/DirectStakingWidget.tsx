@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatNumber, formatTimeRemaining } from '@/lib/utils';
 import { Connection, PublicKey, Transaction, clusterApiUrl } from '@solana/web3.js';
 import { buyAndStakeTokens, stakeExistingTokens } from '@/lib/combined-smart-contract-client';
+import { registerUserForStaking } from '@/lib/api-client';
 
 
 // Optional Helius API key - would be set from environment in production
@@ -100,7 +101,7 @@ const DirectStakingWidget: React.FC = () => {
       
       toast({
         title: 'Processing Stake Request',
-        description: 'Creating stake transaction...',
+        description: 'Checking registration status...',
       });
       
       // Create a wallet object to pass to stakeExistingTokens
@@ -109,7 +110,26 @@ const DirectStakingWidget: React.FC = () => {
         publicKey
       };
       
-      // Use stakeExistingTokens instead of buyAndStakeTokens since we're just staking tokens
+      // First, register the user account if needed
+      console.log("🔧 Checking if user is registered with staking program");
+      const registrationResult = await registerUserForStaking(
+        publicKey.toString(),
+        wallet
+      );
+      
+      if (registrationResult.error) {
+        console.error("❌ Error registering for staking:", registrationResult.error);
+        throw new Error(`Registration failed: ${registrationResult.error}`);
+      }
+      
+      console.log("✅ Registration status:", registrationResult.message);
+      
+      toast({
+        title: 'Creating stake transaction',
+        description: 'Please wait...',
+      });
+      
+      // Now proceed with staking
       console.log("🔧 Calling stakeExistingTokens function");
       const stakeResult = await stakeExistingTokens(
         publicKey.toString(),
