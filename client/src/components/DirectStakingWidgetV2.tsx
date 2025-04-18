@@ -50,6 +50,16 @@ export function DirectStakingWidget() {
   const [isClaiming, setIsClaiming] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   
+  // Transaction status updates
+  const [txStatus, setTxStatus] = useState<string>("");
+  const [usingFallback, setUsingFallback] = useState<boolean>(false);
+  
+  // Function to update transaction status with fallback indicator
+  const updateTxStatus = (status: string, isFallback = false) => {
+    setTxStatus(status);
+    if (isFallback) setUsingFallback(true);
+  };
+  
   // State for staking info and token balance
   const [stakingInfo, setStakingInfo] = useState<any>(null);
   const [tokenBalance, setTokenBalance] = useState<number>(0);
@@ -141,6 +151,8 @@ export function DirectStakingWidget() {
     const amount = Number(stakeAmount);
     
     setIsStaking(true);
+    setTxStatus("");
+    setUsingFallback(false);
     
     try {
       // Set up connection to Solana
@@ -157,13 +169,26 @@ export function DirectStakingWidget() {
         publicKey
       };
       
+      // Create a status callback function to update UI
+      const statusCallback = (status: string, isFallback: boolean) => {
+        console.log(`Transaction status: ${status}${isFallback ? " (fallback)" : ""}`);
+        updateTxStatus(status, isFallback);
+      };
+      
+      updateTxStatus("Preparing transaction...");
+      
       // Use our enhanced transaction function for staking
       const result = await createAndSubmitStakingTransaction(
         connection,
         publicKey,
         amount,
         wallet,
-        true // Use existing tokens (don't buy new ones)
+        true, // Use existing tokens (don't buy new ones)
+        {
+          onStatusUpdate: statusCallback,
+          skipPreflight: false,
+          maxRetries: 3
+        }
       );
       
       if (result.success) {
