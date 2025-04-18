@@ -83,6 +83,7 @@ export async function handleDirectStake(req: Request, res: Response) {
 
 /**
  * Create a direct staking transaction for the staking vault program
+ * This will automatically register the user first if they aren't already registered
  * 
  * @param userPublicKey The user's wallet address as a PublicKey
  * @param amount The amount of tokens to stake
@@ -106,6 +107,20 @@ export async function createDirectStakingTransaction(
     blockhash,
     lastValidBlockHeight
   });
+  
+  // Check if the user is already registered with the staking vault
+  // Get the user's staking account PDA
+  const [userStakingAccount, _userBump] = findUserStakingPDA(userPublicKey);
+  const userStakingAccountInfo = await connection.getAccountInfo(userStakingAccount);
+  
+  // If the user isn't registered, add a registration instruction first
+  if (!userStakingAccountInfo) {
+    console.log(`User ${userPublicKey.toString()} is not registered. Adding registration instruction.`);
+    const registerInstruction = await createRegisterUserInstruction(userPublicKey, referrer);
+    transaction.add(registerInstruction);
+  } else {
+    console.log(`User ${userPublicKey.toString()} is already registered.`);
+  }
   
   // Create the staking instruction
   const stakeInstruction = await createStakeInstruction(userPublicKey, amount, referrer);
