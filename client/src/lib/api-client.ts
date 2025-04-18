@@ -32,9 +32,23 @@ export const stakeExistingTokens = async (
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Direct stake API error:', errorData);
-      return { error: errorData.message || 'Failed to create staking transaction' };
+      // Check the content type to properly handle HTML error responses
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          const errorData = await response.json();
+          console.error('Direct stake API error:', errorData);
+          return { error: errorData.message || 'Failed to create staking transaction' };
+        } catch (jsonError) {
+          console.error('Failed to parse error response as JSON:', jsonError);
+          return { error: `Server error (${response.status}): Could not parse response` };
+        }
+      } else {
+        // Handle non-JSON responses (like HTML error pages)
+        const errorText = await response.text();
+        console.error('Direct stake API returned non-JSON error:', errorText.substring(0, 150) + '...');
+        return { error: `Server error (${response.status}): Received HTML instead of JSON` };
+      }
     }
 
     const stakeData = await response.json();
@@ -84,9 +98,23 @@ export const buyAndStakeTokens = async (
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Buy and stake API error:', errorData);
-      return { error: errorData.message || 'Failed to create buy and stake transaction' };
+      // Check the content type to properly handle HTML error responses
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          const errorData = await response.json();
+          console.error('Buy and stake API error:', errorData);
+          return { error: errorData.message || 'Failed to create buy and stake transaction' };
+        } catch (jsonError) {
+          console.error('Failed to parse error response as JSON:', jsonError);
+          return { error: `Server error (${response.status}): Could not parse response` };
+        }
+      } else {
+        // Handle non-JSON responses (like HTML error pages)
+        const errorText = await response.text();
+        console.error('Buy and stake API returned non-JSON error:', errorText.substring(0, 150) + '...');
+        return { error: `Server error (${response.status}): Received HTML instead of JSON` };
+      }
     }
 
     const stakeData = await response.json();

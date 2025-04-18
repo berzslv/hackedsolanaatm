@@ -1,0 +1,62 @@
+Error in buy and stake process: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+overrideMethod @ hook.js:608
+buyAndStakeTokens @ api-client.ts:103
+await in buyAndStakeTokens
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:64
+handleBuy @ BuyWidgetOnChain.tsx:248
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+CreateStakingTransactionV2.ts:72 ❌ Error from buyAndStakeTokens: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+overrideMethod @ hook.js:608
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:72
+await in createAndSubmitStakingTransaction
+handleBuy @ BuyWidgetOnChain.tsx:248
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+BuyWidgetOnChain.tsx:257 Transaction failed: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+overrideMethod @ hook.js:608
+handleBuy @ BuyWidgetOnChain.tsx:257
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+BuyWidgetOnChain.tsx:361 Error processing purchase: Error: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at handleBuy (BuyWidgetOnChain.tsx:258:15)

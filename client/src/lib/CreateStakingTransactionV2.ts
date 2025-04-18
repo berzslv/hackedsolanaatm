@@ -15,6 +15,13 @@ import { toast } from '@/hooks/use-toast';
 import BN from 'bn.js';
 import { stakeExistingTokens, buyAndStakeTokens } from './api-client';
 
+// Polyfill Buffer for the browser environment
+// This is needed because some Solana libraries use Node's Buffer which isn't available in browsers
+if (typeof window !== 'undefined') {
+  // Only run this in browser environments
+  window.Buffer = window.Buffer || require('buffer').Buffer;
+}
+
 // Utility function to convert base64 to Uint8Array (for Transaction)
 export function base64ToUint8Array(base64String: string): Uint8Array {
   // First, decode base64 to binary string
