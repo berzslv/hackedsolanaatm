@@ -192,9 +192,17 @@ export function DirectStakingWidget() {
       );
       
       if (result.success) {
+        // Clear the status for the next operation
+        setTxStatus("");
+        setUsingFallback(false);
+        
+        const successMessage = result.usedFallback
+          ? `Successfully staked ${amount} HATM tokens (via alternative method)`
+          : `Successfully staked ${amount} HATM tokens`;
+          
         toast({
           title: 'Staking successful',
-          description: `Successfully staked ${amount} HATM tokens`,
+          description: successMessage,
           variant: 'default'
         });
         
@@ -627,9 +635,58 @@ export function DirectStakingWidget() {
     return `${minutes}m remaining`;
   };
   
+  // Transaction Processing Modal Component
+  const TransactionProcessingModal = () => {
+    if (!isStaking) return null;
+    
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-50">
+        <div className="bg-card p-6 rounded-xl shadow-xl max-w-md w-full">
+          <div className="flex flex-col items-center text-center gap-4">
+            <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+            <h3 className="text-lg font-semibold">Processing Staking Transaction</h3>
+            <p className="text-muted-foreground">
+              Please wait while your transaction is being processed{usingFallback ? " using an alternative method" : ""}...
+            </p>
+            
+            <div className="w-full bg-muted rounded-lg p-3 text-xs font-mono text-left overflow-hidden whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
+              <div className="text-primary">
+                Connecting to wallet... ✓
+              </div>
+              <div className="text-primary">
+                Building transaction... ✓
+              </div>
+              <div className="text-primary">
+                {!txStatus ? (
+                  <span className="animate-pulse">Requesting signature...</span>
+                ) : (
+                  <>Requesting signature... ✓</>
+                )}
+              </div>
+              
+              {txStatus && (
+                <div className={usingFallback ? "text-yellow-500" : "text-green-500"}>
+                  {txStatus}
+                  {usingFallback && (
+                    <div className="text-primary mt-1">
+                      Using enhanced transaction handling for reliability
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
   // Main component render
   return (
     <Card className="w-full">
+      {/* Render the transaction processing modal */}
+      <TransactionProcessingModal />
+      
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
           <span>Staking</span>
