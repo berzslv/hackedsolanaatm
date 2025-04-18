@@ -373,7 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               'zK8Vz18HpAp6iFVFK81bYjHgGpDyhJGnDDKu1VHxqgm',
               '5Ueqc293GbEkJFYwvAiw1zXrBgZ9vbMvWHVKNWHtENAv',
               'BziJvcZkKsX9YNdJ3yWexTPwkjK22cf9hGdZ4Qhx17c9',
-              'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8', // vault address
+              'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu', // vault address
               '3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL', // vault token account
               'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm', // program ID
               '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk', // token mint  
@@ -670,7 +670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rewardPool: railwayStats.totalStaked * 0.5, // Estimate reward pool as 50% of total staked
           stakersCount: railwayStats.stakersCount,
           currentAPY: railwayStats.currentAPY,
-          stakingVaultAddress: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8',
+          stakingVaultAddress: 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu',
           lastUpdated: railwayStats.lastUpdated,
           dataSource: 'railway'
         };
@@ -1619,7 +1619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isLocked: railwayStakingData.isLocked,
           referrer: railwayStakingData.referrer,
           walletTokenBalance: tokenBalanceData.balance,
-          stakingVaultAddress: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8',
+          stakingVaultAddress: 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu',
           dataSource: 'railway',
           refreshed: true
         };
@@ -1652,7 +1652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const stakingResponse = {
             ...stakingData,
             walletTokenBalance: tokenBalance,
-            stakingVaultAddress: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8',
+            stakingVaultAddress: 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu',
             refreshed: true
           };
           
@@ -1751,7 +1751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isLocked: railwayStakingData.isLocked,
           referrer: railwayStakingData.referrer,
           walletTokenBalance: tokenBalanceData.balance,
-          stakingVaultAddress: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8',
+          stakingVaultAddress: 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu',
           dataSource: 'railway' // Indicate this came from Railway
         };
         
@@ -1801,7 +1801,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const stakingData = await stakingVaultUtils.getUserStakingInfo(walletAddress);
         
         // Use the correct staking vault address from our constants
-        const correctStakingVaultAddress = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
+        const correctStakingVaultAddress = 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu';
         
         // Add token balance and ensure staking vault address is correct
         const stakingResponse = {
@@ -2193,7 +2193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Use the actual staking vault address
         // This ensures consistency and tracks real transaction data
-        const stakingVaultAddress = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
+        const stakingVaultAddress = 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu';
         
         console.log(`Using staking vault address: ${stakingVaultAddress}`);
         
@@ -2486,7 +2486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Use the actual staking vault address
-        const stakingVaultAddress = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
+        const stakingVaultAddress = 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu';
         
         // Call force sync to try to get on-chain data
         try {

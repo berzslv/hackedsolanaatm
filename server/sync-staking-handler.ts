@@ -21,7 +21,7 @@ export async function handleSyncStaking(req: Request, res: Response) {
     // Set up connection and addresses
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
     const vaultTokenAccount = new PublicKey('3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL');
-    const vaultPDA = new PublicKey('DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8');
+    const vaultPDA = new PublicKey('EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu');
     const walletPubkey = new PublicKey(walletAddress);
     
     // First approach: Check if tokens in the vault are already registered

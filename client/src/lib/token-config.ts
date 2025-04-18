@@ -2,7 +2,7 @@
 export const TOKEN_CONFIG = {
   // HackATM Token on Devnet
   mint: "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk",
-  authority: "DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8",
+  authority: "EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu",
   name: "Hacked ATM Token",
   symbol: "HATM",
   decimals: 9,

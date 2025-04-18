@@ -3,7 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 
 // Constants
 const PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm';
-const VAULT_ADDRESS = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
+const VAULT_ADDRESS = 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu';
 
 export interface StakeEvent {
   signature: string;
