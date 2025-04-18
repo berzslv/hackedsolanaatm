@@ -437,11 +437,13 @@ export const stakeExistingTokens = async (
         
         console.log('User stake info PDA:', userStakeInfoPDA.toString());
         
-        // Add register instruction
+        // Add register instruction - being explicit about all required accounts
         const registerInstruction = new TransactionInstruction({
           keys: [
             { pubkey: userPubkey, isSigner: true, isWritable: true }, // user/payer
-            { pubkey: userStakeInfoPDA, isSigner: false, isWritable: true }, // user stake info account
+            { pubkey: userStakeInfoPDA, isSigner: false, isWritable: true }, // user stake info account (PDA)
+            { pubkey: vaultPubkey, isSigner: false, isWritable: false }, // vault account
+            { pubkey: tokenMint, isSigner: false, isWritable: false }, // token mint
             { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system program
           ],
           programId,
@@ -489,8 +491,27 @@ export const stakeExistingTokens = async (
       
       console.log('Transaction built successfully');
       
-      // 6. Sign and send transaction
-      const signature = await wallet.sendTransaction(transaction, connection);
+      // 6. Simulate the transaction first to catch any errors
+      try {
+        console.log('Simulating transaction before sending...');
+        const simulation = await connection.simulateTransaction(transaction);
+        
+        if (simulation.value.err) {
+          console.error('Transaction simulation failed:', simulation.value.err);
+          return { error: `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}` };
+        }
+        
+        console.log('Transaction simulation successful');
+      } catch (simError) {
+        console.warn('Simulation error (continuing anyway):', simError);
+      }
+      
+      // 7. Sign and send transaction with explicit options
+      const signature = await wallet.sendTransaction(transaction, connection, {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed',
+        maxRetries: 3
+      });
       
       console.log('Transaction sent successfully with signature:', signature);
       

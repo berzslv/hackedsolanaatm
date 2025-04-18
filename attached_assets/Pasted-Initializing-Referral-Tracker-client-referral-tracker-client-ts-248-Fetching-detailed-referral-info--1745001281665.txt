@@ -1,0 +1,88 @@
+Initializing Referral Tracker client
+referral-tracker-client.ts:248 Fetching detailed referral info for: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+referral-tracker-client.ts:184 Fetching referral stats for: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+TokenDataContext.tsx:470 On-chain referral info: {referralCount: 0, totalEarnings: 0, activity: Array(0)}
+DirectStakingWidget.tsx:96 🚀 Starting staking process
+DirectStakingWidget.tsx:97 👛 Wallet public key: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+DirectStakingWidget.tsx:98 🔢 Amount to stake: 22
+DirectStakingWidget.tsx:99 🔗 Network: https://api.devnet.solana.com
+DirectStakingWidget.tsx:113 🔧 Calling stakeExistingTokens function
+combined-smart-contract-client.ts:398 Building transaction locally with account info: {success: true, tokenMint: '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk', programId: 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm', vault: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8', vaultTokenAccount: '3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL', …}
+combined-smart-contract-client.ts:430 User is not registered. Adding registration instruction.
+combined-smart-contract-client.ts:438 User stake info PDA: A4BCSorbj2J4mG8pQUaAgyoDLbnMAJd99xC2HJaNKs6L
+combined-smart-contract-client.ts:490 Transaction built successfully
+combined-smart-contract-client.ts:493 WalletSendTransactionError: Unexpected error
+    at StandardWalletAdapter.sendTransaction (chunk-POSJQJ2Q.js?v=6ed8202a:4193:15)
+    at async Object.sendTransaction (chunk-POSJQJ2Q.js?v=6ed8202a:4801:12)
+    at async stakeExistingTokens (combined-smart-contract-client.ts:493:25)
+    at async handleStake (DirectStakingWidget.tsx:114:27) StandardWalletAdapter {_events: Events, _eventsCount: 4, signIn: ƒ, signTransaction: ƒ, signAllTransactions: ƒ, …}
+overrideMethod @ hook.js:608
+(anonymous) @ chunk-POSJQJ2Q.js?v=6ed8202a:4700
+handleError @ chunk-POSJQJ2Q.js?v=6ed8202a:4761
+emit @ chunk-2MH4V4YT.js?v=6ed8202a:81
+sendTransaction @ chunk-POSJQJ2Q.js?v=6ed8202a:4196
+await in sendTransaction
+(anonymous) @ chunk-POSJQJ2Q.js?v=6ed8202a:4801
+stakeExistingTokens @ combined-smart-contract-client.ts:493
+await in stakeExistingTokens
+handleStake @ DirectStakingWidget.tsx:114
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+combined-smart-contract-client.ts:516 Error building/sending transaction: WalletSendTransactionError: Unexpected error
+    at StandardWalletAdapter.sendTransaction (chunk-POSJQJ2Q.js?v=6ed8202a:4193:15)
+    at async Object.sendTransaction (chunk-POSJQJ2Q.js?v=6ed8202a:4801:12)
+    at async stakeExistingTokens (combined-smart-contract-client.ts:493:25)
+    at async handleStake (DirectStakingWidget.tsx:114:27)
+overrideMethod @ hook.js:608
+stakeExistingTokens @ combined-smart-contract-client.ts:516
+await in stakeExistingTokens
+handleStake @ DirectStakingWidget.tsx:114
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+DirectStakingWidget.tsx:122 ❌ Error from stakeExistingTokens: Failed to process staking transaction: Unexpected error
+overrideMethod @ hook.js:608
+handleStake @ DirectStakingWidget.tsx:122
+await in handleStake
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+DirectStakingWidget.tsx:284 Staking error: Error: Failed to process staking transaction: Unexpected error
+    at handleStake (DirectStakingWidget.tsx:123:15)

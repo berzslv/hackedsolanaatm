@@ -56,3 +56,10 @@ export function formatTimeRemaining(ms: number): string {
     return `${seconds}s`;
   }
 }
+
+export function formatAsPercent(num: number, options: { decimals?: number } = {}): string {
+  const { decimals = 1 } = options;
+  if (isNaN(num)) return '0%';
+  
+  return `${num.toFixed(decimals)}`;
+}
