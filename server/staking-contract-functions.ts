@@ -24,7 +24,7 @@ import {
 import BN from 'bn.js';
 
 // Constants for the staking program
-export const STAKING_PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV3cYfrx53ky19RD56eRRGm');
+export const STAKING_PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
 export const TOKEN_MINT = new PublicKey('59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk');
 
 // Seed constants - CRITICAL that these match the smart contract
