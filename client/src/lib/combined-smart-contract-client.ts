@@ -504,11 +504,12 @@ export const stakeExistingTokens = async (
           dataLayout[0] = 1; // Instruction index for stake
           
           // Write the amount as a 64-bit little-endian value
-          const amountBuffer = BufferPolyfill.from(new BN(amountLamports).toArray('le', 8));
+          // Use the BN's toArray method directly to avoid buffer issues
+          const amountArray = new BN(amountLamports).toArray('le', 8);
           
-          // Copy values manually from amountBuffer to dataLayout
+          // Copy values directly from the array
           for (let i = 0; i < 8; i++) {
-              dataLayout[i+1] = amountBuffer[i];
+              dataLayout[i+1] = amountArray[i];
           }
           
           return dataLayout;
