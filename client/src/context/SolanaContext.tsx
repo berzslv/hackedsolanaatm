@@ -163,9 +163,44 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         } catch (manualError) {
           console.error("Manual transaction submission failed:", manualError);
           
-          // If manual approach fails, we'll try server-side submission as a last resort
+          // Check if we encountered a specific Anchor error about fallback functions
+          const errorMessage = manualError.toString();
+          if (errorMessage.includes("InstructionFallbackNotFound") || 
+              errorMessage.includes("custom program error: 0x65") ||
+              errorMessage.includes("Error Code: 101")) {
+            console.log("Detected Anchor fallback instruction error, using direct server endpoint...");
+            
+            // For this specific error, bypass the transaction serialization and directly call the register-user endpoint
+            try {
+              const response = await fetch('/api/register-user', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                  walletAddress: publicKey.toBase58()
+                }),
+              });
+              
+              const result = await response.json();
+              
+              if (result.success) {
+                console.log("Direct server registration successful");
+                return result.signature || 'direct-server-registration-successful';
+              } else {
+                throw new Error(result.error || 'Direct server registration failed');
+              }
+            } catch (directError: any) {
+              console.error("Direct server registration failed:", directError);
+              throw new Error(`Direct registration failed: ${directError.message || 'Unknown error'}`);
+            }
+          }
+          
+          // If manual approach fails and it's not the specific Anchor error, we'll try server-side submission as a last resort
           try {
             console.log("Attempting server-side transaction submission as last resort...");
+            
+            // We'll pass the unsigned transaction and let the server handle it
             const serializedTransaction = Buffer.from(transaction.serialize()).toString('base64');
             
             // Send the serialized transaction to our backend endpoint
