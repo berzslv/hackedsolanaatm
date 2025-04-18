@@ -1,0 +1,84 @@
+Transaction simulation failed: {InstructionError: Array(2)}
+overrideMethod @ hook.js:608
+stakeExistingTokens @ combined-smart-contract-client.ts:600
+await in stakeExistingTokens
+handleStake @ DirectStakingWidget.tsx:201
+await in handleStake
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+combined-smart-contract-client.ts:611 Custom program error in instruction 0: Code 100
+overrideMethod @ hook.js:608
+stakeExistingTokens @ combined-smart-contract-client.ts:611
+await in stakeExistingTokens
+handleStake @ DirectStakingWidget.tsx:201
+await in handleStake
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+combined-smart-contract-client.ts:622 Error explanation: Insufficient funds or missing account
+overrideMethod @ hook.js:608
+stakeExistingTokens @ combined-smart-contract-client.ts:622
+await in stakeExistingTokens
+handleStake @ DirectStakingWidget.tsx:201
+await in handleStake
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+DirectStakingWidget.tsx:209 ❌ Error from stakeExistingTokens: Transaction simulation failed: Custom program error 100 - Insufficient funds or missing account
+overrideMethod @ hook.js:608
+handleStake @ DirectStakingWidget.tsx:209
+await in handleStake
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+DirectStakingWidget.tsx:446 Staking error: Error: Transaction simulation failed: Custom program error 100 - Insufficient funds or missing account
+    at handleStake (DirectStakingWidget.tsx:210:15)

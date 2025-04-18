@@ -513,6 +513,58 @@ export const stakeExistingTokens = async (
         return { error: "Token account not found or cannot be accessed. You might not have any HATM tokens in your wallet." };
       }
       
+      // 3.2 Verify that the vault token account is valid and accessible
+      try {
+        console.log(`Verifying vault token account: ${vaultTokenAccount.toString()}`);
+        
+        // Test if we can access the vault token account
+        const vaultAccountInfo = await connection.getAccountInfo(vaultTokenAccount);
+        
+        if (!vaultAccountInfo) {
+          console.error("⚠️ Vault token account doesn't exist or can't be accessed");
+          
+          // Re-derive the vault token account using the vault authority PDA
+          const [vaultAuthority] = PublicKey.findProgramAddressSync(
+            [new TextEncoder().encode('vault_auth')],
+            programId
+          );
+          
+          console.log(`Re-deriving vault token account using vault authority: ${vaultAuthority.toString()}`);
+          
+          // Get the correct vault token account for the vault authority
+          const correctVaultTokenAccount = await getAssociatedTokenAddress(
+            tokenMint,
+            vaultAuthority,
+            true, // allowOwnerOffCurve = true since the vault authority is a PDA
+            TOKEN_PROGRAM_ID
+          );
+          
+          console.log(`Re-derived vault token account: ${correctVaultTokenAccount.toString()}`);
+          
+          // Check if this account exists
+          const correctVaultInfo = await connection.getAccountInfo(correctVaultTokenAccount);
+          
+          if (correctVaultInfo) {
+            console.log("Found correct vault token account, using it instead");
+            vaultTokenAccount = correctVaultTokenAccount;
+          } else {
+            // As a last resort, use the known working vault token account
+            const hardcodedVaultTokenAccount = new PublicKey("3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL");
+            console.log(`Using known working vault token account: ${hardcodedVaultTokenAccount.toString()}`);
+            vaultTokenAccount = hardcodedVaultTokenAccount;
+          }
+        } else {
+          console.log("Vault token account exists and is accessible");
+        }
+      } catch (vaultError) {
+        console.error("Error verifying vault token account:", vaultError);
+        
+        // Use the known working vault token account as a fallback
+        const hardcodedVaultTokenAccount = new PublicKey("3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL");
+        console.log(`Using known working vault token account after error: ${hardcodedVaultTokenAccount.toString()}`);
+        vaultTokenAccount = hardcodedVaultTokenAccount;
+      }
+      
       // 4. Check if user is registered, and create registration instruction if needed
       if (!accountsInfo.isRegistered) {
         console.log('User is not registered. Adding registration instruction.');
