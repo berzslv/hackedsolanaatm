@@ -1899,6 +1899,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add a new endpoint for direct staking using the proper referral staking contract
   app.post("/api/direct-stake", handleDirectStake);
   
+  // Direct client transaction submission endpoint - alternative for wallet adapter issues
+  app.post('/api/submit-signed-transaction', async (req, res) => {
+    try {
+      const { serializedTransaction, skipPreflight = true } = req.body;
+      
+      if (!serializedTransaction) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing serializedTransaction in request body"
+        });
+      }
+      
+      const { Connection, clusterApiUrl } = await import('@solana/web3.js');
+      
+      // Create connection to devnet
+      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+      
+      // Convert base64 serialized transaction to buffer
+      const transactionBuffer = Buffer.from(serializedTransaction, 'base64');
+      
+      // Send the raw transaction
+      console.log(`Submitting client-signed transaction with skipPreflight=${skipPreflight}`);
+      const signature = await connection.sendRawTransaction(transactionBuffer, {
+        skipPreflight,
+        preflightCommitment: 'confirmed',
+        maxRetries: 5
+      });
+      
+      console.log(`Transaction submitted with signature: ${signature}`);
+      
+      // Return the signature to the client
+      return res.status(200).json({
+        success: true,
+        message: "Transaction submitted successfully",
+        signature
+      });
+    } catch (error) {
+      console.error("Error submitting transaction:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error submitting transaction",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
   /**
    * API endpoint to provide account information for client-side transaction building
    * This avoids serialization/deserialization issues by letting the client build the transaction

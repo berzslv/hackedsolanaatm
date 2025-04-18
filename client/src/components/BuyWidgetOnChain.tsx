@@ -276,7 +276,7 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
         } else {
           toast({
             title: "Transaction failed",
-            description: result.error || result.message,
+            description: `${result.message}. ${result.error || ''}`,
             variant: "destructive"
           });
         }

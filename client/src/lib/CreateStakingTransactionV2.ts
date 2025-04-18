@@ -353,20 +353,66 @@ export async function createAndSubmitStakingTransaction(
           console.log("⚠️ Wallet returned 'Unexpected error', attempting alternative transaction approach...");
           
           try {
-            // Try to send the transaction directly through the connection without the wallet adapter
-            // This is a fallback for wallet adapter issues
-            const wireTransaction = decodedTransaction instanceof Transaction 
-              ? decodedTransaction.serialize()
-              : (decodedTransaction as VersionedTransaction).serialize();
-              
-            // For testing, we'll just log this would-be approach
-            console.log("💡 Would attempt direct transaction submission (RPC sendRawTransaction)");
+            console.log("📡 Attempting alternative transaction handling...");
             
-            // In a production environment, we might do:
-            // const backupSignature = await connection.sendRawTransaction(wireTransaction);
-            // return { success: true, message: "Transaction completed using fallback method", signature: backupSignature };
+            // We'll use the signTransaction method instead of sendTransaction
+            console.log("🔏 Requesting user to sign transaction...");
+            let signedTransaction;
+            
+            try {
+              if (decodedTransaction instanceof Transaction) {
+                signedTransaction = await wallet.signTransaction(decodedTransaction);
+                console.log("✅ Transaction signed successfully");
+              } else {
+                // For versioned transactions
+                signedTransaction = await wallet.signTransaction(decodedTransaction as VersionedTransaction);
+                console.log("✅ Versioned transaction signed successfully");
+              }
+              
+              // Now send it manually
+              const wireTransaction = signedTransaction instanceof Transaction 
+                ? signedTransaction.serialize()
+                : (signedTransaction as VersionedTransaction).serialize();
+                
+              console.log("🚀 Sending signed transaction via server endpoint...");
+              const response = await fetch('/api/submit-signed-transaction', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  serializedTransaction: Buffer.from(wireTransaction).toString('base64'),
+                  skipPreflight: true
+                }),
+              });
+              
+              if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Server error: ${errorData.message || errorData.error || 'Unknown error'}`);
+              }
+              
+              const data = await response.json();
+              const backupSignature = data.signature;
+              
+              console.log("✅ Transaction sent successfully with signature:", backupSignature);
+              return { 
+                success: true, 
+                message: "Transaction completed using alternative method", 
+                signature: backupSignature 
+              };
+            } catch (signError: any) {
+              console.error("❌ Error during transaction signing:", signError);
+              if (signError.message && signError.message.includes("User rejected")) {
+                return { 
+                  success: false, 
+                  message: 'Transaction was rejected by the wallet', 
+                  error: signError.message 
+                };
+              }
+              throw signError; // Let the outer catch handle other errors
+            }
           } catch (directSendError) {
-            console.error("❌ Direct transaction submission also failed:", directSendError);
+            console.error("❌ Alternative transaction approach failed:", directSendError);
           }
         }
       }
