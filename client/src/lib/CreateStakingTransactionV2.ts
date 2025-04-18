@@ -400,22 +400,101 @@ export async function createAndSubmitStakingTransaction(
       
       // Sign and send the transaction with detailed options
       try {
-        // Try with skipPreflight first
+        // APPROACH 1: Primary approach with skipPreflight=true
+        console.log('Attempting primary transaction method: wallet.sendTransaction (skipPreflight=true)');
+        onStatusUpdate("Sending transaction (method 1)...", false);
+        
         signature = await wallet.sendTransaction(decodedTransaction, connection, {
           skipPreflight: true, // Skip preflight checks (more reliable in some cases)
           preflightCommitment: 'confirmed',
           maxRetries: 5
         });
+        console.log('✅ Primary transaction method successful, signature:', signature);
       } catch (firstAttemptError: any) {
-        console.warn("⚠️ First attempt failed, trying with different options:", firstAttemptError.message);
-        onStatusUpdate("First attempt failed, trying with different options...", false);
+        console.warn("⚠️ First attempt failed, trying alternative method:", firstAttemptError.message);
+        onStatusUpdate("First attempt failed, trying alternative method...", false);
         
-        // If that fails, try with different options
-        signature = await wallet.sendTransaction(decodedTransaction, connection, {
-          skipPreflight: false, 
-          preflightCommitment: 'confirmed',
-          maxRetries: 3
-        });
+        // APPROACH 1b: Try with different options
+        try {
+          signature = await wallet.sendTransaction(decodedTransaction, connection, {
+            skipPreflight: false, 
+            preflightCommitment: 'confirmed',
+            maxRetries: 3
+          });
+          console.log('✅ Alternative transaction method 1b successful, signature:', signature);
+        } catch (secondAttemptError: any) {
+          console.error('❌ Second attempt failed:', secondAttemptError);
+          
+          // Check if this is a wallet adapter error
+          if (secondAttemptError.message?.includes('Unexpected error') || 
+              secondAttemptError.message?.includes('User rejected')) {
+                
+            console.log('🔄 Falling back to manual sign + send method');
+            onStatusUpdate("Primary method failed, using fallback method...", true);
+            
+            // APPROACH 2: Fallback - manual sign and send 
+            try {
+              // Get fresh blockhash for good measure
+              const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+              
+              if (decodedTransaction instanceof Transaction) {
+                decodedTransaction.recentBlockhash = blockhash;
+                decodedTransaction.lastValidBlockHeight = lastValidBlockHeight;
+              }
+              
+              // Get signTransaction from wallet
+              const signTransaction = wallet.signTransaction;
+              
+              if (!signTransaction) {
+                throw new Error("Wallet doesn't support signTransaction");
+              }
+              
+              // Manually sign the transaction 
+              const signedTransaction = await signTransaction(decodedTransaction);
+              
+              // Send the signed transaction
+              signature = await connection.sendRawTransaction(
+                signedTransaction.serialize(), 
+                {
+                  skipPreflight: false,
+                  preflightCommitment: 'confirmed',
+                  maxRetries: 5
+                }
+              );
+              console.log('✅ Manual sign + send method successful, signature:', signature);
+            } catch (manualSignError) {
+              console.error('❌ Manual sign + send method failed:', manualSignError);
+              
+              // APPROACH 3: Server-side submission
+              console.log('🔄 Falling back to server-side transaction submission');
+              onStatusUpdate("Local methods failed, trying server-side submission...", true);
+              
+              const serverSubmitResponse = await fetch('/api/process-transaction-server-side', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  walletAddress: publicKey.toString(),
+                  amount: amount,
+                  transactionType: useExistingTokens ? 'stake' : 'buy-and-stake',
+                  referrer: options?.referrer?.toString(),
+                  useServerSigning: true
+                })
+              });
+              
+              if (!serverSubmitResponse.ok) {
+                const serverError = await serverSubmitResponse.json();
+                throw new Error(`Server-side submission failed: ${serverError.error || serverSubmitResponse.statusText}`);
+              }
+              
+              const serverResult = await serverSubmitResponse.json();
+              signature = serverResult.signature;
+              console.log('✅ Server-side transaction method successful, signature:', signature);
+            }
+          } else {
+            // Not an "Unexpected error", rethrow
+            throw secondAttemptError;
+          }
+        }
       }
       
       console.log('✈️ Transaction sent with signature:', signature);

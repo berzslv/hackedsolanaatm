@@ -351,14 +351,15 @@ const DirectStakingWidget: React.FC = () => {
               });
               
               // Use server-side fallback
-              const serverSubmitResponse = await fetch('/api/submit-transaction', {
+              const serverSubmitResponse = await fetch('/api/process-transaction-server-side', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   walletAddress: publicKey.toString(),
                   transactionBase64: transactionData.transaction,
                   amount: amount,
-                  type: 'stake'
+                  transactionType: 'stake',
+                  useServerSigning: true
                 })
               });
               
