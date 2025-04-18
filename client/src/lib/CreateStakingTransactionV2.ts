@@ -295,11 +295,123 @@ export async function createAndSubmitStakingTransaction(
                   if (errorDetail.Custom === 100) {
                     toast({
                       title: "Registration Required",
-                      description: "You need to register with the staking program first. We'll do this automatically for you.",
+                      description: "You need to register with the staking program first. Attempting to fix this automatically...",
                       variant: "default",
                     });
                     
-                    // We'll continue with the transaction since we automatically register in the next step
+                    // Attempt to register the user separately with server-side help
+                    (async () => {
+                      try {
+                        console.log("🛠️ Attempting automatic registration fix for error 100...");
+                        onStatusUpdate("Trying to fix registration issue...", true);
+                        
+                        // Call our server endpoint to register the user
+                        const registerResponse = await fetch('/api/register-user', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            walletAddress: publicKey.toString()
+                          }),
+                        });
+                        
+                        if (!registerResponse.ok) {
+                          const errorData = await registerResponse.json();
+                          console.error("❌ Auto-registration failed:", errorData.error);
+                          toast({
+                            title: "Registration Failed",
+                            description: errorData.error || "Could not register your account automatically",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        
+                        const regData = await registerResponse.json();
+                        console.log("✅ Auto-registration response:", regData);
+                        
+                        if (regData.transaction) {
+                          // Server returned a transaction for us to sign/send
+                          console.log("📤 Sending registration transaction...");
+                          toast({
+                            title: "Please Approve Registration",
+                            description: "Please sign the transaction to register with staking program",
+                            variant: "default",
+                          });
+                          
+                          // Use our enhanced transaction handler
+                          try {
+                            // Create a base64 transaction
+                            const regTxBytes = base64ToUint8Array(regData.transaction);
+                            const regTx = Transaction.from(regTxBytes);
+                            
+                            // Try to send it with all our fallback methods
+                            let regSignature = '';
+                            
+                            try {
+                              // Try primary method
+                              regSignature = await wallet.sendTransaction(regTx, connection);
+                              console.log("✅ Registration transaction sent:", regSignature);
+                            } catch (regSendError) {
+                              console.error("❌ Error sending registration transaction:", regSendError);
+                              
+                              // Try fallback with server
+                              const serverRegResponse = await fetch('/api/process-transaction-server-side', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  walletAddress: publicKey.toString(),
+                                  transactionType: 'register',
+                                  useServerSigning: true
+                                })
+                              });
+                              
+                              if (!serverRegResponse.ok) {
+                                throw new Error("Server registration failed");
+                              }
+                              
+                              const serverRegResult = await serverRegResponse.json();
+                              regSignature = serverRegResult.signature;
+                              console.log("✅ Registration transaction sent via server:", regSignature);
+                            }
+                            
+                            // Wait for confirmation
+                            const regConfirmation = await connection.confirmTransaction(regSignature);
+                            
+                            if (regConfirmation.value.err) {
+                              throw new Error(`Registration confirmed with error: ${JSON.stringify(regConfirmation.value.err)}`);
+                            }
+                            
+                            console.log("🎉 Registration successful! Now we can retry the stake transaction");
+                            toast({
+                              title: "Registration Successful",
+                              description: "Your account is now registered. Please try staking again.",
+                              variant: "default",
+                            });
+                          } catch (regError) {
+                            console.error("❌ Registration transaction failed:", regError);
+                            toast({
+                              title: "Registration Failed",
+                              description: "Could not complete registration. Please try again later.",
+                              variant: "destructive",
+                            });
+                          }
+                        } else if (regData.success) {
+                          // Server handled registration for us
+                          console.log("✅ Server completed registration!");
+                          toast({
+                            title: "Registration Successful",
+                            description: "Your account is now registered. Please try staking again.",
+                            variant: "default",
+                          });
+                        }
+                      } catch (regError) {
+                        console.error("❌ Auto-registration attempt failed:", regError);
+                      }
+                    })();
+                    
+                    // For error 100, we will show an initial message, but still attempt the transaction
+                    // as we may have auto-fixed it, and if not, our server-side fallback might help
                   } else {
                     // For other errors, show the error toast
                     toast({
