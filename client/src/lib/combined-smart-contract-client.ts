@@ -15,6 +15,16 @@ import {
 import BN from 'bn.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 
+// Polyfill Buffer for the browser environment
+// This is needed because some Solana libraries use Node's Buffer which isn't available in browsers
+if (typeof window !== 'undefined') {
+  // Only run this in browser environments
+  window.Buffer = window.Buffer || require('buffer').Buffer;
+  
+  // Add a debug flag to check if polyfill is working
+  console.log('Buffer polyfill working:', typeof Buffer !== 'undefined');
+}
+
 // Token configuration
 const tokenMintAddress = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
 // The staking vault address (PDA derived from program and token mint)
