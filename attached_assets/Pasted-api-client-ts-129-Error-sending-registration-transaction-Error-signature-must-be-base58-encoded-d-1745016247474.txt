@@ -1,0 +1,92 @@
+api-client.ts:129 Error sending registration transaction: Error: signature must be base58 encoded: direct-server-registration-successful
+    at Connection.confirmTransaction (chunk-RTG5XY25.js?v=7fed3b3f:12298:13)
+    at registerUserForStaking (api-client.ts:120:26)
+    at async buyAndStakeTokens (api-client.ts:250:32)
+    at async createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:142:25)
+    at async handleBuy (BuyWidgetOnChain.tsx:296:22)
+overrideMethod @ hook.js:608
+registerUserForStaking @ api-client.ts:129
+await in registerUserForStaking
+buyAndStakeTokens @ api-client.ts:250
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:142
+handleBuy @ BuyWidgetOnChain.tsx:296
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+api-client.ts:253 ❌ Registration failed: Failed to send registration transaction: signature must be base58 encoded: direct-server-registration-successful
+overrideMethod @ hook.js:608
+buyAndStakeTokens @ api-client.ts:253
+await in buyAndStakeTokens
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:142
+handleBuy @ BuyWidgetOnChain.tsx:296
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+CreateStakingTransactionV2.ts:151 ❌ Error from buyAndStakeTokens: Registration required before staking: Failed to send registration transaction: signature must be base58 encoded: direct-server-registration-successful
+overrideMethod @ hook.js:608
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:151
+await in createAndSubmitStakingTransaction
+handleBuy @ BuyWidgetOnChain.tsx:296
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+BuyWidgetOnChain.tsx:310 Transaction failed: Registration required before staking: Failed to send registration transaction: signature must be base58 encoded: direct-server-registration-successful
+overrideMethod @ hook.js:608
+handleBuy @ BuyWidgetOnChain.tsx:310
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+BuyWidgetOnChain.tsx:444 Error processing purchase: Error: Registration required before staking: Failed to send registration transaction: signature must be base58 encoded: direct-server-registration-successful
+    at handleBuy (BuyWidgetOnChain.tsx:337:15)
