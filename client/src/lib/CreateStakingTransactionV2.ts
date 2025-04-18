@@ -9,7 +9,10 @@ import {
   Connection,
   PublicKey,
   Transaction,
+  VersionedTransaction,
+  TransactionInstruction,
   Message,
+  VersionedMessage,
   sendAndConfirmTransaction
 } from '@solana/web3.js';
 import { toast } from '@/hooks/use-toast';
@@ -46,6 +49,15 @@ export function base64ToUint8Array(base64String: string): Uint8Array {
  * @param useExistingTokens Whether to stake existing tokens or buy new ones
  * @returns Result of the staking operation
  */
+// Helper type guards for Transaction types
+function isVersionedTransaction(tx: Transaction | VersionedTransaction): tx is VersionedTransaction {
+  return 'version' in tx;
+}
+
+function isLegacyTransaction(tx: Transaction | VersionedTransaction): tx is Transaction {
+  return !('version' in tx);
+}
+
 export async function createAndSubmitStakingTransaction(
   connection: Connection,
   publicKey: PublicKey,
@@ -111,7 +123,7 @@ export async function createAndSubmitStakingTransaction(
     }
     
     // Decode and deserialize the transaction
-    let decodedTransaction: Transaction;
+    let decodedTransaction: Transaction | VersionedTransaction;
     
     try {
       console.log('🔍 Attempting to deserialize transaction');
@@ -119,33 +131,54 @@ export async function createAndSubmitStakingTransaction(
       // Convert base64 string to Uint8Array
       const messageBytes = base64ToUint8Array(transactionData.transaction);
       
-      // Create new transaction and populate with the message
-      decodedTransaction = Transaction.populate(
-        Transaction.from(messageBytes).compileMessage()
-      );
-      
-      console.log('✅ Successfully deserialized transaction message');
+      try {
+        // First, try to deserialize as a versioned message
+        const versionedMessage = VersionedMessage.deserialize(messageBytes);
+        console.log('✅ Successfully deserialized versioned message');
+        
+        // Create new transaction from the versioned message
+        decodedTransaction = new VersionedTransaction(versionedMessage);
+      } catch (versionedError) {
+        console.log('⚙️ Not a versioned message, trying Transaction.populate');
+        
+        // Try regular transaction
+        const message = Message.from(messageBytes);
+        decodedTransaction = Transaction.populate(message);
+        console.log('✅ Successfully deserialized transaction message');
+      }
       
       // Ensure fee payer is set - this should already be set from the server
-      if (!decodedTransaction.feePayer) {
+      if (decodedTransaction instanceof Transaction && !decodedTransaction.feePayer) {
         console.log('⚠️ Setting fee payer to current wallet');
         decodedTransaction.feePayer = publicKey;
       }
       
       // Ensure recent blockhash is set - should already be set from the server
-      if (!decodedTransaction.recentBlockhash) {
+      if (decodedTransaction instanceof Transaction && !decodedTransaction.recentBlockhash) {
         console.log('⚠️ Getting fresh blockhash for transaction');
         const { blockhash } = await connection.getLatestBlockhash('finalized');
         decodedTransaction.recentBlockhash = blockhash;
       }
       
-      console.log("🧾 Fee payer:", decodedTransaction.feePayer?.toBase58());
-      console.log("🔑 Signers:", decodedTransaction.signatures.map(s => s.publicKey.toBase58()));
+      // Log transaction details based on type
+      if (isLegacyTransaction(decodedTransaction)) {
+        console.log("🧾 Fee payer:", decodedTransaction.feePayer?.toBase58());
+        console.log("🔑 Signers:", decodedTransaction.signatures.map(s => s.publicKey.toBase58()));
+      } else {
+        console.log("🧾 Using versioned transaction");
+        console.log("🔑 Signers:", decodedTransaction.signatures.length);
+      }
       
       // Try simulating the transaction before sending
       try {
         console.log("🔬 Simulating transaction before sending");
-        const simulation = await connection.simulateTransaction(decodedTransaction);
+        let simulation;
+        
+        if (isLegacyTransaction(decodedTransaction)) {
+          simulation = await connection.simulateTransaction(decodedTransaction);
+        } else {
+          simulation = await connection.simulateTransaction(decodedTransaction as VersionedTransaction);
+        }
         
         if (simulation.value.err) {
           console.error("⚠️ Transaction simulation failed:", simulation.value.err);
@@ -165,12 +198,41 @@ export async function createAndSubmitStakingTransaction(
       try {
         const messageBytes = base64ToUint8Array(transactionData.transaction);
         const message = Message.from(messageBytes);
-        decodedTransaction = new Transaction();
-        decodedTransaction.recentBlockhash = message.recentBlockhash;
-        decodedTransaction.feePayer = publicKey;
-        message.instructions.forEach(instruction => {
-          decodedTransaction.add(instruction);
+        const tx = new Transaction();
+        tx.recentBlockhash = message.recentBlockhash;
+        tx.feePayer = publicKey;
+        
+        // Manually convert each compiled instruction to a TransactionInstruction
+        message.compiledInstructions.forEach(compiledInstruction => {
+          // Find the program ID for this instruction from the account keys
+          const programId = message.accountKeys[compiledInstruction.programIdIndex];
+          
+          // Get the accounts this instruction interacts with
+          const keys = compiledInstruction.accountKeyIndexes.map(indexValue => {
+            const pubkey = message.accountKeys[indexValue];
+            // Determine if this account is a signer and/or writable from the message header
+            const isSigner = message.isAccountSigner(indexValue);
+            const isWritable = message.isAccountWritable(indexValue);
+            return {
+              pubkey,
+              isSigner,
+              isWritable
+            };
+          });
+          
+          // Create a proper TransactionInstruction
+          const instruction = new TransactionInstruction({
+            programId,
+            keys,
+            data: Buffer.from(compiledInstruction.data)
+          });
+          
+          // Add the reconstructed instruction to the transaction
+          tx.add(instruction);
         });
+        
+        decodedTransaction = tx;
+        
         console.log('✅ Successfully deserialized transaction using manual reconstruction');
       } catch (e2: any) {
         console.error('❌ All deserialization methods failed:', e2);
@@ -199,10 +261,14 @@ export async function createAndSubmitStakingTransaction(
       
       // Wait for confirmation with more detailed options
       console.log('⏳ Waiting for transaction confirmation...');
+      
+      // Get the latest blockhash for confirmation
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+      
       const confirmationResult = await connection.confirmTransaction({
         signature,
-        blockhash: decodedTransaction.recentBlockhash!, 
-        lastValidBlockHeight: decodedTransaction.lastValidBlockHeight!
+        blockhash, 
+        lastValidBlockHeight
       }, 'confirmed');
       
       if (confirmationResult.value.err) {
