@@ -255,6 +255,32 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
       
       if (!result.success) {
         console.error("Transaction failed:", result.error);
+        
+        // Show detailed error toast with retry option if available
+        if (result.canRetry) {
+          toast({
+            title: "Transaction failed",
+            description: `${result.message}. You can try again with a fresh blockhash.`,
+            variant: "destructive",
+            action: (
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => handleBuy()}
+                  className="px-3 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-md"
+                >
+                  Retry
+                </button>
+              </div>
+            )
+          });
+        } else {
+          toast({
+            title: "Transaction failed",
+            description: result.error || result.message,
+            variant: "destructive"
+          });
+        }
+        
         throw new Error(result.error || result.message);
       }
       
