@@ -26,7 +26,8 @@ const setupBufferPolyfill = () => {
   
   // Verify the polyfill is working
   try {
-    const testBuffer = Buffer.from("test");
+    // Use BrowserBuffer directly to avoid any issues with the global Buffer
+    const testBuffer = BrowserBuffer.from("test");
     console.log("Buffer polyfill working:", testBuffer.length === 4);
   } catch (e) {
     console.error("Buffer polyfill failed:", e);

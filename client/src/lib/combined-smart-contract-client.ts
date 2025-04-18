@@ -18,6 +18,7 @@ import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 // Polyfill Buffer for the browser environment
 // This is needed because some Solana libraries use Node's Buffer which isn't available in browsers
 import * as buffer from 'buffer';
+import { BrowserBuffer } from './browser-polyfills';
 
 if (typeof window !== 'undefined') {
   // Only run this in browser environments
@@ -27,9 +28,9 @@ if (typeof window !== 'undefined') {
   console.log('Buffer polyfill working:', typeof Buffer !== 'undefined');
 }
 
-// Ensure Buffer is available globally
+// Create a reliable Buffer polyfill for this module
 const BufferPolyfill = typeof window !== 'undefined' 
-  ? window.Buffer 
+  ? (window.Buffer || BrowserBuffer)
   : (typeof buffer !== 'undefined' ? buffer.Buffer : Buffer);
 
 // Throw an error if Buffer is still not available

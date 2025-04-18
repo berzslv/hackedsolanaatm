@@ -261,7 +261,7 @@ export async function createAndSubmitStakingTransaction(
           const instruction = new TransactionInstruction({
             programId,
             keys,
-            data: Buffer.from(compiledInstruction.data)
+            data: BufferPolyfill.from(compiledInstruction.data)
           });
           
           // Add the reconstructed instruction to the transaction
@@ -427,7 +427,7 @@ export async function createAndSubmitStakingTransaction(
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
-                    serializedTransaction: Buffer.from(wireTransaction).toString('base64'),
+                    serializedTransaction: BufferPolyfill.from(wireTransaction).toString('base64'),
                     skipPreflight: true
                   }),
                 });
