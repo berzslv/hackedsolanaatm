@@ -221,15 +221,17 @@ export async function createAndSubmitStakingTransaction(
           // Handle both Transaction and VersionedTransaction types correctly
           let simulationResult;
           if (decodedTransaction instanceof Transaction) {
+            // Use the correct overload for legacy Transaction
             simulationResult = await connection.simulateTransaction(
               decodedTransaction,
-              { sigVerify: false, commitment: 'confirmed' }
+              undefined, // No signers needed for simulation
+              true // includeAccounts
             );
           } else {
-            // For VersionedTransaction
+            // For VersionedTransaction use the proper config object
             simulationResult = await connection.simulateTransaction(
               decodedTransaction as VersionedTransaction,
-              { sigVerify: false, commitment: 'confirmed' }
+              { commitment: 'confirmed', replaceRecentBlockhash: true }
             );
           }
           
@@ -239,15 +241,20 @@ export async function createAndSubmitStakingTransaction(
             console.warn("⚠️ Simulation shows transaction would fail:", simulationResult.value.err);
             
             // Enhanced debugging for program errors
-            if (typeof simulationResult.value.err === 'object') {
-              const errorObj = simulationResult.value.err;
+            if (typeof simulationResult.value.err === 'object' && simulationResult.value.err !== null) {
+              const errorObj = simulationResult.value.err as Record<string, any>;
               
               if ('InstructionError' in errorObj) {
-                const [instructionIndex, errorDetail] = errorObj.InstructionError;
+                // We need to assert the type here to help TypeScript
+                const instructionError = errorObj.InstructionError as [number, any];
+                const instructionIndex = instructionError[0];
+                const errorDetail = instructionError[1];
+                
                 console.error(`❌ Instruction at index ${instructionIndex} failed with error:`, errorDetail);
                 
-                if (typeof errorDetail === 'object' && 'Custom' in errorDetail) {
-                  console.error(`❌ Custom program error code: ${errorDetail.Custom}`);
+                if (typeof errorDetail === 'object' && errorDetail !== null && 'Custom' in errorDetail) {
+                  const customError = errorDetail.Custom as number;
+                  console.error(`❌ Custom program error code: ${customError}`);
                   
                   // Map common error codes to user-friendly messages
                   const errorMessages: Record<number, string> = {
@@ -624,10 +631,16 @@ export async function createAndSubmitStakingTransaction(
                 console.error("❌ Server returned success but no signature or invalid data:", serverResult);
                 throw new Error(serverResult.error || "Server did not return a valid transaction signature");
               }
-            } catch (fetchError) {
+            } catch (fetchError: unknown) {
               console.error("❌ Network error during server-side processing:", fetchError);
               onStatusUpdate("Network error during server communication", true);
-              throw new Error(`Network error: ${fetchError.message}`);
+              
+              // Safely extract error message if available
+              const errorMessage = fetchError instanceof Error 
+                ? fetchError.message 
+                : 'Unknown network error';
+                
+              throw new Error(`Network error: ${errorMessage}`);
             }
           } catch (allMethodsError: any) {
             console.error("❌ All alternative transaction approaches failed:", allMethodsError);
