@@ -107,22 +107,9 @@ const DirectStakingWidget: React.FC = () => {
       // Create a wallet object to pass to stakeExistingTokens
       const wallet = { 
         sendTransaction, 
-        publicKey
+        publicKey,
+        signTransaction
       };
-      
-      // First, register the user account if needed
-      console.log("🔧 Checking if user is registered with staking program");
-      const registrationResult = await registerUserForStaking(
-        publicKey.toString(),
-        wallet
-      );
-      
-      if (registrationResult.error) {
-        console.error("❌ Error registering for staking:", registrationResult.error);
-        throw new Error(`Registration failed: ${registrationResult.error}`);
-      }
-      
-      console.log("✅ Registration status:", registrationResult.message);
       
       toast({
         title: 'Creating stake transaction',

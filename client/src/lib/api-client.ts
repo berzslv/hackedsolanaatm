@@ -94,9 +94,16 @@ export const registerUserForStaking = async (
       try {
         console.log("Deserializing and sending registration transaction");
         
-        // Deserialize the transaction
-        const transactionBuffer = Buffer.from(registrationData.transaction, 'base64');
-        const transaction = Transaction.from(transactionBuffer);
+        // Deserialize the transaction using Uint8Array instead of Buffer
+        // First, decode base64 to binary string
+        const binaryString = atob(registrationData.transaction);
+        // Create a Uint8Array to hold the bytes
+        const transactionBytes = new Uint8Array(binaryString.length);
+        // Fill the array with the bytes of the binary string
+        for (let i = 0; i < binaryString.length; i++) {
+          transactionBytes[i] = binaryString.charCodeAt(i);
+        }
+        const transaction = Transaction.from(transactionBytes);
         
         // Get the connected wallet's pubkey
         const publicKey = new PublicKey(walletAddress);
@@ -156,6 +163,19 @@ export const stakeExistingTokens = async (
   stakingTransaction?: any;
 }> => {
   try {
+    // First, ensure the user is registered for staking
+    console.log("🔍 Ensuring user is registered before staking");
+    const registrationResult = await registerUserForStaking(walletAddress, wallet);
+    
+    if (registrationResult.error) {
+      console.error("❌ Registration failed:", registrationResult.error);
+      return { error: `Registration required before staking: ${registrationResult.error}` };
+    }
+    
+    if (registrationResult.success) {
+      console.log("✅ Registration verified:", registrationResult.message);
+    }
+    
     // Call our backend endpoint to get necessary account info and prepare for staking
     const response = await fetch('/api/direct-stake-exact', {
       method: 'POST',
@@ -224,6 +244,19 @@ export const buyAndStakeTokens = async (
   stakingTransaction?: any;
 }> => {
   try {
+    // First, ensure the user is registered for staking
+    console.log("🔍 Ensuring user is registered before buy-and-stake");
+    const registrationResult = await registerUserForStaking(walletAddress, wallet);
+    
+    if (registrationResult.error) {
+      console.error("❌ Registration failed:", registrationResult.error);
+      return { error: `Registration required before staking: ${registrationResult.error}` };
+    }
+    
+    if (registrationResult.success) {
+      console.log("✅ Registration verified:", registrationResult.message);
+    }
+    
     // Call our backend endpoint to get necessary account info and prepare for staking
     const response = await fetch('/api/buy-and-stake-exact', {
       method: 'POST',
