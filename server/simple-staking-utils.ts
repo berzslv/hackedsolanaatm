@@ -1,314 +1,133 @@
 /**
- * Simple Staking Utilities
+ * Simple Staking Utils
  * 
- * This module provides utility functions for interacting with the simple staking program
+ * Simplified utilities for the staking contract that isolates issues
+ * by removing complexity from the original contract.
  */
-import { Connection, Keypair, PublicKey, clusterApiUrl } from '@solana/web3.js';
-import * as anchor from '@coral-xyz/anchor';
-import { Program } from '@coral-xyz/anchor';
-import { getAssociatedTokenAddress } from '@solana/spl-token';
 
-// Constants for the simple staking program
-// Using a valid Pubkey for testing - we would replace this with the actual ID after deployment
-export const PROGRAM_ID = new PublicKey('Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS');
+import {
+  Connection,
+  PublicKey,
+  Keypair,
+  Transaction,
+  TransactionInstruction,
+  SystemProgram,
+  SYSVAR_RENT_PUBKEY,
+  clusterApiUrl
+} from '@solana/web3.js';
+import {
+  TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress
+} from '@solana/spl-token';
+import * as anchor from '@coral-xyz/anchor';
+import { Buffer } from 'buffer';
+
+// Simple staking program ID - update this with the actual program ID after deployment
+export const PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
+
+// Our token mint address
 export const TOKEN_MINT_ADDRESS = new PublicKey('59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk');
 
-// These will be populated after the program is deployed
-export let VAULT_ADDRESS: PublicKey;
-export let VAULT_AUTHORITY: PublicKey;
-export let VAULT_TOKEN_ACCOUNT: PublicKey; 
+// Instruction indexes for our program
+export const INITIALIZE_VAULT_IX = 0;
+export const REGISTER_USER_IX = 1;
+export const STAKE_IX = 2;
+export const UNSTAKE_IX = 3;
+export const CLAIM_REWARDS_IX = 4;
 
-// The IDL for the simple staking program
-export const IDL = {
-  "version": "0.1.0",
-  "name": "simple_staking",
-  "instructions": [
-    {
-      "name": "initialize",
-      "accounts": [
-        {
-          "name": "authority",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "vault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vaultAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenMint",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenVault",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "registerUser",
-      "accounts": [
-        {
-          "name": "user",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "userInfo",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vault",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "stake",
-      "accounts": [
-        {
-          "name": "user",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "userInfo",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vault",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "userTokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vaultTokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "unstake",
-      "accounts": [
-        {
-          "name": "user",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "userInfo",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vault",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "vaultAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "vaultTokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "userTokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ]
-    }
-  ],
-  "accounts": [
-    {
-      "name": "StakingVault",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "authority",
-            "type": "publicKey"
-          },
-          {
-            "name": "tokenMint",
-            "type": "publicKey"
-          },
-          {
-            "name": "tokenVault",
-            "type": "publicKey"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "vaultBump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "UserStakeInfo",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "owner",
-            "type": "publicKey"
-          },
-          {
-            "name": "amountStaked",
-            "type": "u64"
-          },
-          {
-            "name": "rewardsEarned",
-            "type": "u64"
-          },
-          {
-            "name": "lastStakeTimestamp",
-            "type": "i64"
-          },
-          {
-            "name": "lastClaimTimestamp",
-            "type": "i64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    }
-  ],
-  "errors": [
-    {
-      "code": 6000,
-      "name": "InsufficientStake",
-      "msg": "Insufficient staked tokens"
-    }
-  ]
-};
+// PDA seeds
+const VAULT_SEED = 'vault';
+const VAULT_AUTH_SEED = 'vault_authority';
+const USER_SEED = 'user_info';
+
+// Account sizes based on our Rust struct layouts
+const USER_ACCOUNT_SIZE = 64 + 32 + 8 + 8 + 8 + 8; // includes discriminator
 
 /**
- * Calculate the vault PDA
- * @returns The vault PDA
+ * Find vault PDA
  */
 export function findVaultPDA(): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from('vault')], 
+    [Buffer.from(VAULT_SEED)],
     PROGRAM_ID
   );
 }
 
 /**
- * Calculate the vault authority PDA
- * @returns The vault authority PDA
+ * Find vault authority PDA
  */
 export function findVaultAuthorityPDA(): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from('vault_auth')], 
+    [Buffer.from(VAULT_AUTH_SEED)],
     PROGRAM_ID
   );
 }
 
 /**
- * Find the user's staking account PDA
- * @param userPubkey User's wallet public key
- * @returns The PDA public key and bump seed
+ * Find a user's stake info account PDA
  */
-export function findUserStakeInfoPDA(userPubkey: PublicKey): [PublicKey, number] {
+export function findUserStakeInfoPDA(userWallet: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from('user_info'), userPubkey.toBuffer()],
+    [Buffer.from(USER_SEED), userWallet.toBuffer()],
     PROGRAM_ID
   );
 }
 
 /**
- * Check if user is registered with the staking program
- * @param userPubkey User's wallet public key
- * @returns True if registered, false otherwise
+ * Initialize the vault
  */
-export async function isUserRegistered(userPubkey: PublicKey): Promise<boolean> {
+export async function initializeVault(
+  connection: Connection,
+  admin: Keypair
+): Promise<{ vault: PublicKey, vaultAuthority: PublicKey, vaultTokenAccount: PublicKey }> {
+  // Find PDAs
+  const [vault, _vaultBump] = findVaultPDA();
+  const [vaultAuthority, _vaultAuthBump] = findVaultAuthorityPDA();
+  
+  // Get the token account for the vault authority
+  const vaultTokenAccount = await getAssociatedTokenAddress(
+    TOKEN_MINT_ADDRESS,
+    vaultAuthority,
+    true // allowOwnerOffCurve - true for PDAs
+  );
+  
+  // Create the initialize instruction
+  const initializeIx = new TransactionInstruction({
+    keys: [
+      { pubkey: admin.publicKey, isSigner: true, isWritable: true }, // Payer
+      { pubkey: vault, isSigner: false, isWritable: true }, // Vault
+      { pubkey: vaultAuthority, isSigner: false, isWritable: false }, // Vault Authority
+      { pubkey: vaultTokenAccount, isSigner: false, isWritable: false }, // Vault Token Account
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+    ],
+    programId: PROGRAM_ID,
+    data: Buffer.from([INITIALIZE_VAULT_IX]) // Instruction index for initialize_vault
+  });
+  
+  // Create transaction
+  const tx = new Transaction().add(initializeIx);
+  
+  // Send transaction
+  const signature = await connection.sendTransaction(tx, [admin]);
+  
+  // Wait for confirmation
+  await connection.confirmTransaction(signature, 'confirmed');
+  
+  return { vault, vaultAuthority, vaultTokenAccount };
+}
+
+/**
+ * Check if a user is registered
+ */
+export async function isUserRegistered(userWallet: PublicKey): Promise<boolean> {
   try {
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
-    const [userStakingPDA] = findUserStakeInfoPDA(userPubkey);
-    const account = await connection.getAccountInfo(userStakingPDA);
-    return !!account && account.owner.equals(PROGRAM_ID);
+    const [userStakeInfoPDA] = findUserStakeInfoPDA(userWallet);
+    
+    // Check if the user account exists
+    const accountInfo = await connection.getAccountInfo(userStakeInfoPDA);
+    return accountInfo !== null;
   } catch (error) {
     console.error("Error checking if user is registered:", error);
     return false;
@@ -316,149 +135,60 @@ export async function isUserRegistered(userPubkey: PublicKey): Promise<boolean> 
 }
 
 /**
- * Initialize the simple staking vault (must be called after deploy)
- * @param provider Anchor provider with admin wallet
- * @returns The vault address and token account
+ * Get a user's staking info
  */
-export async function initializeVault(
-  connection: Connection, 
-  adminKeypair: Keypair
-): Promise<{ vault: PublicKey, vaultAuthority: PublicKey, vaultTokenAccount: PublicKey }> {
-  try {
-    // Create provider with admin wallet
-    const provider = new anchor.AnchorProvider(
-      connection,
-      {
-        publicKey: adminKeypair.publicKey,
-        signTransaction: async (tx) => {
-          tx.partialSign(adminKeypair);
-          return tx;
-        },
-        signAllTransactions: async (txs) => {
-          return txs.map(tx => {
-            tx.partialSign(adminKeypair);
-            return tx;
-          });
-        },
-      },
-      { commitment: 'confirmed' }
-    );
-
-    // Create program instance
-    const program = new anchor.Program(IDL as anchor.Idl, PROGRAM_ID, provider);
-
-    // Find the vault PDA
-    const [vaultPDA, _] = findVaultPDA();
-    
-    // Find the vault authority PDA
-    const [vaultAuthority, __] = findVaultAuthorityPDA();
-    
-    // Get the token account for the vault authority
-    const vaultTokenAccount = await getAssociatedTokenAddress(
-      TOKEN_MINT_ADDRESS,
-      vaultAuthority,
-      true // allowOwnerOffCurve - true for PDAs
-    );
-
-    // Store these globally
-    VAULT_ADDRESS = vaultPDA;
-    VAULT_AUTHORITY = vaultAuthority;
-    VAULT_TOKEN_ACCOUNT = vaultTokenAccount;
-
-    // Check if the vault already exists
-    const vaultAccount = await connection.getAccountInfo(vaultPDA);
-    
-    if (vaultAccount) {
-      console.log("Vault already exists, not re-initializing");
-      return { vault: vaultPDA, vaultAuthority, vaultTokenAccount };
-    }
-    
-    console.log("Initializing new vault...");
-    
-    // Initialize the vault
-    await program.methods
-      .initialize()
-      .accounts({
-        authority: adminKeypair.publicKey,
-        vault: vaultPDA,
-        vaultAuthority,
-        tokenMint: TOKEN_MINT_ADDRESS,
-        tokenVault: vaultTokenAccount,
-      })
-      .rpc();
-    
-    console.log("Staking vault initialized successfully");
-    
-    return { vault: vaultPDA, vaultAuthority, vaultTokenAccount };
-  } catch (error) {
-    console.error("Error initializing vault:", error);
-    throw error;
-  }
-}
-
-/**
- * Get user staking information
- */
-export async function getUserStakingInfo(userPubkey: PublicKey): Promise<{
-  isRegistered: boolean;
-  amountStaked: number;
-  pendingRewards: number;
-  lastStakeTime: Date | null;
-  lastClaimTime: Date | null;
-}> {
+export async function getUserStakingInfo(userWallet: PublicKey): Promise<any> {
   try {
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    const [userStakeInfoPDA] = findUserStakeInfoPDA(userWallet);
     
-    // Find user staking account PDA
-    const [userStakingPDA] = findUserStakeInfoPDA(userPubkey);
-    
-    // Default values if not registered
+    // Default values if user isn't registered
     const defaultInfo = {
       isRegistered: false,
       amountStaked: 0,
       pendingRewards: 0,
       lastStakeTime: null,
-      lastClaimTime: null
+      lastClaimTime: null,
+      referrer: null
     };
     
-    // Check if the account exists
-    const account = await connection.getAccountInfo(userStakingPDA);
-    if (!account || !account.owner.equals(PROGRAM_ID)) {
+    // Check if the user account exists
+    const accountInfo = await connection.getAccountInfo(userStakeInfoPDA);
+    if (!accountInfo) {
       return defaultInfo;
     }
     
-    // Create a read-only provider
-    const provider = new anchor.AnchorProvider(
+    // User is registered but we'll need to decode the account data
+    // This is a simplified version until we have proper account deserialization
+    return {
+      ...defaultInfo,
+      isRegistered: true
+    };
+    
+    // In a real implementation, we would use proper account deserialization:
+    /*
+    // Create a program instance
+    const provider = new anchor.Provider(
       connection,
-      {
-        publicKey: userPubkey,
-        signTransaction: async () => { throw new Error('Not implemented'); },
-        signAllTransactions: async () => { throw new Error('Not implemented'); }
-      },
+      PROGRAM_ID, // Normally would be a wallet here, but we're just reading
       { commitment: 'confirmed' }
     );
     
-    // Create program instance
-    const program = new anchor.Program(IDL as anchor.Idl, PROGRAM_ID, provider);
+    const idl = JSON.parse(fs.readFileSync('./idl/simple_staking.json', 'utf8'));
+    const program = new anchor.Program(idl, PROGRAM_ID, provider);
     
-    // Fetch the user staking account data
-    try {
-      const userStakeInfo = await program.account.userStakeInfo.fetch(userStakingPDA);
-      
-      return {
-        isRegistered: true,
-        amountStaked: Number(userStakeInfo.amountStaked),
-        pendingRewards: Number(userStakeInfo.rewardsEarned),
-        lastStakeTime: userStakeInfo.lastStakeTimestamp ? new Date(Number(userStakeInfo.lastStakeTimestamp) * 1000) : null,
-        lastClaimTime: userStakeInfo.lastClaimTimestamp ? new Date(Number(userStakeInfo.lastClaimTimestamp) * 1000) : null
-      };
-    } catch (decodeError) {
-      console.error("Error decoding user staking account data:", decodeError);
-      return {
-        ...defaultInfo,
-        isRegistered: true
-      };
-    }
+    // Fetch and parse account data
+    const userInfo = await program.account.userStakeInfo.fetch(userStakeInfoPDA);
+    
+    return {
+      isRegistered: true,
+      amountStaked: userInfo.amountStaked.toNumber(),
+      pendingRewards: userInfo.pendingRewards.toNumber(),
+      lastStakeTime: userInfo.lastStakeTime.toNumber() > 0 ? new Date(userInfo.lastStakeTime.toNumber() * 1000) : null,
+      lastClaimTime: userInfo.lastClaimTime.toNumber() > 0 ? new Date(userInfo.lastClaimTime.toNumber() * 1000) : null,
+      referrer: userInfo.referrer?.toString() || null
+    };
+    */
   } catch (error) {
     console.error("Error getting user staking info:", error);
     return {
@@ -466,7 +196,135 @@ export async function getUserStakingInfo(userPubkey: PublicKey): Promise<{
       amountStaked: 0,
       pendingRewards: 0,
       lastStakeTime: null,
-      lastClaimTime: null
+      lastClaimTime: null,
+      referrer: null,
+      error: error instanceof Error ? error.message : String(error)
     };
   }
+}
+
+/**
+ * Register a user
+ */
+export async function registerUser(
+  connection: Connection,
+  wallet: Keypair
+): Promise<string> {
+  // Find user stake info PDA
+  const [userStakeInfoPDA] = findUserStakeInfoPDA(wallet.publicKey);
+  
+  // Find vault PDA
+  const [vaultPDA] = findVaultPDA();
+  
+  // Create register instruction
+  const registerIx = new TransactionInstruction({
+    keys: [
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // User and payer
+      { pubkey: userStakeInfoPDA, isSigner: false, isWritable: true }, // User stake info account to create
+      { pubkey: vaultPDA, isSigner: false, isWritable: false }, // Vault
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+    ],
+    programId: PROGRAM_ID,
+    data: Buffer.from([REGISTER_USER_IX]) // Instruction index for register_user
+  });
+  
+  // Create and send transaction
+  const tx = new Transaction().add(registerIx);
+  const signature = await connection.sendTransaction(tx, [wallet]);
+  
+  // Wait for confirmation
+  await connection.confirmTransaction(signature, 'confirmed');
+  
+  return signature;
+}
+
+/**
+ * Stake tokens
+ */
+export async function stakeTokens(
+  connection: Connection,
+  wallet: Keypair,
+  amount: number // amount in normal units (not lamports)
+): Promise<string> {
+  // Find user stake info PDA
+  const [userStakeInfoPDA] = findUserStakeInfoPDA(wallet.publicKey);
+  
+  // Find vault PDA
+  const [vaultPDA] = findVaultPDA();
+  
+  // Find vault authority PDA
+  const [vaultAuthority] = findVaultAuthorityPDA();
+  
+  // Get user token account
+  const userTokenAccount = await getAssociatedTokenAddress(
+    TOKEN_MINT_ADDRESS,
+    wallet.publicKey
+  );
+  
+  // Get vault token account
+  const vaultTokenAccount = await getAssociatedTokenAddress(
+    TOKEN_MINT_ADDRESS,
+    vaultAuthority,
+    true // allowOwnerOffCurve - true for PDAs
+  );
+  
+  // Convert amount to lamports (assuming 9 decimals)
+  const amountLamports = amount * Math.pow(10, 9);
+  
+  // Create instruction data with code (2 = stake) followed by amount
+  const stakeData = new Uint8Array(9); // 1 byte for instruction + 8 bytes for amount
+  stakeData[0] = STAKE_IX; // Instruction index for stake
+  
+  // Write amount as little-endian 64-bit value
+  const view = new DataView(stakeData.buffer);
+  view.setBigUint64(1, BigInt(amountLamports), true); // true = little-endian
+  
+  // Create stake instruction
+  const stakeIx = new TransactionInstruction({
+    keys: [
+      { pubkey: wallet.publicKey, isSigner: true, isWritable: true }, // User and payer
+      { pubkey: userStakeInfoPDA, isSigner: false, isWritable: true }, // User stake info account
+      { pubkey: vaultPDA, isSigner: false, isWritable: false }, // Vault
+      { pubkey: userTokenAccount, isSigner: false, isWritable: true }, // User token account (source)
+      { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // Vault token account (destination)
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    programId: PROGRAM_ID,
+    data: Buffer.from(stakeData)
+  });
+  
+  // Create and send transaction
+  const tx = new Transaction().add(stakeIx);
+  const signature = await connection.sendTransaction(tx, [wallet]);
+  
+  // Wait for confirmation
+  await connection.confirmTransaction(signature, 'confirmed');
+  
+  return signature;
+}
+
+/**
+ * Server-side helper to submit a transaction built by the client
+ */
+export async function submitClientBuiltTransaction(
+  connection: Connection,
+  serializedTransaction: string,
+  adminKeyPair?: Keypair // Optional admin keypair for partial signing
+): Promise<string> {
+  // Deserialize the transaction
+  const transaction = Transaction.from(Buffer.from(serializedTransaction, 'base64'));
+  
+  // If an admin keypair is provided, partially sign the transaction
+  if (adminKeyPair) {
+    transaction.partialSign(adminKeyPair);
+  }
+  
+  // Send the transaction
+  const signature = await connection.sendRawTransaction(transaction.serialize());
+  
+  // Return the signature immediately without waiting for confirmation
+  // The client will handle confirmation
+  return signature;
 }

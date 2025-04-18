@@ -1,17 +1,32 @@
 import { useState, useEffect } from 'react';
 import { useSolana } from '@/context/SolanaContext';
-import { PublicKey, Transaction, Connection, clusterApiUrl } from '@solana/web3.js';
+import { PublicKey, Transaction, Connection, clusterApiUrl, SystemProgram } from '@solana/web3.js';
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { createTransactionInstruction } from '@/lib/buffer-init';
+import { createTransactionInstruction } from '@/lib/create-transaction-instruction';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/api-client';
+
+// Simple API request helper
+const apiRequest = async <T,>(url: string, options?: RequestInit): Promise<T> => {
+  const response = await fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    ...options,
+  });
+  
+  if (!response.ok) {
+    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+};
 
 // Constants for the simple staking program
-const SIMPLE_PROGRAM_ID = 'SimplStakVau1t111111111111111111111111111111'; 
+const SIMPLE_PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm'; 
 const TOKEN_MINT = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
 
 // Instruction indexes
@@ -84,10 +99,10 @@ export function SimpleStakingWidget() {
       // Get account information needed to build the transaction
       const accountsResponse = await apiRequest<any>('/api/simple-staking-accounts-info', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           walletAddress: publicKey.toString(),
           amount: Number(amount)
-        }
+        })
       });
 
       if (!accountsResponse.success) {
@@ -135,8 +150,8 @@ export function SimpleStakingWidget() {
             { pubkey: publicKey, isSigner: true, isWritable: true },          // user
             { pubkey: userStakeInfoAddress, isSigner: false, isWritable: true }, // userInfo
             { pubkey: vault, isSigner: false, isWritable: false },            // vault
-            { pubkey: PublicKey.default, isSigner: false, isWritable: false }, // system program
-            { pubkey: PublicKey.default, isSigner: false, isWritable: false }, // rent
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system program
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // rent
           ],
           programId,
           data: Buffer.from([REGISTER_USER_IX]) // register_user instruction index
@@ -158,7 +173,7 @@ export function SimpleStakingWidget() {
           { pubkey: userTokenAccount, isSigner: false, isWritable: true },  // userTokenAccount
           { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // vaultTokenAccount
           { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // tokenProgram
-          { pubkey: PublicKey.default, isSigner: false, isWritable: false }, // systemProgram
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
         ],
         programId,
         data: (() => {

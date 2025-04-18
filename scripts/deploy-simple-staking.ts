@@ -1,58 +1,61 @@
 /**
  * Deploy Simple Staking Program
  * 
- * This script deploys the simple staking program to Solana Devnet
- * and initializes the vault.
+ * This script deploys and initializes the simplified staking program that
+ * avoids the complexity of the original contract to isolate and test issues.
  */
+
+import { 
+  Connection, 
+  Keypair, 
+  clusterApiUrl, 
+  PublicKey,
+  Transaction
+} from '@solana/web3.js';
+import {
+  getAssociatedTokenAddress,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountInstruction
+} from '@solana/spl-token';
 import * as anchor from '@coral-xyz/anchor';
 import fs from 'fs';
-import { Keypair, Connection, clusterApiUrl, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { createAssociatedTokenAccount, getAssociatedTokenAddress } from '@solana/spl-token';
-
-// Load configuration
-const TOKEN_MINT_ADDRESS = new PublicKey('59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk');
+import {
+  PROGRAM_ID,
+  TOKEN_MINT_ADDRESS,
+  initializeVault,
+  findVaultPDA,
+  findVaultAuthorityPDA
+} from '../server/simple-staking-utils';
 
 async function main() {
   try {
-    console.log("🚀 Deploying Simple Staking Program to Devnet...");
+    console.log("Starting simple staking deployment...");
     
-    // Load deployer wallet from file
-    const deployer = Keypair.fromSecretKey(
-      Buffer.from(JSON.parse(fs.readFileSync('./token-keypair.json', 'utf-8')))
-    );
-    console.log("Deployer public key:", deployer.publicKey.toString());
+    // Load the mint authority keypair for token operations
+    const tokenKeypairData = JSON.parse(fs.readFileSync('./token-keypair.json', 'utf-8'));
+    const tokenKeypair = Keypair.fromSecretKey(new Uint8Array(tokenKeypairData));
     
-    // Connect to Devnet
+    // Connect to Solana devnet
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
     
-    // Check deployer balance
-    const balance = await connection.getBalance(deployer.publicKey);
-    console.log(`Deployer balance: ${balance / LAMPORTS_PER_SOL} SOL`);
+    console.log("Connected to Solana devnet");
+    console.log(`Admin wallet: ${tokenKeypair.publicKey.toString()}`);
+    console.log(`Simple staking program ID: ${PROGRAM_ID.toString()}`);
+    console.log(`Token mint: ${TOKEN_MINT_ADDRESS.toString()}`);
     
-    if (balance < 0.5 * LAMPORTS_PER_SOL) {
-      console.log("⚠️ Warning: Low balance for deployment. Requesting airdrop...");
-      const signature = await connection.requestAirdrop(
-        deployer.publicKey, 
-        1 * LAMPORTS_PER_SOL
-      );
-      await connection.confirmTransaction(signature);
-      console.log("Airdrop confirmed. New balance:", 
-        await connection.getBalance(deployer.publicKey) / LAMPORTS_PER_SOL, 
-        "SOL");
-    }
-    
-    // Create Anchor provider
+    // Create a provider with the admin wallet
     const provider = new anchor.AnchorProvider(
       connection,
       {
-        publicKey: deployer.publicKey,
+        publicKey: tokenKeypair.publicKey,
         signTransaction: async (tx) => {
-          tx.partialSign(deployer);
+          tx.partialSign(tokenKeypair);
           return tx;
         },
         signAllTransactions: async (txs) => {
           return txs.map(tx => {
-            tx.partialSign(deployer);
+            tx.partialSign(tokenKeypair);
             return tx;
           });
         },
@@ -60,92 +63,64 @@ async function main() {
       { commitment: 'confirmed' }
     );
     
-    // ===== Calculate PDAs =====
-    const programId = new PublicKey('SimplStakVau1t111111111111111111111111111111');
+    // Find the vault PDAs
+    const [vaultPDA] = findVaultPDA();
+    const [vaultAuthority] = findVaultAuthorityPDA();
     
-    // Find the vault PDA
-    const [vaultPDA, vaultBump] = PublicKey.findProgramAddressSync(
-      [Buffer.from('vault')], 
-      programId
+    console.log(`Vault PDA: ${vaultPDA.toString()}`);
+    console.log(`Vault authority PDA: ${vaultAuthority.toString()}`);
+    
+    // Get associated token account for the vault authority
+    const vaultTokenAccount = await getAssociatedTokenAddress(
+      TOKEN_MINT_ADDRESS,
+      vaultAuthority,
+      true // allowOwnerOffCurve - true for PDAs
     );
     
-    // Find the vault authority PDA
-    const [vaultAuthority, vaultAuthBump] = PublicKey.findProgramAddressSync(
-      [Buffer.from('vault_auth')], 
-      programId
-    );
+    console.log(`Vault token account: ${vaultTokenAccount.toString()}`);
     
-    console.log("Program ID:", programId.toString());
-    console.log("Vault PDA:", vaultPDA.toString(), "with bump", vaultBump);
-    console.log("Vault Authority PDA:", vaultAuthority.toString(), "with bump", vaultAuthBump);
+    // Check if vault token account exists
+    const vaultTokenAccountInfo = await connection.getAccountInfo(vaultTokenAccount);
     
-    // ===== Create Token Account for Vault =====
-    console.log("Creating token account for vault authority...");
-    
-    try {
-      // Get the associated token account address for the vault authority
-      const vaultTokenAccount = await getAssociatedTokenAddress(
-        TOKEN_MINT_ADDRESS,
-        vaultAuthority,
-        true // allowOwnerOffCurve - true for PDAs
+    if (!vaultTokenAccountInfo) {
+      console.log("Vault token account doesn't exist. Creating it...");
+      
+      // Create a transaction to initialize the associated token account
+      const tx = new Transaction().add(
+        createAssociatedTokenAccountInstruction(
+          tokenKeypair.publicKey, // payer
+          vaultTokenAccount, // associatedToken
+          vaultAuthority, // owner
+          TOKEN_MINT_ADDRESS, // mint
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        )
       );
       
-      console.log("Vault token account address:", vaultTokenAccount.toString());
+      // Send the transaction
+      const signature = await connection.sendTransaction(tx, [tokenKeypair]);
+      console.log(`Created vault token account. Signature: ${signature}`);
       
-      // Check if the vault token account already exists
-      const accountInfo = await connection.getAccountInfo(vaultTokenAccount);
-      
-      if (!accountInfo) {
-        console.log("Creating vault token account...");
-        // Create the token account for the vault authority
-        await createAssociatedTokenAccount(
-          connection,
-          deployer,
-          TOKEN_MINT_ADDRESS,
-          vaultAuthority,
-          { commitment: 'confirmed' }
-        );
-        console.log("Vault token account created successfully!");
-      } else {
-        console.log("Vault token account already exists");
-      }
-      
-      console.log(`✅ Simple Staking program setup complete.`);
-      console.log(`Program ID: ${programId.toString()}`);
-      console.log(`Vault Address: ${vaultPDA.toString()}`);
-      console.log(`Vault Authority: ${vaultAuthority.toString()}`);
-      console.log(`Vault Token Account: ${vaultTokenAccount.toString()}`);
-      
-      // Save the information to a file for easy access
-      const deployInfo = {
-        programId: programId.toString(),
-        vault: vaultPDA.toString(),
-        vaultAuthority: vaultAuthority.toString(),
-        vaultTokenAccount: vaultTokenAccount.toString(),
-        tokenMint: TOKEN_MINT_ADDRESS.toString(),
-        network: 'devnet',
-        deployedAt: new Date().toISOString(),
-      };
-      
-      fs.writeFileSync(
-        './simple-staking-deploy-info.json', 
-        JSON.stringify(deployInfo, null, 2)
-      );
-      console.log("Deployment info saved to simple-staking-deploy-info.json");
-      
-    } catch (error) {
-      console.error("Error setting up vault token account:", error);
+      // Wait for confirmation
+      await connection.confirmTransaction(signature, 'confirmed');
+      console.log("Vault token account creation confirmed");
+    } else {
+      console.log("Vault token account already exists");
     }
     
+    // Initialize the vault
+    console.log("Initializing vault...");
+    const { vault, vaultAuthority: authPDA, vaultTokenAccount: tokenAccount } = await initializeVault(connection, tokenKeypair);
+    
+    console.log("Simple staking vault initialized successfully");
+    console.log(`Vault address: ${vault.toString()}`);
+    console.log(`Vault authority: ${authPDA.toString()}`);
+    console.log(`Vault token account: ${tokenAccount.toString()}`);
+    
+    console.log("Deployment completed successfully!");
   } catch (error) {
-    console.error("Deployment failed:", error);
+    console.error("Error deploying simple staking program:", error);
   }
 }
 
-main().then(
-  () => process.exit(0),
-  (err) => {
-    console.error(err);
-    process.exit(1);
-  }
-);
+main();

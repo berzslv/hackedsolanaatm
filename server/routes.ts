@@ -45,6 +45,12 @@ import {
   handleServerTransactionSubmission
 } from './transaction-submission-handler';
 
+// Import simple staking handlers
+import {
+  getSimpleStakingInfo,
+  getSimpleStakingAccountsInfo
+} from './simple-staking-endpoints';
+
 // Solana imports for airdrop functionality
 import {
   Connection,
@@ -3084,14 +3090,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== SIMPLE STAKING ENDPOINTS =====
-  // Import simple staking endpoints
-  const { handleSimpleStakingAccountsInfo, handleGetSimpleStakingInfo } = await import('./simple-staking-endpoints');
   
   // Get simple staking account information
-  app.post("/api/simple-staking-accounts-info", handleSimpleStakingAccountsInfo);
+  app.post("/api/simple-staking-accounts-info", getSimpleStakingAccountsInfo);
   
   // Get user simple staking info
-  app.get("/api/simple-staking-info/:walletAddress", handleGetSimpleStakingInfo);
+  app.get("/api/simple-staking-info/:wallet", getSimpleStakingInfo);
       
   const httpServer = createServer(app);
   return httpServer;
