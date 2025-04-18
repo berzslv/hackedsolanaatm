@@ -1,6 +1,8 @@
-// Import buffer polyfill first before anything else to ensure it's available
-import { ensureBufferPolyfill as setupBufferPolyfillFirst } from "./lib/buffer-polyfill";
-// Import other polyfills
+// Import buffer initialization first before anything else
+import bufferInitialized from "./lib/buffer-init";
+// Log buffer initialization status
+console.log(`Buffer initialization status: ${bufferInitialized ? 'SUCCESS' : 'FAILED'}`);
+// Legacy polyfill imports for backward compatibility
 import { initBufferPolyfill, BrowserBuffer } from "./lib/browser-polyfills";
 
 import { createRoot } from "react-dom/client";
@@ -34,9 +36,7 @@ const setupBufferPolyfill = () => {
   }
 };
 
-// Initialize our polyfill
-setupBufferPolyfillFirst(); // Call the imported one first
-setupBufferPolyfill(); // Then our local implementation
+// No need for further initialization - buffer-init has already taken care of it
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>

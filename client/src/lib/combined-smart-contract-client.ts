@@ -16,7 +16,12 @@ import BN from 'bn.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 
 // Import our comprehensive buffer polyfill
-import { BufferPolyfill, bnToArray, bnToUint8Array, needsBufferPolyfill } from './buffer-polyfill';
+import { 
+  BufferPolyfill as EnhancedBufferPolyfill, 
+  bnToArray as enhancedBnToArray, 
+  bnToUint8Array, 
+  needsBufferPolyfill 
+} from './buffer-polyfill';
 
 // Legacy buffer handling for reference/fallback
 import * as buffer from 'buffer';
@@ -482,7 +487,7 @@ export const stakeExistingTokens = async (
             { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system program
           ],
           programId,
-          data: BufferPolyfill.from([0]) // 0 = register instruction
+          data: EnhancedBufferPolyfill.from([0]) // 0 = register instruction
         });
         
         transaction.add(registerInstruction);
