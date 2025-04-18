@@ -9,7 +9,8 @@ import { Program } from '@coral-xyz/anchor';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 
 // Constants for the simple staking program
-export const PROGRAM_ID = new PublicKey('SimplStakVau1t111111111111111111111111111111');
+// Using a valid Pubkey for testing - we would replace this with the actual ID after deployment
+export const PROGRAM_ID = new PublicKey('Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS');
 export const TOKEN_MINT_ADDRESS = new PublicKey('59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk');
 
 // These will be populated after the program is deployed

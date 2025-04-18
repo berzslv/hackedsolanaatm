@@ -3082,6 +3082,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // ===== SIMPLE STAKING ENDPOINTS =====
+  // Import simple staking endpoints
+  const { handleSimpleStakingAccountsInfo, handleGetSimpleStakingInfo } = await import('./simple-staking-endpoints');
+  
+  // Get simple staking account information
+  app.post("/api/simple-staking-accounts-info", handleSimpleStakingAccountsInfo);
+  
+  // Get user simple staking info
+  app.get("/api/simple-staking-info/:walletAddress", handleGetSimpleStakingInfo);
       
   const httpServer = createServer(app);
   return httpServer;
