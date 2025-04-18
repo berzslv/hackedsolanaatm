@@ -10,7 +10,8 @@ import { formatNumber } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import AirdropButton from './AirdropButton';
 import { Loader2, AlertCircle } from "lucide-react";
-import { Transaction, VersionedTransaction, PublicKey } from '@solana/web3.js';
+import { Transaction, VersionedTransaction, PublicKey, Connection, clusterApiUrl } from '@solana/web3.js';
+import { createAndSubmitStakingTransaction } from '@/lib/CreateStakingTransactionV2';
 
 export interface BuyWidgetProps {
   flashRef?: React.MutableRefObject<(() => void) | null>;
@@ -223,157 +224,144 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
         throw new Error("Wallet not connected");
       }
 
-      // Initialize staking vault client for on-chain purchase and stake
-      const { Connection, clusterApiUrl } = await import('@solana/web3.js');
+      // Create connection to Solana
       const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
       
-      // Initialize our StakingVaultClient
-      const { StakingVaultClient } = await import('@/lib/staking-vault-client');
+      // Calculate token amount with appropriate fee
+      const feePercentage = referralValid ? 0.06 : 0.08; // 6% with referral, 8% without
+      const tokenAmount = Math.floor((inputAmount * (1 - feePercentage)) / 0.01); // Calculate token amount
       
-      // Use token mint from config (this would come from a central config in production)
-      const tokenMint = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk";
+      // Show detailed toast
+      toast({
+        title: "Preparing transaction",
+        description: "Creating a transaction to buy and stake tokens",
+      });
       
-      const stakingClient = new StakingVaultClient(connection, publicKey, tokenMint);
-      await stakingClient.initialize();
+      // Create a wallet object for the createAndSubmitStakingTransaction function
+      const wallet = { 
+        sendTransaction, 
+        publicKey
+      };
       
-      try {
-        // Create a purchase and stake transaction using the client
-        const transaction = await stakingClient.createPurchaseAndStakeTransaction(
-          inputAmount,
-          referralValid ? localReferralCode : undefined
-        );
+      // Use our enhanced transaction handling function
+      console.log("Using enhanced transaction handling for buy and stake");
+      const result = await createAndSubmitStakingTransaction(
+        connection,
+        publicKey,
+        tokenAmount, // We pass the token amount, not SOL amount
+        wallet,
+        false // false means "buy and stake" instead of "stake existing"
+      );
+      
+      if (!result.success) {
+        console.error("Transaction failed:", result.error);
+        throw new Error(result.error || result.message);
+      }
+      
+      const signature = result.signature;
+      console.log("Transaction successful with signature:", signature);
+      
+      toast({
+        title: "Transaction successful!",
+        description: `Your transaction has been confirmed. Finalizing purchase...`
+      });
         
-        // Show detailed toast
-        toast({
-          title: "Sign transaction",
-          description: "Please confirm the transaction in your wallet to purchase and stake tokens",
-        });
+      // Complete the purchase and staking process
+      const completePurchaseResponse = await fetch('/api/complete-purchase-and-stake', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: publicKey.toString(),
+          solAmount: inputAmount,
+          tokenAmount: tokenAmount,
+          solTransferSignature: signature,
+          referralCode: referralValid ? localReferralCode : undefined
+        }),
+      });
+      
+      const purchaseData = await completePurchaseResponse.json();
+      
+      if (completePurchaseResponse.ok && purchaseData.success) {
+        // Success! Token purchase and staking is complete
+        const finalTokenAmount = purchaseData.tokenAmount;
         
-        console.log("Transaction received from StakingVaultClient:", transaction);
+        // Refresh SOL balance
+        await refreshBalance();
         
-        // Make sure we have all the required imports
-        const { VersionedTransaction } = await import('@solana/web3.js');
+        // Refresh token and staking data from on-chain
+        await refreshTokenBalance();
         
-        // Create a versioned transaction from the legacy transaction
-        console.log("Creating versioned transaction");
-        const message = transaction.compileMessage();
-        const versionedTx = new VersionedTransaction(message);
-        console.log("Successfully created versioned transaction");
-        
-        // Send transaction using wallet adapter
-        const signature = await sendTransaction(versionedTx as any);
-        
-        toast({
-          title: "Transaction sent!",
-          description: `Your transaction has been sent to the network. Finalizing purchase...`
-        });
-        
-        // Complete the purchase and staking process
-        const completePurchaseResponse = await fetch('/api/complete-purchase-and-stake', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            walletAddress: publicKey.toString(),
-            solAmount: inputAmount,
-            tokenAmount: Math.floor((inputAmount * (1 - (referralValid ? 0.06 : 0.08))) / 0.01), // Calculate token amount
-            solTransferSignature: signature,
-            referralCode: referralValid ? localReferralCode : undefined
-          }),
-        });
-        
-        const purchaseData = await completePurchaseResponse.json();
-        
-        if (completePurchaseResponse.ok && purchaseData.success) {
-          // Success! Token purchase and staking is complete
-          const tokenAmount = purchaseData.tokenAmount;
-          
-          // Refresh SOL balance
-          await refreshBalance();
-          
-          // Refresh token and staking data from on-chain
-          await refreshTokenBalance();
-          
-          // Additional direct refresh of staking data via client
-          // This is better than page reload
-          setTimeout(async () => {
-            try {
-              // Initialize staking vault client
-              const { Connection, clusterApiUrl } = await import('@solana/web3.js');
-              const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
-              
-              // Initialize StakingVaultClient
-              const { StakingVaultClient } = await import('@/lib/staking-vault-client');
-              const tokenMint = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk";
-              
-              if (publicKey) {
-                const stakingClient = new StakingVaultClient(connection, publicKey, tokenMint);
-                await stakingClient.initialize();
-                const userInfo = await stakingClient.getUserStakingInfo();
-                console.log("Updated staking info after purchase:", userInfo);
-              }
-            } catch (e) {
-              console.error("Error updating staking info:", e);
-              // Fallback to page reload if the update fails
-              window.location.reload();
+        // Additional direct refresh of staking data via client
+        // This is better than page reload
+        setTimeout(async () => {
+          try {
+            // Initialize staking vault client
+            const { Connection, clusterApiUrl } = await import('@solana/web3.js');
+            const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+            
+            // Initialize StakingVaultClient
+            const { StakingVaultClient } = await import('@/lib/staking-vault-client');
+            const tokenMint = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk";
+            
+            if (publicKey) {
+              const stakingClient = new StakingVaultClient(connection, publicKey, tokenMint);
+              await stakingClient.initialize();
+              const userInfo = await stakingClient.getUserStakingInfo();
+              console.log("Updated staking info after purchase:", userInfo);
             }
-          }, 2000);
-          
-          // Show success message with staking details
-          toast({
-            title: "Purchase and stake successful!",
-            description: (
-              <div className="flex flex-col gap-1">
-                <p>You purchased and staked {tokenAmount} HATM tokens!</p>
-                <p className="text-xs text-green-500">Tokens are now staking in the vault for 7 days.</p>
-                {purchaseData.explorerUrl && (
-                  <a 
-                    href={purchaseData.explorerUrl}
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-primary underline text-xs"
-                  >
-                    View transaction on Solana Explorer
-                  </a>
-                )}
-              </div>
-            ),
-            duration: 10000
-          });
-          
-          // Clear input fields
-          setSolAmount('');
-          setHatchAmount('');
-        } else {
-          // Handle errors from the server
-          if (purchaseData.error && purchaseData.error.includes("still processing")) {
-            toast({
-              title: "Transaction still processing",
-              description: "Your transaction is still being confirmed on the blockchain. Please check back in a moment.",
-              variant: "default",
-              duration: 8000
-            });
-          } else {
-            // Other errors
-            throw new Error(purchaseData.error || "Failed to complete on-chain purchase and stake");
+          } catch (e) {
+            console.error("Error updating staking info:", e);
+            // Fallback to page reload if the update fails
+            window.location.reload();
           }
-        }
-      } catch (error) {
-        // Handle transaction errors
-        console.error("Error in on-chain purchase and stake transaction:", error);
+        }, 2000);
         
+        // Show success message with staking details
         toast({
-          title: "Transaction failed",
-          description: error instanceof Error ? error.message : "Failed to complete the purchase and stake transaction",
-          variant: "destructive",
+          title: "Purchase and stake successful!",
+          description: (
+            <div className="flex flex-col gap-1">
+              <p>You purchased and staked {finalTokenAmount} HATM tokens!</p>
+              <p className="text-xs text-green-500">Tokens are now staking in the vault for 7 days.</p>
+              {purchaseData.explorerUrl && (
+                <a 
+                  href={purchaseData.explorerUrl}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary underline text-xs"
+                >
+                  View transaction on Solana Explorer
+                </a>
+              )}
+            </div>
+          ),
+          duration: 10000
         });
+        
+        // Clear input fields
+        setSolAmount('');
+        setHatchAmount('');
+      } else {
+        // Handle errors from the server
+        if (purchaseData.error && purchaseData.error.includes("still processing")) {
+          toast({
+            title: "Transaction still processing",
+            description: "Your transaction is still being confirmed on the blockchain. Please check back in a moment.",
+            variant: "default",
+            duration: 8000
+          });
+        } else {
+          // Other errors
+          throw new Error(purchaseData.error || "Failed to complete on-chain purchase and stake");
+        }
       }
     } catch (error) {
       console.error("Error processing purchase:", error);
       toast({
         title: "Purchase failed",
-        description: "Failed to complete the token purchase. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to complete the token purchase. Please try again.",
         variant: "destructive",
       });
     } finally {

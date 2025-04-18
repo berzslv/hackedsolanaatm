@@ -12,6 +12,7 @@ import {
 } from '@solana/wallet-adapter-react';
 import { stakeExistingTokens } from '@/lib/api-client';
 import { formatNumber, formatAsPercent } from '@/lib/utils';
+import { createAndSubmitStakingTransaction } from '@/lib/CreateStakingTransactionV2';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -117,7 +118,7 @@ export function DirectStakingWidget() {
     setIsSyncing(false);
   };
   
-  // Function to handle staking in a single transaction with enhanced logging
+  // Function to handle staking in a single transaction with enhanced logging and error handling
   const handleStake = async () => {
     if (!connected || !publicKey || !signTransaction || !sendTransaction) {
       toast({
@@ -145,11 +146,6 @@ export function DirectStakingWidget() {
       // Set up connection to Solana
       const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
       
-      console.log("🚀 Starting staking process");
-      console.log("👛 Wallet public key:", publicKey.toString());
-      console.log("🔢 Amount to stake:", amount);
-      console.log("🔗 Network:", connection.rpcEndpoint);
-      
       toast({
         title: 'Processing Stake Request',
         description: 'Creating stake transaction...',
@@ -161,177 +157,16 @@ export function DirectStakingWidget() {
         publicKey
       };
       
-      // Use stakeExistingTokens instead of buyAndStakeTokens since we're just staking tokens
-      console.log("🔧 Calling stakeExistingTokens function");
-      const stakeResult = await stakeExistingTokens(
-        publicKey.toString(),
+      // Use our enhanced transaction function for staking
+      const result = await createAndSubmitStakingTransaction(
+        connection,
+        publicKey,
         amount,
-        wallet
+        wallet,
+        true // Use existing tokens (don't buy new ones)
       );
       
-      // Check if there was an error in creating the transaction
-      if (stakeResult.error) {
-        console.error("❌ Error from stakeExistingTokens:", stakeResult.error);
-        throw new Error(stakeResult.error);
-      }
-      
-      // Check if we have the staking transaction
-      if (!stakeResult.stakingTransaction) {
-        console.error("❌ No staking transaction returned");
-        throw new Error('No staking transaction received');
-      }
-      
-      const transactionData = stakeResult.stakingTransaction;
-      
-      toast({
-        title: 'Waiting for approval',
-        description: 'Please approve the staking transaction in your wallet',
-      });
-      
-      // Log the transaction data structure to debug
-      console.log('📦 Transaction data received:', JSON.stringify(transactionData, null, 2));
-      
-      if (!transactionData.transaction) {
-        console.error('❌ Missing transaction field in response data');
-        throw new Error('Missing transaction field in server response');
-      }
-      
-      // Decode and deserialize the transaction
-      let decodedTransaction: Transaction;
-      
-      try {
-        console.log('🔍 Attempting to deserialize transaction');
-        
-        // Convert base64 string to Uint8Array
-        const transactionBytes = base64ToUint8Array(transactionData.transaction);
-        
-        // Create Transaction from bytes
-        decodedTransaction = Transaction.from(transactionBytes);
-        
-        console.log('✅ Successfully deserialized transaction');
-        
-        // Ensure fee payer is set
-        if (!decodedTransaction.feePayer) {
-          console.log('⚠️ Setting fee payer to current wallet');
-          decodedTransaction.feePayer = publicKey;
-        }
-        
-        // Ensure recent blockhash is set
-        if (!decodedTransaction.recentBlockhash) {
-          console.log('⚠️ Getting fresh blockhash for transaction');
-          const { blockhash } = await connection.getLatestBlockhash('finalized');
-          decodedTransaction.recentBlockhash = blockhash;
-        }
-        
-        console.log("🧾 Fee payer:", decodedTransaction.feePayer?.toBase58());
-        console.log("🔑 Signers:", decodedTransaction.signatures.map(s => s.publicKey.toBase58()));
-        
-        // Try simulating the transaction before sending
-        try {
-          console.log("🔬 Simulating transaction before sending");
-          const simulation = await connection.simulateTransaction(decodedTransaction);
-          console.log("🔍 Simulation result:", simulation);
-          
-          if (simulation.value.err) {
-            console.error("⚠️ Transaction simulation failed:", simulation.value.err);
-            // Continue anyway as this is just a preflight check
-          }
-        } catch (simError: any) {
-          console.warn("⚠️ Simulation error (continuing anyway):", simError.message);
-        }
-        
-      } catch (e: any) {
-        console.error('❌ Error deserializing transaction:', e);
-        
-        try {
-          // Try direct method as fallback
-          decodedTransaction = Transaction.from(transactionData.transaction);
-          console.log('✅ Successfully deserialized transaction using direct method');
-        } catch (e2: any) {
-          console.error('❌ All deserialization methods failed:', e2);
-          throw new Error(`Failed to decode transaction: ${e2.message}`);
-        }
-      }
-      
-      // Define signature outside the try block so it's accessible throughout
-      let signature: string;
-      
-      try {
-        console.log('📡 Sending transaction to the network...');
-        
-        // Sign and send the transaction with detailed options
-        signature = await sendTransaction(decodedTransaction, connection, {
-          skipPreflight: false, // Run preflight checks
-          preflightCommitment: 'confirmed', // Use confirmed commitment level for preflight
-          maxRetries: 5 // Try a few times if it fails
-        });
-        
-        console.log('✈️ Transaction sent with signature:', signature);
-        
-        toast({
-          title: 'Transaction submitted',
-          description: 'Waiting for confirmation...',
-        });
-        
-        // Wait for confirmation with more detailed options
-        console.log('⏳ Waiting for transaction confirmation...');
-        const confirmationResult = await connection.confirmTransaction({
-          signature,
-          blockhash: decodedTransaction.recentBlockhash!, 
-          lastValidBlockHeight: decodedTransaction.lastValidBlockHeight!
-        }, 'confirmed');
-        
-        if (confirmationResult.value.err) {
-          console.error('❌ Transaction confirmed but has errors:', confirmationResult.value.err);
-          throw new Error(`Transaction confirmed with errors: ${JSON.stringify(confirmationResult.value.err)}`);
-        }
-        
-        // Log signatures and account details after confirmation
-        console.log(`✅ Transaction confirmed with signature: ${signature}`);
-        
-      } catch (sendError: any) {
-        console.error('🧨 Error sending transaction:', sendError);
-        
-        if (sendError.logs) console.log("📄 Logs:", sendError.logs);
-        if (sendError.message) console.log("📢 Message:", sendError.message);
-        
-        // Check for common wallet errors
-        if (sendError.message && sendError.message.includes("User rejected")) {
-          throw new Error("Transaction was rejected by the wallet");
-        }
-        
-        throw new Error(`Failed to send transaction: ${sendError.message || "Unknown error"}`);
-      }
-      
-      // Ensure we have a signature before proceeding
-      if (!signature) {
-        throw new Error('Transaction failed: No signature returned');
-      }
-      
-      // Notify server about the completed staking transaction
-      console.log('📤 Notifying server about the completed transaction...');
-      const confirmResponse = await fetch('/api/confirm-staking', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          walletAddress: publicKey.toString(),
-          amount: amount,
-          transactionSignature: signature
-        }),
-      });
-      
-      if (!confirmResponse.ok) {
-        const errorData = await confirmResponse.json();
-        console.error('❌ Server confirmation failed:', errorData);
-        throw new Error(errorData.error || 'Failed to confirm staking transaction');
-      }
-      
-      const confirmData = await confirmResponse.json();
-      console.log('✅ Server confirmation successful:', confirmData);
-      
-      if (confirmData.success) {
+      if (result.success) {
         toast({
           title: 'Staking successful',
           description: `Successfully staked ${amount} HATM tokens`,
@@ -344,6 +179,8 @@ export function DirectStakingWidget() {
         
         // Clear the input
         setStakeAmount('');
+      } else {
+        throw new Error(result.error || result.message);
       }
     } catch (error: any) {
       console.error('🧨 Staking failed:', error);
