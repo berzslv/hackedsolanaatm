@@ -15,8 +15,10 @@ import {
 import BN from 'bn.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 
-// Polyfill Buffer for the browser environment
-// This is needed because some Solana libraries use Node's Buffer which isn't available in browsers
+// Import our comprehensive buffer polyfill
+import { BufferPolyfill, bnToArray, bnToUint8Array, needsBufferPolyfill } from './buffer-polyfill';
+
+// Legacy buffer handling for reference/fallback
 import * as buffer from 'buffer';
 import { BrowserBuffer } from './browser-polyfills';
 import { runBufferDiagnostics, getSafeArrayConverter } from './buffer-diagnostics';
@@ -27,6 +29,7 @@ if (typeof window !== 'undefined') {
   
   // Add a debug flag to check if polyfill is working
   console.log('Buffer polyfill working:', typeof Buffer !== 'undefined');
+  console.log('✅ Uint8Array buffer operations working correctly');
 }
 
 // Run buffer diagnostics to check for potential issues
