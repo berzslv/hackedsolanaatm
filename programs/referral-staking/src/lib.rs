@@ -34,7 +34,8 @@ pub mod referral_staking {
         global_state.stakers_count = 0;
         global_state.reward_pool = 0;
         global_state.last_update_time = Clock::get()?.unix_timestamp;
-        global_state.bump = *ctx.bumps.get("global_state").unwrap();
+        // For newer Anchor versions, use the index operator instead of get()
+        global_state.bump = ctx.bumps["global_state"];
         
         Ok(())
     }
