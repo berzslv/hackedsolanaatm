@@ -13,7 +13,8 @@ import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 export const stakeExistingTokens = async (
   walletAddress: string,
   amount: number,
-  wallet: any
+  wallet: any,
+  referrer?: string
 ): Promise<{
   error?: string;
   stakingTransaction?: any;
@@ -28,6 +29,7 @@ export const stakeExistingTokens = async (
       body: JSON.stringify({
         walletAddress,
         amount,
+        referrer,
       }),
     });
 
@@ -79,7 +81,8 @@ export const stakeExistingTokens = async (
 export const buyAndStakeTokens = async (
   walletAddress: string,
   amount: number,
-  wallet: any
+  wallet: any,
+  referrer?: string
 ): Promise<{
   error?: string;
   stakingTransaction?: any;
@@ -94,6 +97,7 @@ export const buyAndStakeTokens = async (
       body: JSON.stringify({
         walletAddress,
         amount,
+        referrer,
       }),
     });
 

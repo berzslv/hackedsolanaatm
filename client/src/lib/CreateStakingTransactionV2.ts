@@ -104,10 +104,17 @@ export async function createAndSubmitStakingTransaction(
     const stakingFunction = useExistingTokens ? stakeExistingTokens : buyAndStakeTokens;
     console.log(`🔧 Calling ${useExistingTokens ? 'stakeExistingTokens' : 'buyAndStakeTokens'} function`);
     
+    // If referrer is provided in options, pass it to the API
+    const referrerAddress = options?.referrer ? options.referrer.toString() : undefined;
+    if (referrerAddress) {
+      console.log('📣 Using referrer for transaction:', referrerAddress);
+    }
+    
     const stakeResult = await stakingFunction(
       publicKey.toString(),
       amount,
-      walletAdapter
+      walletAdapter,
+      referrerAddress
     );
     
     // Check for errors from the API
@@ -329,7 +336,8 @@ export async function createAndSubmitStakingTransaction(
           body: JSON.stringify({
             walletAddress: publicKey.toString(),
             amount: amount,
-            transactionSignature: signature
+            transactionSignature: signature,
+            referrer: options?.referrer ? options.referrer.toString() : undefined,
           }),
         });
         
