@@ -447,7 +447,7 @@ export const stakeExistingTokens = async (
             { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system program
           ],
           programId,
-          data: new Uint8Array([0]) // 0 = register instruction
+          data: Buffer.from([0]) // 0 = register instruction
         });
         
         transaction.add(registerInstruction);
@@ -474,16 +474,15 @@ export const stakeExistingTokens = async (
         ],
         programId,
         data: (() => {
-          // Create a Uint8Array with instruction code (1 = stake) followed by amount
-          const instructionCode = new Uint8Array([1]);
-          const amountBytes = new Uint8Array(new BN(amountLamports).toArray('le', 8));
+          // Create instruction data with code (1 = stake) followed by amount
+          const dataLayout = Buffer.alloc(9);
+          dataLayout[0] = 1; // Instruction index for stake
           
-          // Combine the two arrays
-          const result = new Uint8Array(instructionCode.length + amountBytes.length);
-          result.set(instructionCode);
-          result.set(amountBytes, instructionCode.length);
+          // Write the amount as a 64-bit little-endian value
+          const amountBuffer = Buffer.from(new BN(amountLamports).toArray('le', 8));
+          amountBuffer.copy(dataLayout, 1);
           
-          return result;
+          return dataLayout;
         })()
       });
       

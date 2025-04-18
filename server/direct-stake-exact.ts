@@ -135,14 +135,28 @@ export async function createDirectStakingTransaction(
     // Get the user's associated token account
     const userTokenAccount = await findAssociatedTokenAccount(userPublicKey, tokenMint);
     
-    // Register user instruction
+    // Find the vault PDA
+    const [vaultPDA] = findVaultPDA();
+    const [vaultAuthority] = findVaultAuthorityPDA();
+    
+    console.log('Creating registration instruction with fully specified accounts:', {
+      userPublicKey: userPublicKey.toString(),
+      userStakingAccount: userStakingAccount.toString(),
+      vaultPDA: vaultPDA.toString(),
+      tokenMint: tokenMint.toString()
+    });
+    
+    // Register user instruction with all required accounts specified
     const registerInstruction = new TransactionInstruction({
       programId: STAKING_PROGRAM_ID,
       keys: [
         { pubkey: userPublicKey, isSigner: true, isWritable: true },
         { pubkey: userStakingAccount, isSigner: false, isWritable: true },
+        { pubkey: vaultPDA, isSigner: false, isWritable: false },
+        { pubkey: tokenMint, isSigner: false, isWritable: false },
         { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-        { pubkey: referrer || userPublicKey, isSigner: false, isWritable: false }
+        // Conditionally add referrer if provided
+        ...(referrer ? [{ pubkey: referrer, isSigner: false, isWritable: false }] : [])
       ],
       data: Buffer.from([0]) // 0 = initialize instruction
     });
