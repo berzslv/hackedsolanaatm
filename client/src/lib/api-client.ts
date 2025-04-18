@@ -2,6 +2,7 @@
  * API Client for token staking operations
  */
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
+import { getStakingAccountInfo } from './combined-smart-contract-client';
 
 /**
  * Stakes existing tokens by creating and sending a transaction directly from client side

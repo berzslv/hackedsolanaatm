@@ -538,13 +538,14 @@ export const stakeExistingTokens = async (
                 const customCode = errorInfo.Custom;
                 console.error(`Custom program error in instruction ${instructionIndex}: Code ${customCode}`);
                 
-                // Provide common error explanations
-                const errorExplanation = {
+                // Provide more accurate explanations for custom program errors
+                const errorExplanations: {[key: number]: string} = {
                   100: 'Insufficient funds or missing account',
                   101: 'Invalid token account',
                   102: 'Invalid token owner',
                   103: 'Account not registered with staking program'
-                }[customCode] || 'Unknown custom error';
+                };
+                const errorExplanation = errorExplanations[customCode] || 'Unknown custom error';
                 
                 console.error(`Error explanation: ${errorExplanation}`);
                 return { error: `Transaction simulation failed: Custom program error ${customCode} - ${errorExplanation}` };
