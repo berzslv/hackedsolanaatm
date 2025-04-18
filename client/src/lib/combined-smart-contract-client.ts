@@ -28,7 +28,7 @@ if (typeof window !== 'undefined') {
 // Token configuration
 const tokenMintAddress = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
 // The staking vault address (PDA derived from program and token mint)
-const stakingVaultAddress = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
+const stakingVaultAddress = 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu';
 // Program ID for the referral staking program
 const stakingProgramId = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm';
 

@@ -9,7 +9,7 @@ import fetch from 'node-fetch';
 const RAILWAY_SERVICE_URL = 'https://hackedpolling-production.up.railway.app';
 
 // Use the correct staking vault address (PDA) derived from the program and token mint
-export const STAKING_VAULT_ADDRESS = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
+export const STAKING_VAULT_ADDRESS = 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu';
 
 // Types for Railway API responses
 export interface EnhancedStakingData {
