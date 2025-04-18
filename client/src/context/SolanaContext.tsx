@@ -116,7 +116,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  // Send transaction
+  // Send transaction with fallback mechanisms
   const sendTransaction = async (transaction: VersionedTransaction): Promise<string> => {
     if (!connected || !publicKey || !adapterSendTransaction) {
       throw new Error('Wallet not connected or sendTransaction not available');
@@ -127,9 +127,73 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     try {
+      console.log("Transaction status: Sending transaction to the network");
+      // Try the primary method first - using wallet adapter
       return await adapterSendTransaction(transaction, connection);
-    } catch (error) {
-      console.error('Error sending transaction:', error);
+    } catch (error: any) {
+      console.error('Error sending transaction through wallet adapter:', error);
+      
+      // If we get "Unexpected error", try the manual signing approach
+      if (error.message && error.message.includes("Unexpected error") && adapterSignTransaction) {
+        console.log("Wallet adapter sendTransaction failed with 'Unexpected error'. Trying manual sign + submit approach...");
+        
+        try {
+          // Sign the transaction manually
+          const signedTransaction = await adapterSignTransaction(transaction);
+          
+          // Submit the manually signed transaction
+          console.log("Manually submitting signed transaction...");
+          const signature = await connection.sendRawTransaction(
+            signedTransaction.serialize()
+          );
+          
+          // Wait for confirmation and return the signature
+          const latestBlockhash = await connection.getLatestBlockhash();
+          await connection.confirmTransaction({
+            blockhash: latestBlockhash.blockhash,
+            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+            signature
+          });
+          
+          console.log("Manual transaction submission successful:", signature);
+          return signature;
+        } catch (manualError) {
+          console.error("Manual transaction submission failed:", manualError);
+          
+          // If manual approach fails, we'll try server-side submission as a last resort
+          try {
+            console.log("Attempting server-side transaction submission as last resort...");
+            const serializedTransaction = Buffer.from(transaction.serialize()).toString('base64');
+            
+            // Send the serialized transaction to our backend endpoint
+            const response = await fetch('/api/submit-signed-transaction', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ 
+                transaction: serializedTransaction,
+                walletPublicKey: publicKey.toBase58()
+              }),
+            });
+            
+            const result = await response.json();
+            
+            if (result.success && result.signature) {
+              console.log("Server-side transaction submission successful:", result.signature);
+              return result.signature;
+            } else {
+              throw new Error(result.error || 'Server-side transaction submission failed');
+            }
+          } catch (serverError: any) {
+            console.error("All transaction submission methods failed:", serverError);
+            const errorMessage = serverError?.message || 'Unknown server error';
+            throw new Error(`Transaction submission failed after all attempts: ${errorMessage}`);
+          }
+        }
+      }
+      
+      // If it's not the specific error we're handling, just rethrow
       throw error;
     }
   };

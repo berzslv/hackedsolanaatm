@@ -1,0 +1,285 @@
+SolanaContext.tsx:130 WalletSendTransactionError: Unexpected error
+    at StandardWalletAdapter.sendTransaction (chunk-HMIINQ7M.js?v=7fed3b3f:4193:15)
+    at async chunk-HMIINQ7M.js?v=7fed3b3f:4801:12
+    at async Object.sendTransaction (SolanaContext.tsx:130:14)
+    at async registerUserForStaking (api-client.ts:116:27)
+    at async buyAndStakeTokens (api-client.ts:250:32)
+    at async createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:142:25)
+    at async handleBuy (BuyWidgetOnChain.tsx:296:22) StandardWalletAdapter {_events: Events, _eventsCount: 4, signIn: ƒ, signTransaction: ƒ, signAllTransactions: ƒ, …}
+overrideMethod @ hook.js:608
+(anonymous) @ chunk-HMIINQ7M.js?v=7fed3b3f:4700
+handleError @ chunk-HMIINQ7M.js?v=7fed3b3f:4761
+emit @ chunk-2MH4V4YT.js?v=7fed3b3f:81
+sendTransaction @ chunk-HMIINQ7M.js?v=7fed3b3f:4196
+await in sendTransaction
+(anonymous) @ chunk-HMIINQ7M.js?v=7fed3b3f:4801
+sendTransaction @ SolanaContext.tsx:130
+registerUserForStaking @ api-client.ts:116
+await in registerUserForStaking
+buyAndStakeTokens @ api-client.ts:250
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:142
+handleBuy @ BuyWidgetOnChain.tsx:296
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+SolanaContext.tsx:132 Error sending transaction: WalletSendTransactionError: Unexpected error
+    at StandardWalletAdapter.sendTransaction (chunk-HMIINQ7M.js?v=7fed3b3f:4193:15)
+    at async chunk-HMIINQ7M.js?v=7fed3b3f:4801:12
+    at async Object.sendTransaction (SolanaContext.tsx:130:14)
+    at async registerUserForStaking (api-client.ts:116:27)
+    at async buyAndStakeTokens (api-client.ts:250:32)
+    at async createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:142:25)
+    at async handleBuy (BuyWidgetOnChain.tsx:296:22)
+overrideMethod @ hook.js:608
+sendTransaction @ SolanaContext.tsx:132
+await in sendTransaction
+registerUserForStaking @ api-client.ts:116
+await in registerUserForStaking
+buyAndStakeTokens @ api-client.ts:250
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:142
+handleBuy @ BuyWidgetOnChain.tsx:296
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+api-client.ts:129 Error sending registration transaction: WalletSendTransactionError: Unexpected error
+    at StandardWalletAdapter.sendTransaction (chunk-HMIINQ7M.js?v=7fed3b3f:4193:15)
+    at async chunk-HMIINQ7M.js?v=7fed3b3f:4801:12
+    at async Object.sendTransaction (SolanaContext.tsx:130:14)
+    at async registerUserForStaking (api-client.ts:116:27)
+    at async buyAndStakeTokens (api-client.ts:250:32)
+    at async createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:142:25)
+    at async handleBuy (BuyWidgetOnChain.tsx:296:22)
+overrideMethod @ hook.js:608
+registerUserForStaking @ api-client.ts:129
+await in registerUserForStaking
+buyAndStakeTokens @ api-client.ts:250
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:142
+handleBuy @ BuyWidgetOnChain.tsx:296
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+api-client.ts:253 ❌ Registration failed: Failed to send registration transaction: Unexpected error
+overrideMethod @ hook.js:608
+buyAndStakeTokens @ api-client.ts:253
+await in buyAndStakeTokens
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:142
+handleBuy @ BuyWidgetOnChain.tsx:296
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+CreateStakingTransactionV2.ts:151 ❌ Error from buyAndStakeTokens: Registration required before staking: Failed to send registration transaction: Unexpected error
+overrideMethod @ hook.js:608
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:151
+await in createAndSubmitStakingTransaction
+handleBuy @ BuyWidgetOnChain.tsx:296
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+BuyWidgetOnChain.tsx:310 Transaction failed: Registration required before staking: Failed to send registration transaction: Unexpected error
+overrideMethod @ hook.js:608
+handleBuy @ BuyWidgetOnChain.tsx:310
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+BuyWidgetOnChain.tsx:444 Error processing purchase: Error: Registration required before staking: Failed to send registration transaction: Unexpected error
+    at handleBuy (BuyWidgetOnChain.tsx:337:15)
+overrideMethod @ hook.js:608
+handleBuy @ BuyWidgetOnChain.tsx:444
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+DirectStakingWidget.tsx:97 🚀 Starting staking process
+DirectStakingWidget.tsx:98 👛 Wallet public key: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+DirectStakingWidget.tsx:99 🔢 Amount to stake: 22
+DirectStakingWidget.tsx:100 🔗 Network: https://api.devnet.solana.com
+DirectStakingWidget.tsx:121 🔧 Checking for token account and creating if needed
+api-client.ts:332 Checking token account for wallet 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX and mint 59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk
+api-client.ts:350 Expected token account address: H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp
+api-client.ts:357 Token account exists with 2039280 lamports
+DirectStakingWidget.tsx:164 Found 1 token accounts for mint
+DirectStakingWidget.tsx:172 Token account H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp has balance: 68743
+DirectStakingWidget.tsx:191 ✅ Sufficient token balance verified
+DirectStakingWidget.tsx:200 🔧 Calling stakeExistingTokens function
+combined-smart-contract-client.ts:438 Building transaction locally with account info: {success: true, tokenMint: '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk', programId: 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm', vault: 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu', vaultTokenAccount: '3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL', …}
+combined-smart-contract-client.ts:473 Checking if user token account H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp exists and has sufficient balance...
+combined-smart-contract-client.ts:475 User token account balance: 68743 tokens
+combined-smart-contract-client.ts:518 User is not registered. Adding registration instruction.
+combined-smart-contract-client.ts:526 User stake info PDA: A4BCSorbj2J4mG8pQUaAgyoDLbnMAJd99xC2HJaNKs6L
+combined-smart-contract-client.ts:585 ✅ Created instruction data without using Buffer.alloc
+combined-smart-contract-client.ts:592 Transaction built successfully
+combined-smart-contract-client.ts:596 Simulating transaction before sending...
+combined-smart-contract-client.ts:600 Transaction simulation failed: {InstructionError: Array(2)}
+overrideMethod @ hook.js:608
+stakeExistingTokens @ combined-smart-contract-client.ts:600
+await in stakeExistingTokens
+handleStake @ DirectStakingWidget.tsx:201
+await in handleStake
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+combined-smart-contract-client.ts:611 Custom program error in instruction 0: Code 100
+overrideMethod @ hook.js:608
+stakeExistingTokens @ combined-smart-contract-client.ts:611
+await in stakeExistingTokens
+handleStake @ DirectStakingWidget.tsx:201
+await in handleStake
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+combined-smart-contract-client.ts:622 Error explanation: Insufficient funds or missing account
+overrideMethod @ hook.js:608
+stakeExistingTokens @ combined-smart-contract-client.ts:622
+await in stakeExistingTokens
+handleStake @ DirectStakingWidget.tsx:201
+await in handleStake
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+DirectStakingWidget.tsx:209 ❌ Error from stakeExistingTokens: Transaction simulation failed: Custom program error 100 - Insufficient funds or missing account
+overrideMethod @ hook.js:608
+handleStake @ DirectStakingWidget.tsx:209
+await in handleStake
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+DirectStakingWidget.tsx:446 Staking error: Error: Transaction simulation failed: Custom program error 100 - Insufficient funds or missing account
+    at handleStake (DirectStakingWidget.tsx:210:15)

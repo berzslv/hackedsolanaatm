@@ -2966,6 +2966,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Fallback endpoint for transaction submission when wallet adapter fails
+  app.post('/api/submit-signed-transaction', async (req, res) => {
+    try {
+      const { transaction, walletPublicKey } = req.body;
+      
+      if (!transaction || !walletPublicKey) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Transaction and wallet public key are required" 
+        });
+      }
+      
+      console.log(`Server-side transaction submission for wallet: ${walletPublicKey}`);
+      
+      // Set up connection to Solana
+      const { Connection, clusterApiUrl } = await import('@solana/web3.js');
+      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+      
+      // Deserialize the transaction
+      const { VersionedTransaction } = await import('@solana/web3.js');
+      const transactionBuffer = Buffer.from(transaction, 'base64');
+      const recoveredTransaction = VersionedTransaction.deserialize(transactionBuffer);
+      
+      // Submit the transaction
+      const signature = await connection.sendRawTransaction(
+        recoveredTransaction.serialize()
+      );
+      
+      // Wait for confirmation and return the signature
+      const latestBlockhash = await connection.getLatestBlockhash();
+      await connection.confirmTransaction({
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+        signature
+      });
+      
+      console.log(`Server-side transaction submission successful: ${signature}`);
+      
+      return res.json({
+        success: true,
+        signature,
+        message: "Transaction submitted successfully"
+      });
+    } catch (error) {
+      console.error(`Error submitting transaction server-side: ${error}`);
+      return res.status(500).json({ 
+        success: false,
+        error: "Failed to submit transaction",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
       
   const httpServer = createServer(app);
   return httpServer;
