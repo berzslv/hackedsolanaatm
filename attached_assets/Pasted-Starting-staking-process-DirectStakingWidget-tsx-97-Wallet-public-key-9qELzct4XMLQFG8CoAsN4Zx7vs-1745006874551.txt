@@ -1,0 +1,70 @@
+Starting staking process
+DirectStakingWidget.tsx:97 👛 Wallet public key: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+DirectStakingWidget.tsx:98 🔢 Amount to stake: 333
+DirectStakingWidget.tsx:99 🔗 Network: https://api.devnet.solana.com
+DirectStakingWidget.tsx:113 🔧 Calling stakeExistingTokens function
+combined-smart-contract-client.ts:421 Building transaction locally with account info: {success: true, tokenMint: '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk', programId: 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm', vault: 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu', vaultTokenAccount: '3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL', …}
+combined-smart-contract-client.ts:453 User is not registered. Adding registration instruction.
+combined-smart-contract-client.ts:461 User stake info PDA: A4BCSorbj2J4mG8pQUaAgyoDLbnMAJd99xC2HJaNKs6L
+combined-smart-contract-client.ts:559 Error building/sending transaction: TypeError: BufferPolyfill.alloc is not a function
+    at combined-smart-contract-client.ts:501:45
+    at stakeExistingTokens (combined-smart-contract-client.ts:509:9)
+    at async handleStake (DirectStakingWidget.tsx:114:27)
+overrideMethod @ hook.js:608
+stakeExistingTokens @ combined-smart-contract-client.ts:559
+await in stakeExistingTokens
+handleStake @ DirectStakingWidget.tsx:114
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+DirectStakingWidget.tsx:122 ❌ Error from stakeExistingTokens: Failed to process staking transaction: BufferPolyfill.alloc is not a function
+overrideMethod @ hook.js:608
+handleStake @ DirectStakingWidget.tsx:122
+await in handleStake
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+DirectStakingWidget.tsx:284 Staking error: Error: Failed to process staking transaction: BufferPolyfill.alloc is not a function
+    at handleStake (DirectStakingWidget.tsx:123:15)
+overrideMethod @ hook.js:608
+handleStake @ DirectStakingWidget.tsx:284
+await in handleStake
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error

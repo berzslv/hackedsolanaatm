@@ -498,12 +498,17 @@ export const stakeExistingTokens = async (
         programId,
         data: (() => {
           // Create instruction data with code (1 = stake) followed by amount
-          const dataLayout = BufferPolyfill.alloc(9);
+          // Use a direct Uint8Array instead of BufferPolyfill.alloc
+          const dataLayout = new Uint8Array(9);
           dataLayout[0] = 1; // Instruction index for stake
           
           // Write the amount as a 64-bit little-endian value
           const amountBuffer = BufferPolyfill.from(new BN(amountLamports).toArray('le', 8));
-          amountBuffer.copy(dataLayout, 1);
+          
+          // Copy values manually from amountBuffer to dataLayout
+          for (let i = 0; i < 8; i++) {
+              dataLayout[i+1] = amountBuffer[i];
+          }
           
           return dataLayout;
         })()

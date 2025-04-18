@@ -1968,7 +1968,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Amount: ${amount}, Referrer: ${referrer || 'None'}`);
       
       const { Connection, clusterApiUrl, Keypair, PublicKey, Transaction } = await import('@solana/web3.js');
-      const fs = require('fs');
+      // Use import.meta.require for dynamic imports in ESM
+      const fs = await import('fs');
       
       // Create connection to Solana
       const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
@@ -1977,8 +1978,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // This should be a dedicated hot wallet that only has permissions to submit transactions
       let serverKeypair;
       try {
-        // Load keypair from token-keypair-original.json
-        const keypairData = fs.readFileSync('token-keypair-original.json', 'utf-8');
+        // Load keypair from token-keypair-original.json using promises
+        const keypairData = await fs.promises.readFile('token-keypair-original.json', 'utf-8');
         const secretKey = Buffer.from(JSON.parse(keypairData));
         serverKeypair = Keypair.fromSecretKey(secretKey);
         console.log("Loaded server keypair for transaction signing");
