@@ -12,6 +12,7 @@ import AirdropButton from './AirdropButton';
 import { Loader2, AlertCircle } from "lucide-react";
 import { Transaction, VersionedTransaction, PublicKey, Connection, clusterApiUrl } from '@solana/web3.js';
 import { createAndSubmitStakingTransaction } from '@/lib/CreateStakingTransactionV2';
+import { checkAndCreateTokenAccount } from '@/lib/api-client';
 
 export interface BuyWidgetProps {
   flashRef?: React.MutableRefObject<(() => void) | null>;
@@ -236,6 +237,34 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
         title: "Preparing transaction",
         description: "Creating a transaction to buy and stake tokens",
       });
+      
+      // Check if the user has a token account for the HATM token, and create it if needed
+      console.log("🔧 Checking for token account and creating if needed");
+      const tokenMint = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk"; // HATM token mint
+      
+      toast({
+        title: 'Checking token account',
+        description: 'Making sure your wallet can hold HATM tokens...',
+      });
+      
+      const tokenAccountResult = await checkAndCreateTokenAccount(
+        publicKey.toString(),
+        tokenMint,
+        { sendTransaction, publicKey }
+      );
+      
+      if (!tokenAccountResult.success) {
+        console.error("❌ Failed to check/create token account:", tokenAccountResult.error);
+        throw new Error(`Failed to prepare token account: ${tokenAccountResult.error || 'Unknown error'}`);
+      }
+      
+      if (tokenAccountResult.exists === false) {
+        // Token account was newly created
+        toast({
+          title: 'Token account created',
+          description: 'Your wallet is now ready to hold HATM tokens',
+        });
+      }
       
       // Create a wallet object for the createAndSubmitStakingTransaction function
       const wallet = { 
