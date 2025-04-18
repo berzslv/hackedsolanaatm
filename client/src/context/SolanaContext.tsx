@@ -26,7 +26,10 @@ const SolanaContext = createContext<SolanaContextType>({
   sendTransaction: async () => "",
 });
 
-export const useSolana = () => useContext(SolanaContext);
+// Custom hook to access the Solana context
+export function useSolana() {
+  return useContext(SolanaContext);
+}
 
 export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Use the wallet adapter context
