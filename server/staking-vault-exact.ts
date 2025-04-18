@@ -6,7 +6,7 @@
  */
 import { Connection, Keypair, PublicKey, clusterApiUrl } from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
-import { IDL } from '../idl/staking_vault';
+import { IDL } from '../idl/staking_vault.js';
 
 // Constants from the deployed program
 export const PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');

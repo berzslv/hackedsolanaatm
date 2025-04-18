@@ -20,10 +20,19 @@ import BN from 'bn.js';
 import { stakeExistingTokens, buyAndStakeTokens } from './api-client';
 import * as buffer from 'buffer';
 
-// Ensure Buffer is available globally
+// Ensure Buffer is available globally and log its status
 if (typeof window !== 'undefined') {
   window.Buffer = window.Buffer || buffer.Buffer;
   console.log('Buffer polyfill working:', typeof Buffer !== 'undefined');
+  
+  // Run diagnostic test for Buffer functionality
+  try {
+    const testBuf = Buffer.alloc(8);
+    testBuf.writeUInt32LE(12345, 0);
+    console.log('✅ Buffer.alloc is working correctly');
+  } catch (e) {
+    console.error('❌ Buffer.alloc test failed:', e);
+  }
 }
 
 // Create a reliable Buffer polyfill for this module

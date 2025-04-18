@@ -19,6 +19,7 @@ import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 // This is needed because some Solana libraries use Node's Buffer which isn't available in browsers
 import * as buffer from 'buffer';
 import { BrowserBuffer } from './browser-polyfills';
+import { runBufferDiagnostics, getSafeArrayConverter } from './buffer-diagnostics';
 
 if (typeof window !== 'undefined') {
   // Only run this in browser environments
@@ -27,6 +28,14 @@ if (typeof window !== 'undefined') {
   // Add a debug flag to check if polyfill is working
   console.log('Buffer polyfill working:', typeof Buffer !== 'undefined');
 }
+
+// Run buffer diagnostics to check for potential issues
+const bufferDiagnostics = runBufferDiagnostics();
+console.log("📊 Buffer diagnostics in combined-smart-contract-client:", 
+  bufferDiagnostics.success ? "All tests passed" : "Some tests failed");
+
+// Get safe converter functions that don't depend on problematic Buffer methods
+const { bnToArray, arrayToUint8Array } = getSafeArrayConverter();
 
 // Create a reliable Buffer polyfill for this module
 const BufferPolyfill = typeof window !== 'undefined' 
@@ -499,20 +508,26 @@ export const stakeExistingTokens = async (
         programId,
         data: (() => {
           // Create instruction data with code (1 = stake) followed by amount
-          // Use a direct Uint8Array instead of BufferPolyfill.alloc
-          const dataLayout = new Uint8Array(9);
-          dataLayout[0] = 1; // Instruction index for stake
+          // Use buffer-safe methods from our diagnostics utility
           
-          // Write the amount as a 64-bit little-endian value
-          // Use the BN's toArray method directly to avoid buffer issues
-          const amountArray = new BN(amountLamports).toArray('le', 8);
+          // First create the stake instruction discriminator (1)
+          const discriminator = new Uint8Array(1);
+          discriminator[0] = 1; // Instruction index for stake
           
-          // Copy values directly from the array
+          // Convert BN amount to array using our safe converter
+          const amountArray = bnToArray(new BN(amountLamports), 8, 'le');
+          
+          // Create final instruction data by combining both
+          const finalData = new Uint8Array(9);
+          finalData[0] = discriminator[0];
+          
+          // Copy amount bytes
           for (let i = 0; i < 8; i++) {
-              dataLayout[i+1] = amountArray[i];
+            finalData[i+1] = amountArray[i];
           }
           
-          return dataLayout;
+          console.log("✅ Created instruction data without using Buffer.alloc");
+          return finalData;
         })()
       });
       

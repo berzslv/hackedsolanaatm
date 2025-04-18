@@ -5,7 +5,7 @@
 import { Connection, PublicKey, Transaction, SystemProgram, clusterApiUrl } from '@solana/web3.js';
 import { Request, Response } from 'express';
 import { PROGRAM_ID, VAULT_ADDRESS, TOKEN_MINT_ADDRESS, findUserStakeInfoPDA, isUserRegistered } from './staking-vault-exact';
-import { getOrCreateAssociatedTokenAccount } from '@solana/spl-token';
+import { getOrCreateAssociatedTokenAccount, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 export async function handleRegisterUser(req: Request, res: Response) {
   try {
@@ -58,8 +58,8 @@ export async function handleRegisterUser(req: Request, res: Response) {
       // If not, we'll need to create one as part of the registration process
       console.log('Checking for user token account');
       
-      // Import token program and find associated token address
-      const { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
+      // Get the ASSOCIATED_TOKEN_PROGRAM_ID
+      const { ASSOCIATED_TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
       
       // Find the associated token account for the user
       const userTokenAccount = await PublicKey.findProgramAddressSync(
@@ -89,7 +89,7 @@ export async function handleRegisterUser(req: Request, res: Response) {
           { pubkey: VAULT_ADDRESS, isSigner: false, isWritable: true }, // Staking vault (initialized vault account)
           { pubkey: userStakingPDA, isSigner: false, isWritable: true }, // User stake account (PDA)
           { pubkey: userTokenAccount[0], isSigner: false, isWritable: true }, // User token account
-          { pubkey: VAULT_TOKEN_ACCOUNT, isSigner: false, isWritable: true }, // Vault token account
+          { pubkey: TOKEN_MINT_ADDRESS, isSigner: false, isWritable: false }, // Token mint address
           { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // Token program
           { pubkey: SystemProgram.programId, isSigner: false, isWritable: false } // System program to create account
         ],
