@@ -1,108 +1,95 @@
 /**
- * Register User - Exact Implementation
- * 
- * This is the implementation of user registration that exactly matches
- * the smart contract's expected account structure and instruction format.
- * It uses the fixed "user_info" seed for PDAs.
+ * Register User Handler
+ * Creates a user staking account in preparation for staking
  */
-
+import { Connection, PublicKey, Transaction, SystemProgram, clusterApiUrl } from '@solana/web3.js';
 import { Request, Response } from 'express';
-import {
-  PublicKey,
-  Transaction,
-  Connection,
-  clusterApiUrl,
-  SystemProgram,
-  SYSVAR_RENT_PUBKEY
-} from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import {
-  findUserStakingPDA,
-  findVaultPDA,
-  findVaultAuthorityPDA,
-  createRegisterUserInstruction
-} from './staking-contract-functions';
+import { PROGRAM_ID, VAULT_ADDRESS, findUserStakeInfoPDA, isUserRegistered } from './staking-vault-exact';
 
-/**
- * Handle the register user endpoint
- * Creates a transaction to register a user with the staking program
- */
 export async function handleRegisterUser(req: Request, res: Response) {
   try {
-    const { walletAddress, referrer } = req.body;
-
-    if (!walletAddress) {
-      return res.status(400).json({ error: "Wallet address is required" });
-    }
-
-    console.log(`Creating registration transaction for wallet: ${walletAddress}`);
+    const { walletAddress } = req.body;
     
-    // Convert wallet address to PublicKey
+    if (!walletAddress) {
+      return res.status(400).json({
+        success: false,
+        message: "Wallet address is required"
+      });
+    }
+    
+    console.log(`Processing registration request for wallet: ${walletAddress}`);
+    
     const userPublicKey = new PublicKey(walletAddress);
     
-    // Convert referrer to PublicKey if provided
-    let referrerPublicKey: PublicKey | undefined;
-    if (referrer) {
-      try {
-        referrerPublicKey = new PublicKey(referrer);
-        console.log(`Using referrer: ${referrer}`);
-      } catch (error) {
-        console.warn(`Invalid referrer public key: ${referrer}. Proceeding without referrer.`);
-      }
+    // Connect to Solana devnet
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    
+    // Check if the user is already registered
+    const isRegistered = await isUserRegistered(userPublicKey);
+    
+    if (isRegistered) {
+      console.log(`User ${walletAddress} is already registered`);
+      return res.json({
+        success: true,
+        message: "User is already registered for staking",
+        isRegistered: true
+      });
     }
     
-    // Create the transaction
-    const transaction = await createRegisterUserTransaction(
-      userPublicKey,
-      referrerPublicKey
-    );
+    // Find the PDA for this user's staking account
+    const [userStakingPDA, bump] = findUserStakeInfoPDA(userPublicKey);
+    console.log(`User staking PDA: ${userStakingPDA.toString()}, bump: ${bump}`);
     
-    console.log('Registration transaction created successfully');
+    // Create a transaction to initialize the user's staking account
+    const transaction = new Transaction();
     
-    // Serialize and return the transaction
-    const serializedTransaction = Buffer.from(transaction.serialize()).toString('base64');
+    // Get the latest blockhash for transaction
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+    transaction.recentBlockhash = blockhash;
+    transaction.lastValidBlockHeight = lastValidBlockHeight;
     
+    // Create the instruction data for the register instruction
+    // The smart contract expects an 8-byte instruction discriminator followed by any parameters
+    // For registration, typically just the instruction discriminator is enough
+    // Instruction index 0 is commonly used for "initialize" or "register" functions
+    const instructionData = Buffer.from([0, 0, 0, 0, 0, 0, 0, 0]); // 8 bytes for instruction discriminator
+    
+    // Add the instruction to register the user
+    transaction.add({
+      keys: [
+        { pubkey: userPublicKey, isSigner: true, isWritable: true }, // User account (signer)
+        { pubkey: userStakingPDA, isSigner: false, isWritable: true }, // PDA account to store user staking info
+        { pubkey: VAULT_ADDRESS, isSigner: false, isWritable: false }, // Vault address (not modified)
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false } // System program to create account
+      ],
+      programId: PROGRAM_ID,
+      data: instructionData
+    });
+    
+    // Set the fee payer
+    transaction.feePayer = userPublicKey;
+    
+    // Serialize the transaction
+    const serializedTransaction = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false
+    }).toString('base64');
+    
+    console.log(`Generated registration transaction for ${walletAddress}`);
+    
+    // Return the transaction for the client to sign
     return res.json({
       success: true,
       message: "Registration transaction created",
-      transaction: serializedTransaction
+      transaction: serializedTransaction,
+      userStakeInfoPDA: userStakingPDA.toString()
     });
   } catch (error) {
-    console.error('Error creating registration transaction:', error);
+    console.error("Error processing registration request:", error);
     return res.status(500).json({
-      error: "Failed to create registration transaction",
-      details: error instanceof Error ? error.message : String(error)
+      success: false,
+      message: "Failed to create registration transaction",
+      error: error instanceof Error ? error.message : String(error)
     });
   }
-}
-
-/**
- * Create a transaction to register a user with the staking program
- * 
- * @param userPublicKey The user's wallet address as a PublicKey
- * @param referrer Optional referrer's wallet address as a PublicKey
- * @returns The transaction for the user to sign
- */
-export async function createRegisterUserTransaction(
-  userPublicKey: PublicKey,
-  referrer?: PublicKey
-): Promise<Transaction> {
-  // Get a connection to the Solana cluster
-  const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
-  
-  // Get the recent blockhash
-  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-  
-  // Create a new transaction with the blockhash
-  const transaction = new Transaction({
-    feePayer: userPublicKey,
-    blockhash,
-    lastValidBlockHeight
-  });
-  
-  // Create the register user instruction and add it to the transaction
-  const registerInstruction = await createRegisterUserInstruction(userPublicKey, referrer);
-  transaction.add(registerInstruction);
-  
-  return transaction;
 }

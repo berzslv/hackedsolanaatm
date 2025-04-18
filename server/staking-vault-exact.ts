@@ -1,109 +1,141 @@
 /**
- * Staking Vault Exact Utilities
+ * Staking Vault Utilities - Exact implementation
  * 
- * This file contains exact utilities for working with the staking vault contract
- * It provides precise constants and functions without any indirect indirection
+ * This module provides utility functions for interacting with the staking vault
+ * with exact seeds and account structures as expected by the smart contract.
  */
+import { Connection, Keypair, PublicKey, clusterApiUrl } from '@solana/web3.js';
+import * as anchor from '@coral-xyz/anchor';
+import { IDL } from '../idl/staking_vault';
 
-import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
-import { AccountLayout, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
-
-// Exact constants for the staking contract
-export const TOKEN_MINT_ADDRESS = new PublicKey('59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk');
+// Constants from the deployed program
 export const PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
 export const VAULT_ADDRESS = new PublicKey('EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu');
 export const VAULT_TOKEN_ACCOUNT = new PublicKey('3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL');
+export const TOKEN_MINT_ADDRESS = new PublicKey('59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk');
+
+// The exact seed used by the smart contract
+const USER_STAKE_INFO_SEED = 'user_info';
 
 /**
- * Get a connection to the blockchain
+ * Find the user's staking account PDA
+ * @param userPubkey User's wallet public key
+ * @returns The PDA public key and bump seed
  */
-export const getConnection = (): Connection => {
-  return new Connection(clusterApiUrl('devnet'), 'confirmed');
-};
-
-/**
- * Find the PDA for a user's stake info account
- * @param userPublicKey - The public key of the user
- * @returns The PDA for the user's stake info account
- */
-export const findUserStakeInfoPDA = (userPublicKey: PublicKey): [PublicKey, number] => {
+export function findUserStakeInfoPDA(userPubkey: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from('user_info'), userPublicKey.toBuffer()],
+    [Buffer.from(USER_STAKE_INFO_SEED), userPubkey.toBuffer()],
     PROGRAM_ID
   );
-};
+}
 
 /**
- * Check if a user is registered with the staking contract
- * @param userPublicKey - The public key of the user
- * @returns True if the user is registered, false otherwise
+ * Check if a user is already registered with the staking program
+ * @param userPubkey User's wallet public key
+ * @returns True if registered, false otherwise
  */
-export const isUserRegistered = async (userPublicKey: PublicKey): Promise<boolean> => {
+export async function isUserRegistered(userPubkey: PublicKey): Promise<boolean> {
   try {
-    const connection = getConnection();
-    const [userStakeInfoPDA] = findUserStakeInfoPDA(userPublicKey);
+    // Connect to Solana devnet
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
     
-    const accountInfo = await connection.getAccountInfo(userStakeInfoPDA);
-    return accountInfo !== null;
+    // Find user staking account PDA
+    const [userStakingPDA] = findUserStakeInfoPDA(userPubkey);
+    
+    // Try to fetch the account
+    const account = await connection.getAccountInfo(userStakingPDA);
+    
+    // If account exists and is owned by the staking program, user is registered
+    return !!account && account.owner.equals(PROGRAM_ID);
   } catch (error) {
-    console.error('Error checking if user is registered:', error);
+    console.error("Error checking if user is registered:", error);
     return false;
   }
-};
+}
 
 /**
- * Get the user's stake info account data
- * @param userPublicKey - The public key of the user
- * @returns The user's stake info
+ * Get staking information for a user
+ * @param userPubkey User's wallet public key
+ * @returns Staking information
  */
-export const getUserStakeInfo = async (userPublicKey: PublicKey): Promise<{
-  registered: boolean;
+export async function getUserStakingInfo(userPubkey: PublicKey): Promise<{
+  isRegistered: boolean;
   amountStaked: number;
-  stakeStartTime: Date | null;
+  pendingRewards: number;
+  lastStakeTime: Date | null;
   lastClaimTime: Date | null;
-  userStakeInfoAddress: string;
-}> => {
+  referrer: PublicKey | null;
+}> {
   try {
-    const connection = getConnection();
-    const [userStakeInfoPDA] = findUserStakeInfoPDA(userPublicKey);
+    // Connect to Solana devnet
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
     
-    // Check if the user is registered
-    const accountInfo = await connection.getAccountInfo(userStakeInfoPDA);
+    // Find user staking account PDA
+    const [userStakingPDA] = findUserStakeInfoPDA(userPubkey);
     
-    // If the user is not registered, return default values
-    if (!accountInfo) {
-      console.log(`No user stake info found for: ${userPublicKey.toString()}`);
-      return {
-        registered: false,
-        amountStaked: 0,
-        stakeStartTime: null,
-        lastClaimTime: null,
-        userStakeInfoAddress: userStakeInfoPDA.toString()
-      };
+    // Try to fetch the account
+    const account = await connection.getAccountInfo(userStakingPDA);
+    
+    // Default values if not registered
+    const defaultInfo = {
+      isRegistered: false,
+      amountStaked: 0,
+      pendingRewards: 0,
+      lastStakeTime: null,
+      lastClaimTime: null,
+      referrer: null
+    };
+    
+    // If account doesn't exist, user is not registered
+    if (!account || !account.owner.equals(PROGRAM_ID)) {
+      return defaultInfo;
     }
     
-    // User is registered, return the stake info
-    // In a real implementation, we would parse the account data here
-    // but for now we'll return basic data
-    
-    return {
-      registered: true,
-      amountStaked: 0, // We would parse this from the account data
-      stakeStartTime: new Date(),
-      lastClaimTime: null,
-      userStakeInfoAddress: userStakeInfoPDA.toString()
-    };
+    // User is registered, try to decode the account data
+    try {
+      // Create provider and program
+      const provider = new anchor.AnchorProvider(
+        connection,
+        {
+          publicKey: userPubkey,
+          signTransaction: async () => { throw new Error('Not implemented'); },
+          signAllTransactions: async () => { throw new Error('Not implemented'); }
+        },
+        { commitment: 'confirmed' }
+      );
+      
+      const program = new anchor.Program(IDL, PROGRAM_ID, provider);
+      
+      // Decode the account data using anchor
+      const userStakeInfo = await program.account.userStakeInfo.fetch(userStakingPDA);
+      
+      // Extract and convert the data
+      return {
+        isRegistered: true,
+        amountStaked: Number(userStakeInfo.amountStaked?.toString() || '0'),
+        pendingRewards: Number(userStakeInfo.pendingRewards?.toString() || '0'),
+        lastStakeTime: userStakeInfo.lastStakeTime ? new Date(Number(userStakeInfo.lastStakeTime) * 1000) : null,
+        lastClaimTime: userStakeInfo.lastClaimTime ? new Date(Number(userStakeInfo.lastClaimTime) * 1000) : null,
+        referrer: userStakeInfo.referrer || null
+      };
+    } catch (decodeError) {
+      console.error("Error decoding user staking account data:", decodeError);
+      
+      // User is registered but we couldn't decode the data
+      return {
+        ...defaultInfo,
+        isRegistered: true
+      };
+    }
   } catch (error) {
-    console.error('Error getting user stake info:', error);
-    
-    // Return default values on error
-    const [userStakeInfoPDA] = findUserStakeInfoPDA(userPublicKey);
+    console.error("Error getting user staking info:", error);
     return {
-      registered: false,
+      isRegistered: false,
       amountStaked: 0,
-      stakeStartTime: null,
+      pendingRewards: 0,
+      lastStakeTime: null,
       lastClaimTime: null,
-      userStakeInfoAddress: userStakeInfoPDA.toString()
+      referrer: null
     };
   }
-};
+}

@@ -2168,6 +2168,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add explicit register user endpoint for manual registration
   app.post("/api/register-user", handleRegisterUser);
   
+  // Endpoint to check staking accounts info and registration status
+  app.post("/api/staking-accounts-info", async (req, res) => {
+    try {
+      const { walletAddress, amount } = req.body;
+      
+      if (!walletAddress || !amount) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Wallet address and amount are required" 
+        });
+      }
+      
+      // Parse token amount
+      const parsedAmount = parseInt(amount, 10);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Invalid token amount" 
+        });
+      }
+      
+      console.log(`Providing account info for client-side staking transaction for wallet: ${walletAddress}, amount: ${parsedAmount}`);
+      
+      try {
+        // Import staking vault utils
+        const stakingVault = await import('./staking-vault-exact');
+        
+        // Get information about the staking program and vault
+        const userPublicKey = new PublicKey(walletAddress);
+        
+        // Check if user is registered already
+        const isRegistered = await stakingVault.isUserRegistered(userPublicKey);
+        
+        // Calculate user staking account address
+        const [userStakeInfoPDA] = stakingVault.findUserStakeInfoPDA(userPublicKey);
+        
+        // Return all necessary account information for the client
+        return res.json({
+          success: true,
+          tokenMint: stakingVault.TOKEN_MINT_ADDRESS.toString(),
+          programId: stakingVault.PROGRAM_ID.toString(),
+          vault: stakingVault.VAULT_ADDRESS.toString(),
+          vaultTokenAccount: stakingVault.VAULT_TOKEN_ACCOUNT.toString(),
+          userStakeInfoAddress: userStakeInfoPDA.toString(),
+          isRegistered: isRegistered,
+          decimals: 9 // token decimals
+        });
+      } catch (error) {
+        console.error("Error getting staking account info:", error);
+        return res.status(500).json({
+          success: false,
+          error: "Failed to get staking account information",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } catch (error) {
+      console.error("Error processing staking account info request:", error);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to process staking account info request",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
   // Legacy staking endpoint (will be deprecated)
   app.post("/api/stake-tokens", async (req, res) => {
     try {
