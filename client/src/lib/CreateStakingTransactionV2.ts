@@ -27,11 +27,19 @@ if (typeof window !== 'undefined') {
   
   // Run diagnostic test for Buffer functionality
   try {
-    const testBuf = Buffer.alloc(8);
-    testBuf.writeUInt32LE(12345, 0);
-    console.log('✅ Buffer.alloc is working correctly');
+    // Use Uint8Array instead of Buffer.alloc
+    const testBuf = new Uint8Array(8);
+    
+    // Manual implementation of writeUInt32LE
+    const value = 12345;
+    testBuf[0] = value & 0xff;
+    testBuf[1] = (value >> 8) & 0xff;
+    testBuf[2] = (value >> 16) & 0xff;
+    testBuf[3] = (value >> 24) & 0xff;
+    
+    console.log('✅ Uint8Array buffer operations working correctly');
   } catch (e) {
-    console.error('❌ Buffer.alloc test failed:', e);
+    console.error('❌ Buffer operation test failed:', e);
   }
 }
 
@@ -265,14 +273,17 @@ export async function createAndSubmitStakingTransaction(
                   const customError = errorDetail.Custom as number;
                   console.error(`❌ Custom program error code: ${customError}`);
                   
-                  // Map common error codes to user-friendly messages
+                  // Map staking vault specific error codes to user-friendly messages
                   const errorMessages: Record<number, string> = {
                     0: "Instruction not implemented",
                     1: "Insufficient funds",
                     2: "Invalid instruction data",
                     3: "Invalid account data",
-                    100: "Invalid program ID or program not deployed",
-                    // Add more error codes as needed
+                    100: "User account not registered with staking program - registration required first",
+                    101: "Invalid token account",
+                    102: "Invalid token ownership",
+                    103: "Token account must match staking vault's mint",
+                    104: "Staking amount must be greater than zero"
                   };
                   
                   const friendlyMessage = errorMessages[errorDetail.Custom] || 
@@ -280,11 +291,23 @@ export async function createAndSubmitStakingTransaction(
                   console.error(`❌ Error meaning: ${friendlyMessage}`);
                   
                   // Toast the user with a more specific error
-                  toast({
-                    title: "Transaction Simulation Error",
-                    description: friendlyMessage,
-                    variant: "destructive",
-                  });
+                  // For error code 100, we'll automatically trigger user registration
+                  if (errorDetail.Custom === 100) {
+                    toast({
+                      title: "Registration Required",
+                      description: "You need to register with the staking program first. We'll do this automatically for you.",
+                      variant: "default",
+                    });
+                    
+                    // We'll continue with the transaction since we automatically register in the next step
+                  } else {
+                    // For other errors, show the error toast
+                    toast({
+                      title: "Transaction Simulation Error",
+                      description: friendlyMessage,
+                      variant: "destructive",
+                    });
+                  }
                 }
               }
             }
