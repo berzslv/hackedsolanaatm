@@ -243,14 +243,26 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
         publicKey
       };
       
-      // Use our enhanced transaction handling function
+      // Use our enhanced transaction handling function with status updates
       console.log("Using enhanced transaction handling for buy and stake");
+      updateTxStatus("Preparing transaction...");
+      
+      // Create a status callback function to update UI
+      const statusCallback = (status: string, isFallback: boolean) => {
+        console.log(`Transaction status: ${status}${isFallback ? " (fallback)" : ""}`);
+        updateTxStatus(status, isFallback);
+      };
+      
       const result = await createAndSubmitStakingTransaction(
         connection,
         publicKey,
         tokenAmount, // We pass the token amount, not SOL amount
         wallet,
-        false // false means "buy and stake" instead of "stake existing"
+        false, // false means "buy and stake" instead of "stake existing"
+        {
+          // Optional config with status updates
+          onStatusUpdate: statusCallback
+        }
       );
       
       if (!result.success) {

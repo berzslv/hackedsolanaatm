@@ -58,12 +58,20 @@ function isLegacyTransaction(tx: Transaction | VersionedTransaction): tx is Tran
   return !('version' in tx);
 }
 
+// Define options interface for the transaction function
+interface StakingTransactionOptions {
+  onStatusUpdate?: (status: string, isFallback: boolean) => void;
+  skipPreflight?: boolean;
+  maxRetries?: number;
+}
+
 export async function createAndSubmitStakingTransaction(
   connection: Connection,
   publicKey: PublicKey,
   amount: number,
   wallet: any,
-  useExistingTokens: boolean = true // Default to staking existing tokens
+  useExistingTokens: boolean = true, // Default to staking existing tokens
+  options?: StakingTransactionOptions
 ): Promise<{ 
   success: boolean; 
   message: string; 
@@ -71,7 +79,14 @@ export async function createAndSubmitStakingTransaction(
   error?: string;
   canRetry?: boolean;
   suggestedAction?: string;
+  usedFallback?: boolean;
 }> {
+  // Extract options with defaults
+  const { 
+    onStatusUpdate = () => {}, // Default no-op function
+    skipPreflight = false,
+    maxRetries = 3
+  } = options || {};
   console.log(`🚀 Starting ${useExistingTokens ? 'direct staking' : 'buy and stake'} process`);
   console.log("👛 Wallet public key:", publicKey.toString());
   console.log("🔢 Amount to stake:", amount);
