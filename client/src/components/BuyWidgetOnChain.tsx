@@ -395,8 +395,60 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
     }
   };
 
+  // Transaction processing modal for showing detailed steps
+  const [txStatus, setTxStatus] = useState<string>("");
+  const [usingFallback, setUsingFallback] = useState<boolean>(false);
+  
+  // Add transaction status update function
+  const updateTxStatus = (status: string, isFallback = false) => {
+    setTxStatus(status);
+    if (isFallback) setUsingFallback(true);
+  };
+  
   return (
     <div className="relative max-w-md mx-auto" ref={widgetRef}>
+      
+      {/* Transaction Processing Modal */}
+      {isProcessing && (
+        <div className="fixed inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-50">
+          <div className="bg-card p-6 rounded-xl shadow-xl max-w-md w-full">
+            <div className="flex flex-col items-center text-center gap-4">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <h3 className="text-lg font-semibold">Processing Transaction</h3>
+              <p className="text-muted-foreground">
+                Please wait while your transaction is being processed{usingFallback ? " using an alternative method" : ""}...
+              </p>
+              
+              <div className="w-full bg-muted rounded-lg p-3 text-xs font-mono text-left overflow-hidden whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
+                <div className="text-primary">
+                  Connecting to wallet... ✓
+                </div>
+                <div className="text-primary">
+                  Building transaction... ✓
+                </div>
+                <div className="text-primary">
+                  {!txStatus ? (
+                    <span className="animate-pulse">Requesting signature...</span>
+                  ) : (
+                    <>Requesting signature... ✓</>
+                  )}
+                </div>
+                
+                {txStatus && (
+                  <div className={usingFallback ? "text-yellow-500" : "text-green-500"}>
+                    {txStatus}
+                    {usingFallback && (
+                      <div className="text-primary mt-1">
+                        Using enhanced transaction handling for reliability
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Flash effect when button is clicked while connected */}
       {isFlashing && connected && (
         <div className="absolute inset-0 z-20 overflow-hidden rounded-3xl animate-flash-pulse">
@@ -541,7 +593,7 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
             {isProcessing ? (
               <div className="flex items-center justify-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Processing...</span>
+                <span>Processing transaction...</span>
               </div>
             ) : (
               connected ? 'Buy & Stake HATM' : 'Connect Wallet to Buy'
