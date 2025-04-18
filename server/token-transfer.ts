@@ -224,7 +224,7 @@ export async function vaultTransferTokens(
     const vaultTokenAccount = new PublicKey(VAULT_TOKEN_ACCOUNT);
     
     // Get vault PDA
-    const vaultPDA = new PublicKey('DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8');
+    const vaultPDA = new PublicKey('EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu');
     
     console.log(`Using vault token account: ${vaultTokenAccount.toString()}`);
     console.log(`Using vault PDA: ${vaultPDA.toString()}`);
