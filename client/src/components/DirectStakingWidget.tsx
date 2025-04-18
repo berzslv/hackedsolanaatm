@@ -656,10 +656,10 @@ const DirectStakingWidget: React.FC = () => {
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={() => refreshAllData()}
-            disabled={loading}
+            onClick={() => refreshBlockchainData()}
+            disabled={loading || isSyncing}
           >
-            <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCcw className={`h-4 w-4 ${loading || isSyncing ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </CardHeader>
@@ -858,43 +858,6 @@ const DirectStakingWidget: React.FC = () => {
           </TabsContent>
         </Tabs>
         
-
-        {/* Refresh Data */}
-        <div className="mt-6 pt-6 border-t">
-          <div className="flex justify-between items-center mb-3">
-            <div className="text-sm text-muted-foreground">Blockchain Data</div>
-            
-            {/* Refresh Button */}
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={refreshBlockchainData}
-              disabled={isSyncing || !connected}
-              className="text-xs"
-            >
-              {isSyncing ? (
-                <>
-                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                  Refreshing...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-1 h-3 w-3" />
-                  Refresh Data
-                </>
-              )}
-            </Button>
-          </div>
-          
-          <Alert className="mb-4 text-xs bg-primary/5 border-primary/20">
-            <Info className="h-3 w-3" />
-            <AlertTitle className="text-xs">On-Chain Data</AlertTitle>
-            <AlertDescription className="text-xs">
-              All staking data is read directly from the Solana blockchain. Refresh to see the latest updates.
-            </AlertDescription>
-          </Alert>
-        </div>
-
         {/* Global Staking Statistics */}
         <div className="mt-6 pt-6 border-t">
           <div className="text-sm text-muted-foreground mb-3">Global Staking Statistics</div>
