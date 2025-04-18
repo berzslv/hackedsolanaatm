@@ -4,6 +4,9 @@
 import { Connection, PublicKey, clusterApiUrl, Transaction, SystemProgram } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
+// Constants for our token
+export const TOKEN_MINT_ADDRESS = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
+
 /**
  * Register user for staking
  * Creates a user staking account in preparation for staking
@@ -199,6 +202,70 @@ export const stakeExistingTokens = async (
     
     if (registrationResult.success) {
       console.log("✅ Registration verified:", registrationResult.message);
+    }
+    
+    // Check if the token account exists and has sufficient balance
+    console.log("🔍 Checking token account for sufficient balance");
+    
+    try {
+      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+      const userPubkey = new PublicKey(walletAddress);
+      const tokenMint = new PublicKey(TOKEN_MINT_ADDRESS);
+      
+      // Find the associated token account
+      const userTokenAccount = await getAssociatedTokenAddress(
+        tokenMint,
+        userPubkey,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      
+      console.log(`Found token account: ${userTokenAccount.toString()}`);
+      
+      // Check if the token account exists
+      try {
+        const accountInfo = await connection.getAccountInfo(userTokenAccount);
+        
+        if (!accountInfo) {
+          console.log("Token account does not exist. Creating it first.");
+          const tokenAccountResult = await checkAndCreateTokenAccount(walletAddress, TOKEN_MINT_ADDRESS, wallet);
+          
+          if (!tokenAccountResult.success) {
+            console.error("❌ Failed to create token account:", tokenAccountResult.error);
+            return { error: `Failed to create token account: ${tokenAccountResult.error}` };
+          }
+          
+          console.log("✅ Token account created successfully");
+        } else {
+          console.log("Token account exists and is valid");
+        }
+        
+        // Get token balance (we'll query this regardless of whether we just created it)
+        // because the account needs a moment to show up in get balance calls
+        try {
+          const tokenBalance = await connection.getTokenAccountBalance(userTokenAccount);
+          const balanceAmount = tokenBalance.value.uiAmount || 0;
+          console.log(`Token balance: ${balanceAmount}`);
+          
+          // Check if there's enough balance
+          if (balanceAmount < amount) {
+            console.error(`❌ Insufficient token balance. Required: ${amount}, Available: ${balanceAmount}`);
+            return { error: `Insufficient token balance. You have ${balanceAmount} tokens, but ${amount} are required for this stake.` };
+          }
+          
+          console.log("✅ Sufficient token balance available for staking");
+        } catch (balanceError) {
+          console.warn("⚠️ Error checking token balance (will proceed anyway):", balanceError);
+          // We'll proceed with the transaction anyway and let the contract handle insufficient funds
+        }
+      } catch (accountError) {
+        console.error("❌ Error checking token account:", accountError);
+        return { error: `Failed to verify token account: ${accountError instanceof Error ? accountError.message : String(accountError)}` };
+      }
+    } catch (tokenCheckError) {
+      console.warn("⚠️ Error in token account check:", tokenCheckError);
+      // We'll continue and let the contract handle any token account issues
     }
     
     // Call our backend endpoint to get necessary account info and prepare for staking
