@@ -446,7 +446,8 @@ export const stakeExistingTokens = async (
       const tokenMint = new PublicKey(accountsInfo.tokenMint);
       const programId = new PublicKey(accountsInfo.programId);
       const vaultPubkey = new PublicKey(accountsInfo.vault);
-      const vaultTokenAccount = new PublicKey(accountsInfo.vaultTokenAccount);
+      // Make this a 'let' so we can modify it if needed
+      let vaultTokenAccount = new PublicKey(accountsInfo.vaultTokenAccount);
       
       // Get the user's token account
       const userTokenAccount = await getAssociatedTokenAddress(
