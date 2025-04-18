@@ -31,7 +31,7 @@ import {
 } from './staking-contract-functions';
 
 // Import token buy utilities
-import { getMintAuthority, getTokenMint } from './token-utils';
+import { getMintAuthority, getTokenMint, MintAuthority } from './token-utils';
 
 /**
  * Handler for the buy-and-stake endpoint
@@ -116,6 +116,10 @@ export async function createCombinedBuyAndStakeTransaction(
   const mintAuthority = getMintAuthority();
   const mintPubkey = getTokenMint();
   
+  console.log(`Creating buy-and-stake transaction with token mint: ${mintPubkey.toString()}`);
+  console.log(`User wallet address: ${userWalletAddress.toString()}`);
+  console.log(`Amount SOL: ${solAmount}, Token amount: ${solAmount * 1000}`);
+  
   // Calculate token amount based on conversion rate (1 SOL = 1000 tokens)
   const tokenAmount = solAmount * 1000;
   
@@ -167,9 +171,10 @@ export async function createCombinedBuyAndStakeTransaction(
   // Add payment instruction (SOL transfer to mint authority)
   const transferSolIx = SystemProgram.transfer({
     fromPubkey: userWalletAddress,
-    toPubkey: mintAuthority.publicKey,
+    toPubkey: mintAuthority.keypair.publicKey,
     lamports: solAmount * LAMPORTS_PER_SOL
   });
+  console.log(`Adding SOL transfer instruction: ${solAmount} SOL to ${mintAuthority.keypair.publicKey.toString()}`);
   transaction.add(transferSolIx);
   
   // Check if the user is already registered with the staking vault
@@ -182,9 +187,16 @@ export async function createCombinedBuyAndStakeTransaction(
     transaction.add(registerInstruction);
   }
   
-  // Add the staking instruction
-  const stakeInstruction = await createStakeInstruction(userWalletAddress, tokenAmount, referrer);
-  transaction.add(stakeInstruction);
+  try {
+    // Add the staking instruction
+    console.log("Creating staking instruction for token amount:", tokenAmount);
+    const stakeInstruction = await createStakeInstruction(userWalletAddress, tokenAmount, referrer);
+    console.log("Staking instruction created successfully");
+    transaction.add(stakeInstruction);
+  } catch (error) {
+    console.error("Error creating staking instruction:", error);
+    throw new Error(`Failed to create staking instruction: ${error instanceof Error ? error.message : String(error)}`);
+  }
   
   return transaction;
 }

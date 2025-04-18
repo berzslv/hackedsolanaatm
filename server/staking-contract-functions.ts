@@ -70,10 +70,14 @@ export function findVaultAuthorityPDA(): [PublicKey, number] {
  * Find the associated token account for a wallet and token mint
  */
 export async function findAssociatedTokenAccount(wallet: PublicKey, mint: PublicKey = TOKEN_MINT): Promise<PublicKey> {
+  // Allow owner off curve when the owner is a PDA
+  // This is crucial for PDAs like our vault authority
+  const isPDA = !PublicKey.isOnCurve(wallet.toBuffer());
+  
   return await getAssociatedTokenAddress(
     mint,
     wallet,
-    false,
+    isPDA, // Set allowOwnerOffCurve to true for PDAs
     TOKEN_PROGRAM_ID,
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
