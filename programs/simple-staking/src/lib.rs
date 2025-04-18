@@ -82,10 +82,7 @@ pub mod simple_staking {
         require!(user_info.amount_staked >= amount, ErrorCode::InsufficientStake);
 
         // Create authority seeds for signing
-        let vault_auth_seeds = &[
-            b"vault_auth",
-            &[vault.vault_bump],
-        ];
+        let vault_auth_seeds = &[b"vault_auth", &[vault.vault_bump]];
         let signer = &[&vault_auth_seeds[..]];
 
         // Transfer tokens back to user
