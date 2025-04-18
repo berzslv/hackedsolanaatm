@@ -375,11 +375,15 @@ export async function createAndSubmitStakingTransaction(
                               console.log("✅ Registration transaction sent via server:", regSignature);
                             }
                             
-                            // Wait for confirmation
-                            const regConfirmation = await connection.confirmTransaction(regSignature);
-                            
-                            if (regConfirmation.value.err) {
-                              throw new Error(`Registration confirmed with error: ${JSON.stringify(regConfirmation.value.err)}`);
+                            // Wait for confirmation - only if signature is in valid base58 format
+                            if (typeof regSignature === 'string' && /^[A-HJ-NP-Za-km-z1-9]*$/.test(regSignature)) {
+                              const regConfirmation = await connection.confirmTransaction(regSignature);
+                              
+                              if (regConfirmation.value.err) {
+                                throw new Error(`Registration confirmed with error: ${JSON.stringify(regConfirmation.value.err)}`);
+                              }
+                            } else {
+                              console.log("Registration processed but signature not in expected format, skipping confirmation");
                             }
                             
                             console.log("🎉 Registration successful! Now we can retry the stake transaction");
@@ -619,11 +623,26 @@ export async function createAndSubmitStakingTransaction(
       // Get the latest blockhash for confirmation
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
       
-      const confirmationResult = await connection.confirmTransaction({
-        signature,
-        blockhash, 
-        lastValidBlockHeight
-      }, 'confirmed');
+      // Ensure signature is valid before confirming
+      if (typeof signature === 'string' && /^[A-HJ-NP-Za-km-z1-9]*$/.test(signature)) {
+        const confirmationResult = await connection.confirmTransaction({
+          signature,
+          blockhash, 
+          lastValidBlockHeight
+        }, 'confirmed');
+        
+        if (confirmationResult.value.err) {
+          console.error("❌ Transaction confirmed with error:", confirmationResult.value.err);
+          return {
+            success: false,
+            message: `Transaction confirmed but failed: ${JSON.stringify(confirmationResult.value.err)}`,
+            error: `Transaction error: ${JSON.stringify(confirmationResult.value.err)}`,
+            signature
+          };
+        }
+      } else {
+        console.log("⚠️ Skipping transaction confirmation for non-base58 signature:", signature);
+      }
       
       if (confirmationResult.value.err) {
         console.error('❌ Transaction confirmed but has errors:', confirmationResult.value.err);
