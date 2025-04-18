@@ -1,0 +1,84 @@
+api-client.ts:89 
+            
+            
+           POST https://d171b88a-2a35-4391-8076-76c59caf4f6c-00-2g965lmvanmb3.kirk.replit.dev/api/buy-and-stake-exact 500 (Internal Server Error)
+buyAndStakeTokens @ api-client.ts:89
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:71
+handleBuy @ BuyWidgetOnChain.tsx:248
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+api-client.ts:106 Buy and stake API error: {error: 'Failed to create buy-and-stake transaction', details: 'Signature verification failed.\nMissing signature f…[`9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX`].'}
+overrideMethod @ hook.js:608
+buyAndStakeTokens @ api-client.ts:106
+await in buyAndStakeTokens
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:71
+handleBuy @ BuyWidgetOnChain.tsx:248
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+CreateStakingTransactionV2.ts:79 ❌ Error from buyAndStakeTokens: Failed to create buy and stake transaction
+overrideMethod @ hook.js:608
+createAndSubmitStakingTransaction @ CreateStakingTransactionV2.ts:79
+await in createAndSubmitStakingTransaction
+handleBuy @ BuyWidgetOnChain.tsx:248
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+BuyWidgetOnChain.tsx:257 Transaction failed: Failed to create buy and stake transaction
+overrideMethod @ hook.js:608
+handleBuy @ BuyWidgetOnChain.tsx:257
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=6ed8202a:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=6ed8202a:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=6ed8202a:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=6ed8202a:3736
+executeDispatch @ chunk-276SZO74.js?v=6ed8202a:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=6ed8202a:7034
+processDispatchQueue @ chunk-276SZO74.js?v=6ed8202a:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=6ed8202a:7051
+(anonymous) @ chunk-276SZO74.js?v=6ed8202a:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=6ed8202a:18913
+batchedUpdates @ chunk-276SZO74.js?v=6ed8202a:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=6ed8202a:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=6ed8202a:5478
+dispatchEvent @ chunk-276SZO74.js?v=6ed8202a:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=6ed8202a:5449Understand this error
+BuyWidgetOnChain.tsx:361 Error processing purchase: Error: Failed to create buy and stake transaction
+    at handleBuy (BuyWidgetOnChain.tsx:258:15)

@@ -9,6 +9,7 @@ import {
   Connection,
   PublicKey,
   Transaction,
+  Message,
   sendAndConfirmTransaction
 } from '@solana/web3.js';
 import { toast } from '@/hooks/use-toast';
@@ -116,20 +117,22 @@ export async function createAndSubmitStakingTransaction(
       console.log('🔍 Attempting to deserialize transaction');
       
       // Convert base64 string to Uint8Array
-      const transactionBytes = base64ToUint8Array(transactionData.transaction);
+      const messageBytes = base64ToUint8Array(transactionData.transaction);
       
-      // Create Transaction from bytes
-      decodedTransaction = Transaction.from(transactionBytes);
+      // Create new transaction and populate with the message
+      decodedTransaction = Transaction.populate(
+        Transaction.from(messageBytes).compileMessage()
+      );
       
-      console.log('✅ Successfully deserialized transaction');
+      console.log('✅ Successfully deserialized transaction message');
       
-      // Ensure fee payer is set
+      // Ensure fee payer is set - this should already be set from the server
       if (!decodedTransaction.feePayer) {
         console.log('⚠️ Setting fee payer to current wallet');
         decodedTransaction.feePayer = publicKey;
       }
       
-      // Ensure recent blockhash is set
+      // Ensure recent blockhash is set - should already be set from the server
       if (!decodedTransaction.recentBlockhash) {
         console.log('⚠️ Getting fresh blockhash for transaction');
         const { blockhash } = await connection.getLatestBlockhash('finalized');
@@ -160,8 +163,15 @@ export async function createAndSubmitStakingTransaction(
       
       // Try a different approach as fallback
       try {
-        decodedTransaction = Transaction.from(transactionData.transaction);
-        console.log('✅ Successfully deserialized transaction using direct method');
+        const messageBytes = base64ToUint8Array(transactionData.transaction);
+        const message = Message.from(messageBytes);
+        decodedTransaction = new Transaction();
+        decodedTransaction.recentBlockhash = message.recentBlockhash;
+        decodedTransaction.feePayer = publicKey;
+        message.instructions.forEach(instruction => {
+          decodedTransaction.add(instruction);
+        });
+        console.log('✅ Successfully deserialized transaction using manual reconstruction');
       } catch (e2: any) {
         console.error('❌ All deserialization methods failed:', e2);
         return { 

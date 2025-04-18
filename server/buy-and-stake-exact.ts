@@ -78,8 +78,11 @@ export async function handleBuyAndStake(req: Request, res: Response) {
     
     console.log('Buy-and-stake transaction created successfully');
     
-    // Serialize and return the transaction
-    const serializedTransaction = Buffer.from(transaction.serialize()).toString('base64');
+    // Serialize the transaction without requiring signatures
+    // This allows the client to sign it before submitting
+    const serializedTransaction = Buffer.from(
+      transaction.serializeMessage()
+    ).toString('base64');
     
     return res.json({
       success: true,
