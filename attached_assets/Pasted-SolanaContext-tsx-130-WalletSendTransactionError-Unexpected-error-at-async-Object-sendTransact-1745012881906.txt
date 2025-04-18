@@ -1,0 +1,52 @@
+SolanaContext.tsx:130 WalletSendTransactionError: Unexpected error
+    at async Object.sendTransaction (SolanaContext.tsx:130:14)
+    at async registerUserForStaking (api-client.ts:116:27)
+    at async buyAndStakeTokens (api-client.ts:250:32)
+    at async createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:142:25)
+    at async handleBuy (BuyWidgetOnChain.tsx:296:22) 
+StandardWalletAdapter {_events: Events, _eventsCount: 4, signIn: ƒ, signTransaction: ƒ, signAllTransactions: ƒ, …}
+await in sendTransaction		
+sendTransaction	@	SolanaContext.tsx:130
+registerUserForStaking	@	api-client.ts:116
+await in registerUserForStaking		
+buyAndStakeTokens	@	api-client.ts:250
+createAndSubmitStakingTransaction	@	CreateStakingTransactionV2.ts:142
+handleBuy	@	BuyWidgetOnChain.tsx:296
+SolanaContext.tsx:132 Error sending transaction: WalletSendTransactionError: Unexpected error
+    at async Object.sendTransaction (SolanaContext.tsx:130:14)
+    at async registerUserForStaking (api-client.ts:116:27)
+    at async buyAndStakeTokens (api-client.ts:250:32)
+    at async createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:142:25)
+    at async handleBuy (BuyWidgetOnChain.tsx:296:22)
+sendTransaction	@	SolanaContext.tsx:132
+await in sendTransaction		
+registerUserForStaking	@	api-client.ts:116
+await in registerUserForStaking		
+buyAndStakeTokens	@	api-client.ts:250
+createAndSubmitStakingTransaction	@	CreateStakingTransactionV2.ts:142
+handleBuy	@	BuyWidgetOnChain.tsx:296
+api-client.ts:129 Error sending registration transaction: WalletSendTransactionError: Unexpected error
+    at async Object.sendTransaction (SolanaContext.tsx:130:14)
+    at async registerUserForStaking (api-client.ts:116:27)
+    at async buyAndStakeTokens (api-client.ts:250:32)
+    at async createAndSubmitStakingTransaction (CreateStakingTransactionV2.ts:142:25)
+    at async handleBuy (BuyWidgetOnChain.tsx:296:22)
+registerUserForStaking	@	api-client.ts:129
+await in registerUserForStaking		
+buyAndStakeTokens	@	api-client.ts:250
+createAndSubmitStakingTransaction	@	CreateStakingTransactionV2.ts:142
+handleBuy	@	BuyWidgetOnChain.tsx:296
+api-client.ts:253 ❌ Registration failed: Failed to send registration transaction: Unexpected error
+buyAndStakeTokens	@	api-client.ts:253
+await in buyAndStakeTokens		
+createAndSubmitStakingTransaction	@	CreateStakingTransactionV2.ts:142
+handleBuy	@	BuyWidgetOnChain.tsx:296
+CreateStakingTransactionV2.ts:151 ❌ Error from buyAndStakeTokens: Registration required before staking: Failed to send registration transaction: Unexpected error
+createAndSubmitStakingTransaction	@	CreateStakingTransactionV2.ts:151
+await in createAndSubmitStakingTransaction		
+handleBuy	@	BuyWidgetOnChain.tsx:296
+BuyWidgetOnChain.tsx:310 Transaction failed: Registration required before staking: Failed to send registration transaction: Unexpected error
+handleBuy	@	BuyWidgetOnChain.tsx:310
+BuyWidgetOnChain.tsx:444 Error processing purchase: Error: Registration required before staking: Failed to send registration transaction: Unexpected error
+    at handleBuy (BuyWidgetOnChain.tsx:337:15)
+handleBuy	@	BuyWidgetOnChain.tsx:444

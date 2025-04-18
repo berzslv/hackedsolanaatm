@@ -145,6 +145,58 @@ const DirectStakingWidget: React.FC = () => {
         });
       }
       
+      // Before proceeding, let's directly check the token balance
+      try {
+        const { Connection, PublicKey, clusterApiUrl } = await import('@solana/web3.js');
+        const { TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
+        const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+        
+        // Get token account address
+        const userPubkey = new PublicKey(publicKey.toString());
+        const mintPubkey = new PublicKey(tokenMint);
+        
+        // Get all token accounts for this owner
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          userPubkey,
+          { mint: mintPubkey }
+        );
+        
+        console.log(`Found ${tokenAccounts.value.length} token accounts for mint`);
+        
+        let sufficientBalance = false;
+        
+        if (tokenAccounts.value.length > 0) {
+          // Find token account with a balance
+          for (const account of tokenAccounts.value) {
+            const tokenBalance = account.account.data.parsed.info.tokenAmount.uiAmount;
+            console.log(`Token account ${account.pubkey.toString()} has balance: ${tokenBalance}`);
+            
+            if (tokenBalance >= amount) {
+              sufficientBalance = true;
+              break;
+            }
+          }
+        }
+        
+        if (!sufficientBalance) {
+          console.error(`❌ No token account has sufficient balance. Required: ${amount} HATM`);
+          toast({
+            title: 'Insufficient token balance',
+            description: `You need ${amount} HATM tokens to stake, but your wallet doesn't have enough. Please buy tokens first.`,
+            variant: 'destructive'
+          });
+          throw new Error(`Insufficient token balance. Required: ${amount} HATM`);
+        }
+        
+        console.log("✅ Sufficient token balance verified");
+      } catch (balanceError) {
+        console.error("Error checking token balance:", balanceError);
+        if (balanceError instanceof Error && balanceError.message.includes("Insufficient token balance")) {
+          throw balanceError; // Re-throw specific balance errors
+        }
+        // Continue anyway even if balance check fails - the smart contract will catch it
+      }
+      
       console.log("🔧 Calling stakeExistingTokens function");
       const stakeResult = await stakeExistingTokens(
         publicKey.toString(),
@@ -244,12 +296,86 @@ const DirectStakingWidget: React.FC = () => {
       try {
         console.log('Sending transaction to the network...');
         
-        // Sign and send the transaction with detailed options
-        signature = await sendTransaction(decodedTransaction, connection, {
-          skipPreflight: false, // Run preflight checks
-          preflightCommitment: 'confirmed', // Use confirmed commitment level for preflight
-          maxRetries: 5 // Try a few times if it fails
-        });
+        try {
+          // APPROACH 1: Primary approach - use wallet adapter's sendTransaction
+          console.log('Attempting primary transaction method: wallet.sendTransaction');
+          signature = await sendTransaction(decodedTransaction, connection, {
+            skipPreflight: false, // Run preflight checks
+            preflightCommitment: 'confirmed', // Use confirmed commitment level for preflight
+            maxRetries: 5 // Try a few times if it fails
+          });
+          console.log('✅ Primary transaction method successful, signature:', signature);
+        } catch (primaryError) {
+          console.error('❌ Primary transaction method failed:', primaryError);
+          
+          if (primaryError instanceof Error && 
+             (primaryError.message.includes('Unexpected error') || 
+              primaryError.message.includes('User rejected'))) {
+              
+            console.log('🔄 Falling back to alternate transaction method: manual sign + send');
+            
+            // APPROACH 2: Fallback - manually sign the transaction and send it
+            toast({
+              title: 'Primary transaction method failed',
+              description: 'Trying alternate method...',
+            });
+            
+            try {
+              // Get fresh blockhash
+              const { blockhash, lastValidBlockHeight } = 
+                await connection.getLatestBlockhash('finalized');
+              decodedTransaction.recentBlockhash = blockhash;
+              decodedTransaction.lastValidBlockHeight = lastValidBlockHeight;
+              
+              // Manually sign the transaction
+              const signedTransaction = await signTransaction(decodedTransaction);
+              
+              // Send the signed transaction
+              signature = await connection.sendRawTransaction(
+                signedTransaction.serialize(),
+                { 
+                  skipPreflight: false,
+                  preflightCommitment: 'confirmed',
+                  maxRetries: 5
+                }
+              );
+              console.log('✅ Alternate transaction method successful, signature:', signature);
+            } catch (fallbackError) {
+              console.error('❌ Alternate transaction method failed:', fallbackError);
+              
+              // APPROACH 3: Server-side fallback
+              console.log('🔄 Falling back to server-side transaction submission');
+              toast({
+                title: 'Local transaction methods failed',
+                description: 'Trying server-side submission...',
+              });
+              
+              // Use server-side fallback
+              const serverSubmitResponse = await fetch('/api/submit-transaction', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  walletAddress: publicKey.toString(),
+                  transactionBase64: transactionData.transaction,
+                  amount: amount,
+                  type: 'stake'
+                })
+              });
+              
+              if (!serverSubmitResponse.ok) {
+                const serverError = await serverSubmitResponse.json();
+                throw new Error(`Server-side submission failed: ${serverError.error || serverSubmitResponse.statusText}`);
+              }
+              
+              const serverResult = await serverSubmitResponse.json();
+              signature = serverResult.signature;
+              console.log('✅ Server-side transaction method successful, signature:', signature);
+            }
+          } else {
+            // Not an "Unexpected error", rethrow
+            throw primaryError;
+          }
+        }
         
         console.log('Transaction sent with signature:', signature);
         
@@ -258,7 +384,7 @@ const DirectStakingWidget: React.FC = () => {
           description: 'Waiting for confirmation...',
         });
         
-        // Wait for confirmation with more detailed options
+        // Wait for confirmation
         const confirmationResult = await connection.confirmTransaction({
           signature,
           blockhash: decodedTransaction.recentBlockhash!, 

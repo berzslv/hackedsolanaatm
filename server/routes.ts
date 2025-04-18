@@ -40,6 +40,11 @@ import {
   addOnChainDataToStakingInfo 
 } from './on-chain-verify-handler';
 
+// Import server-side transaction submission tools
+import {
+  handleServerTransactionSubmission
+} from './transaction-submission-handler';
+
 // Solana imports for airdrop functionality
 import {
   Connection,
