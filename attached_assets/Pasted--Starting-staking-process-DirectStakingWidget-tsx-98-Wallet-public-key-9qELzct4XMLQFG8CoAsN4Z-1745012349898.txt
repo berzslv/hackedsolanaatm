@@ -1,0 +1,30 @@
+🚀 Starting staking process
+DirectStakingWidget.tsx:98 👛 Wallet public key: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+DirectStakingWidget.tsx:99 🔢 Amount to stake: 222
+DirectStakingWidget.tsx:100 🔗 Network: https://api.devnet.solana.com
+DirectStakingWidget.tsx:120 🔧 Calling stakeExistingTokens function
+combined-smart-contract-client.ts:438 Building transaction locally with account info: 
+{success: true, tokenMint: '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk', programId: 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm', vault: 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu', vaultTokenAccount: '3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL', …}
+combined-smart-contract-client.ts:470 User is not registered. Adding registration instruction.
+combined-smart-contract-client.ts:478 User stake info PDA: A4BCSorbj2J4mG8pQUaAgyoDLbnMAJd99xC2HJaNKs6L
+combined-smart-contract-client.ts:537 ✅ Created instruction data without using Buffer.alloc
+combined-smart-contract-client.ts:544 Transaction built successfully
+combined-smart-contract-client.ts:548 Simulating transaction before sending...
+combined-smart-contract-client.ts:552 Transaction simulation failed: 
+{InstructionError: Array(2)}
+stakeExistingTokens	@	combined-smart-contract-client.ts:552
+await in stakeExistingTokens		
+handleStake	@	DirectStakingWidget.tsx:121
+combined-smart-contract-client.ts:563 Custom program error in instruction 0: Code 100
+stakeExistingTokens	@	combined-smart-contract-client.ts:563
+await in stakeExistingTokens		
+handleStake	@	DirectStakingWidget.tsx:121
+combined-smart-contract-client.ts:574 Error explanation: Insufficient funds or missing account
+stakeExistingTokens	@	combined-smart-contract-client.ts:574
+await in stakeExistingTokens		
+handleStake	@	DirectStakingWidget.tsx:121
+DirectStakingWidget.tsx:129 ❌ Error from stakeExistingTokens: Transaction simulation failed: Custom program error 100 - Insufficient funds or missing account
+handleStake	@	DirectStakingWidget.tsx:129
+DirectStakingWidget.tsx:291 Staking error: Error: Transaction simulation failed: Custom program error 100 - Insufficient funds or missing account
+    at handleStake (DirectStakingWidget.tsx:130:15)
+handleStake	@	DirectStakingWidget.tsx:291
