@@ -64,8 +64,6 @@ const DirectStakingWidget: React.FC = () => {
   const [isUnstaking, setIsUnstaking] = useState<boolean>(false);
   const [isClaiming, setIsClaiming] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [isRegistering, setIsRegistering] = useState<boolean>(false);
-  const [isRegistered, setIsRegistered] = useState<boolean>(false);
   
   // Function to handle staking in a single transaction
   const handleStake = async () => {
@@ -563,133 +561,12 @@ const DirectStakingWidget: React.FC = () => {
     setUnstakeAmount(stakedAmount.toString());
   };
   
-  // Force sync staking data with the blockchain
-  // Function to handle user registration
-  const handleRegister = async () => {
-    if (!connected || !publicKey || !signTransaction || !sendTransaction) {
-      toast({
-        title: 'Wallet not connected',
-        description: 'Please connect your wallet to register with the staking program',
-        variant: 'destructive'
-      });
-      return;
-    }
-    
-    setIsRegistering(true);
-    
-    try {
-      toast({
-        title: 'Checking Registration',
-        description: 'Checking if your wallet is registered with the staking program...',
-      });
-      
-      // Use the new registerUser function we added to the combined-smart-contract-client
-      const { registerUser } = await import('@/lib/combined-smart-contract-client');
-      
-      const registrationResult = await registerUser(publicKey.toString());
-      
-      // Check if there was an error
-      if (registrationResult.error) {
-        throw new Error(registrationResult.error);
-      }
-      
-      // If user is already registered, show message and return
-      if (registrationResult.isRegistered) {
-        setIsRegistered(true);
-        toast({
-          title: 'Already Registered',
-          description: 'Your wallet is already registered with the staking program',
-          variant: 'default'
-        });
-        return;
-      }
-      
-      // If we have a transaction to sign
-      if (registrationResult.transaction) {
-        const transactionData = registrationResult.transaction;
-        
-        toast({
-          title: 'Registration Required',
-          description: 'Please approve the registration transaction in your wallet',
-        });
-        
-        // Decode and deserialize the transaction
-        let decodedTransaction: Transaction;
-        
-        try {
-          console.log('Attempting to deserialize registration transaction:', transactionData.transaction);
-          
-          // Convert base64 string to Uint8Array
-          const transactionBytes = base64ToUint8Array(transactionData.transaction);
-          
-          // Create Transaction from bytes using fromBuffer for compatibility
-          decodedTransaction = Transaction.from(transactionBytes);
-          
-          console.log('Successfully deserialized registration transaction');
-          console.log('Transaction details:', decodedTransaction);
-          
-          // Ensure fee payer is set
-          if (!decodedTransaction.feePayer) {
-            console.log('Setting fee payer to current wallet');
-            decodedTransaction.feePayer = publicKey;
-          }
-          
-          // Setup connection and check if we need a new blockhash
-          const connection = new Connection(clusterApiUrl('devnet'));
-          
-          if (!decodedTransaction.recentBlockhash) {
-            console.log('Getting fresh blockhash for transaction');
-            const { blockhash } = await connection.getLatestBlockhash('finalized');
-            decodedTransaction.recentBlockhash = blockhash;
-          }
-        } catch (e: any) {
-          console.error('Error deserializing registration transaction:', e);
-          throw new Error(`Failed to decode registration transaction: ${e.message}`);
-        }
-        
-        // Setup Solana connection
-        const connection = new Connection(clusterApiUrl('devnet'));
-        
-        // Sign and send the transaction
-        const signature = await sendTransaction(decodedTransaction, connection);
-        
-        toast({
-          title: 'Transaction submitted',
-          description: 'Waiting for confirmation...',
-        });
-        
-        // Wait for confirmation
-        await connection.confirmTransaction(signature, 'confirmed');
-        
-        // Set registered status
-        setIsRegistered(true);
-        
-        toast({
-          title: 'Registration Successful',
-          description: 'Successfully registered with the staking program',
-          variant: 'default'
-        });
-        
-        // Update all data
-        refreshAllData();
-      }
-    } catch (error) {
-      console.error('Registration error:', error);
-      toast({
-        title: 'Registration Error',
-        description: error instanceof Error ? error.message : 'Failed to register with staking program',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsRegistering(false);
-    }
-  };
-
-  const handleForceSync = async () => {
+  // Function to refresh blockchain data
+  const refreshBlockchainData = async () => {
     if (!connected || !publicKey) {
       toast({
         title: 'Wallet not connected',
-        description: 'Please connect your wallet to sync staking data',
+        description: 'Please connect your wallet to refresh data',
         variant: 'destructive'
       });
       return;
@@ -699,8 +576,8 @@ const DirectStakingWidget: React.FC = () => {
     
     try {
       toast({
-        title: 'Syncing',
-        description: 'Forcing blockchain data sync...',
+        title: 'Refreshing Data',
+        description: 'Fetching latest blockchain data...',
       });
       
       // Try to sync with our server-side API
@@ -713,48 +590,38 @@ const DirectStakingWidget: React.FC = () => {
           body: JSON.stringify({
             walletAddress: publicKey.toString()
           }),
-          // Add a shorter timeout so we don't wait too long if Railway is down
           signal: AbortSignal.timeout(10000) // 10 second timeout
         });
         
         if (!response.ok) {
           const errorData = await response.json();
-          console.warn('Force sync warning:', errorData.error || 'API returned error status');
+          console.warn('Data refresh warning:', errorData.error || 'API returned error status');
         } else {
           const syncData = await response.json();
           
           if (syncData.success) {
             toast({
-              title: 'Sync successful',
-              description: 'Successfully synced staking data from blockchain',
+              title: 'Data Refresh Complete',
+              description: 'Successfully refreshed staking data',
               variant: 'default'
             });
-          } else {
-            console.warn('Force sync warning:', syncData.message || 'Sync completed with issues');
           }
         }
       } catch (apiError) {
-        console.warn('Force sync API error (will still try local refresh):', apiError);
+        console.warn('API refresh error (will still try local refresh):', apiError);
       }
       
-      // Regardless of API success, refresh our data from all sources
-      // This will fall back to local cache or direct blockchain if Railway is down
+      // Refresh our data from all sources
       await Promise.all([
         refreshAllData(),
         refreshBalance()
       ]);
       
-      toast({
-        title: 'Data refresh complete',
-        description: 'Staking data has been refreshed from available sources',
-        variant: 'default'
-      });
-      
     } catch (error) {
-      console.error('Sync error:', error);
+      console.error('Data refresh error:', error);
       toast({
-        title: 'Sync error',
-        description: error instanceof Error ? error.message : 'Failed to sync blockchain data',
+        title: 'Refresh error',
+        description: error instanceof Error ? error.message : 'Failed to refresh data',
         variant: 'destructive'
       });
     } finally {
@@ -992,66 +859,38 @@ const DirectStakingWidget: React.FC = () => {
         </Tabs>
         
 
-        {/* Advanced Actions */}
+        {/* Refresh Data */}
         <div className="mt-6 pt-6 border-t">
           <div className="flex justify-between items-center mb-3">
-            <div className="text-sm text-muted-foreground">Advanced Options</div>
+            <div className="text-sm text-muted-foreground">Blockchain Data</div>
             
-            <div className="flex space-x-2">
-              {/* Registration Button */}
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleRegister}
-                disabled={isRegistering || !connected || isRegistered}
-                className="text-xs"
-              >
-                {isRegistering ? (
-                  <>
-                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                    Registering...
-                  </>
-                ) : isRegistered ? (
-                  <>
-                    <CheckCircle className="mr-1 h-3 w-3 text-green-500" />
-                    Registered
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="mr-1 h-3 w-3" />
-                    Register
-                  </>
-                )}
-              </Button>
-              
-              {/* Force Sync Button */}
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleForceSync}
-                disabled={isSyncing || !connected}
-                className="text-xs"
-              >
-                {isSyncing ? (
-                  <>
-                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                    Syncing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="mr-1 h-3 w-3" />
-                    Force Sync
-                  </>
-                )}
-              </Button>
-            </div>
+            {/* Refresh Button */}
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={refreshBlockchainData}
+              disabled={isSyncing || !connected}
+              className="text-xs"
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-1 h-3 w-3" />
+                  Refresh Data
+                </>
+              )}
+            </Button>
           </div>
           
           <Alert className="mb-4 text-xs bg-primary/5 border-primary/20">
             <Info className="h-3 w-3" />
-            <AlertTitle className="text-xs">Force Sync</AlertTitle>
+            <AlertTitle className="text-xs">On-Chain Data</AlertTitle>
             <AlertDescription className="text-xs">
-              If your staking data isn't showing correctly, use Force Sync to refresh it from the blockchain.
+              All staking data is read directly from the Solana blockchain. Refresh to see the latest updates.
             </AlertDescription>
           </Alert>
         </div>

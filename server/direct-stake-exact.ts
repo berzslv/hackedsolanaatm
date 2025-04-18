@@ -10,6 +10,8 @@ import {
   PublicKey,
   Transaction,
   Connection,
+  TransactionInstruction,
+  SystemProgram,
   clusterApiUrl
 } from '@solana/web3.js';
 import {
@@ -19,6 +21,10 @@ import {
   findAssociatedTokenAccount,
   createStakeInstruction
 } from './staking-contract-functions';
+
+// Constants for the staking program and token
+const STAKING_PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV3cYfrx53ky19RD56eRRGm');
+const TOKEN_MINT = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
 
 /**
  * Handle direct staking functionality
@@ -116,8 +122,33 @@ export async function createDirectStakingTransaction(
   // If the user isn't registered, add a registration instruction first
   if (!userStakingAccountInfo) {
     console.log(`User ${userPublicKey.toString()} is not registered. Adding registration instruction.`);
-    const registerInstruction = await createRegisterUserInstruction(userPublicKey, referrer);
+    
+    // Create the vault token account PDA
+    const [vaultTokenAccount] = await PublicKey.findProgramAddress(
+      [Buffer.from("vault"), STAKING_PROGRAM_ID.toBuffer()],
+      STAKING_PROGRAM_ID
+    );
+    
+    // Find the token mint
+    const tokenMint = new PublicKey(TOKEN_MINT);
+    
+    // Get the user's associated token account
+    const userTokenAccount = await findAssociatedTokenAccount(userPublicKey, tokenMint);
+    
+    // Register user instruction
+    const registerInstruction = new TransactionInstruction({
+      programId: STAKING_PROGRAM_ID,
+      keys: [
+        { pubkey: userPublicKey, isSigner: true, isWritable: true },
+        { pubkey: userStakingAccount, isSigner: false, isWritable: true },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: referrer || userPublicKey, isSigner: false, isWritable: false }
+      ],
+      data: Buffer.from([0]) // 0 = initialize instruction
+    });
+    
     transaction.add(registerInstruction);
+    console.log("Added registration instruction to transaction");
   } else {
     console.log(`User ${userPublicKey.toString()} is already registered.`);
   }
