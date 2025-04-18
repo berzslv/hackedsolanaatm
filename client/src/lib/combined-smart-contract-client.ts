@@ -526,7 +526,38 @@ export const stakeExistingTokens = async (
         
         if (simulation.value.err) {
           console.error('Transaction simulation failed:', simulation.value.err);
+          
+          // Provide more detailed error information for Custom errors
+          if (typeof simulation.value.err === 'object' && 'InstructionError' in simulation.value.err) {
+            const instructionError = simulation.value.err.InstructionError;
+            if (Array.isArray(instructionError) && instructionError.length >= 2) {
+              const instructionIndex = instructionError[0];
+              const errorInfo = instructionError[1];
+              
+              if (typeof errorInfo === 'object' && 'Custom' in errorInfo) {
+                const customCode = errorInfo.Custom;
+                console.error(`Custom program error in instruction ${instructionIndex}: Code ${customCode}`);
+                
+                // Provide common error explanations
+                const errorExplanation = {
+                  100: 'Insufficient funds or missing account',
+                  101: 'Invalid token account',
+                  102: 'Invalid token owner',
+                  103: 'Account not registered with staking program'
+                }[customCode] || 'Unknown custom error';
+                
+                console.error(`Error explanation: ${errorExplanation}`);
+                return { error: `Transaction simulation failed: Custom program error ${customCode} - ${errorExplanation}` };
+              }
+            }
+          }
+          
           return { error: `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}` };
+        }
+        
+        // Successful simulation - log logs for debugging
+        if (simulation.value.logs) {
+          console.log('Simulation logs:', simulation.value.logs);
         }
         
         console.log('Transaction simulation successful');
