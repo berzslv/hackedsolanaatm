@@ -141,15 +141,15 @@ export async function createStakeInstruction(
   const userTokenAccount = await findAssociatedTokenAccount(wallet);
   const vaultTokenAccount = await findAssociatedTokenAccount(vaultAuthority);
   
-  // Prepare the accounts required for the instruction
+  // Prepare the accounts required for the instruction - follows IDL account order exactly
   const accounts = [
-    { pubkey: wallet, isSigner: true, isWritable: true },            // Owner (payer)
-    { pubkey: userStakingAccount, isSigner: false, isWritable: true }, // User staking account
-    { pubkey: userTokenAccount, isSigner: false, isWritable: true },  // User token account
-    { pubkey: vaultPDA, isSigner: false, isWritable: false },        // Vault
-    { pubkey: vaultAuthority, isSigner: false, isWritable: false },  // Vault authority
-    { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // Vault token account
-    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // Token program
+    { pubkey: wallet, isSigner: true, isWritable: true },            // user/payer
+    { pubkey: vaultPDA, isSigner: false, isWritable: true },         // stakingVault
+    { pubkey: userStakingAccount, isSigner: false, isWritable: true }, // userStake info account
+    { pubkey: userTokenAccount, isSigner: false, isWritable: true },  // user token account
+    { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // tokenVault account
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token program
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system program
   ];
   
   // If referrer is provided, add it to the accounts

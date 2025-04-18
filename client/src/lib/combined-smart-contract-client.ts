@@ -485,15 +485,16 @@ export const stakeExistingTokens = async (
       // Calculate amount in lamports (9 decimals)
       const amountLamports = amount * Math.pow(10, 9);
       
-      // Create stake instruction
+      // Create stake instruction - follows IDL account order exactly
       const stakeInstruction = new TransactionInstruction({
         keys: [
-          { pubkey: userPubkey, isSigner: true, isWritable: true }, // user/payer
+          { pubkey: userPubkey, isSigner: true, isWritable: true },        // user/payer
+          { pubkey: vaultPubkey, isSigner: false, isWritable: true },      // stakingVault
+          { pubkey: userStakeInfoPDA, isSigner: false, isWritable: true }, // userStake info account
           { pubkey: userTokenAccount, isSigner: false, isWritable: true }, // user token account
-          { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // vault token account
-          { pubkey: vaultPubkey, isSigner: false, isWritable: true }, // vault account
-          { pubkey: userStakeInfoPDA, isSigner: false, isWritable: true }, // user stake info account
+          { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // tokenVault account  
           { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token program
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system program
         ],
         programId,
         data: (() => {
