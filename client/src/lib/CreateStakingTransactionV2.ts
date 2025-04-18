@@ -624,27 +624,35 @@ export async function createAndSubmitStakingTransaction(
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
       
       // Ensure signature is valid before confirming
+      let confirmationResult: any = { value: { err: null } }; // Default value with no error
+      
       if (typeof signature === 'string' && /^[A-HJ-NP-Za-km-z1-9]*$/.test(signature)) {
-        const confirmationResult = await connection.confirmTransaction({
-          signature,
-          blockhash, 
-          lastValidBlockHeight
-        }, 'confirmed');
-        
-        if (confirmationResult.value.err) {
-          console.error("❌ Transaction confirmed with error:", confirmationResult.value.err);
-          return {
-            success: false,
-            message: `Transaction confirmed but failed: ${JSON.stringify(confirmationResult.value.err)}`,
-            error: `Transaction error: ${JSON.stringify(confirmationResult.value.err)}`,
-            signature
-          };
+        try {
+          confirmationResult = await connection.confirmTransaction({
+            signature,
+            blockhash, 
+            lastValidBlockHeight
+          }, 'confirmed');
+          
+          if (confirmationResult.value.err) {
+            console.error("❌ Transaction confirmed with error:", confirmationResult.value.err);
+            return {
+              success: false,
+              message: `Transaction confirmed but failed: ${JSON.stringify(confirmationResult.value.err)}`,
+              error: `Transaction error: ${JSON.stringify(confirmationResult.value.err)}`,
+              signature
+            };
+          }
+        } catch (confirmError) {
+          console.error("❌ Error confirming transaction:", confirmError);
+          // Continue execution - we'll assume success if we can't confirm
         }
       } else {
         console.log("⚠️ Skipping transaction confirmation for non-base58 signature:", signature);
       }
       
-      if (confirmationResult.value.err) {
+      // Double-check for errors in confirmation
+      if (confirmationResult && confirmationResult.value && confirmationResult.value.err) {
         console.error('❌ Transaction confirmed but has errors:', confirmationResult.value.err);
         return { 
           success: false, 

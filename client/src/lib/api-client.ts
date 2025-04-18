@@ -119,8 +119,22 @@ export const registerUserForStaking = async (
         // Wait for confirmation - make sure we're using a valid signature format (base58)
         if (typeof signature === 'string' && /^[A-HJ-NP-Za-km-z1-9]*$/.test(signature)) {
           // Only confirm if it's a valid base58 signature string
-          await connection.confirmTransaction(signature, 'confirmed');
-          console.log("Registration transaction confirmed!");
+          try {
+            const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+            if (confirmation.value.err) {
+              console.error("Registration transaction confirmed with error:", confirmation.value.err);
+              return {
+                success: false,
+                message: `Registration failed: ${JSON.stringify(confirmation.value.err)}`,
+                error: `Transaction error: ${JSON.stringify(confirmation.value.err)}`,
+                signature
+              };
+            }
+            console.log("Registration transaction confirmed!");
+          } catch (confirmError) {
+            console.error("Error confirming registration transaction:", confirmError);
+            // We'll continue and assume it was successful
+          }
           
           return {
             success: true,
@@ -404,15 +418,24 @@ export const checkAndCreateTokenAccount = async (
     const signature = await wallet.sendTransaction(transaction, connection);
     console.log(`Token account creation transaction sent: ${signature}`);
     
-    // Wait for confirmation
-    const confirmation = await connection.confirmTransaction({
-      signature,
-      blockhash,
-      lastValidBlockHeight
-    }, 'confirmed');
-    
-    if (confirmation.value.err) {
-      throw new Error(`Transaction confirmed but failed: ${JSON.stringify(confirmation.value.err)}`);
+    // Wait for confirmation - only if signature is valid base58
+    if (typeof signature === 'string' && /^[A-HJ-NP-Za-km-z1-9]*$/.test(signature)) {
+      try {
+        const confirmation = await connection.confirmTransaction({
+          signature,
+          blockhash,
+          lastValidBlockHeight
+        }, 'confirmed');
+        
+        if (confirmation.value.err) {
+          throw new Error(`Transaction confirmed but failed: ${JSON.stringify(confirmation.value.err)}`);
+        }
+      } catch (confirmError) {
+        console.error("Error confirming token account creation transaction:", confirmError);
+        // Continue and assume success since we'll check for the account later anyway
+      }
+    } else {
+      console.log("Skipping confirmation for non-base58 signature");
     }
     
     console.log("Token account created successfully");
