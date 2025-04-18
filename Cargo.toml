@@ -2,6 +2,7 @@
 members = [
     "programs/staking-vault",
     "programs/referral-tracker",
+    "programs/simple-staking",
 ]
 resolver = "2"
 
