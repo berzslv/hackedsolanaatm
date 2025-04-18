@@ -118,6 +118,14 @@ pub mod referral_staking {
     
     /// Unstake tokens from the vault
     pub fn unstake(ctx: Context<Unstake>, amount: u64) -> Result<()> {
+        // Store needed values first to avoid borrowing issues
+        let current_time = Clock::get()?.unix_timestamp;
+        let bump = ctx.accounts.global_state.bump;
+        let reward_rate = ctx.accounts.global_state.reward_rate;
+        let unlock_duration = ctx.accounts.global_state.unlock_duration;
+        let early_unstake_penalty = ctx.accounts.global_state.early_unstake_penalty;
+        
+        // Now get mutable references
         let global_state = &mut ctx.accounts.global_state;
         let user_info = &mut ctx.accounts.user_info;
         
@@ -125,13 +133,12 @@ pub mod referral_staking {
         require!(amount <= user_info.staked_amount, StakingError::InsufficientStakedAmount);
         
         // Calculate pending rewards
-        let current_time = Clock::get()?.unix_timestamp;
         if user_info.staked_amount > 0 && current_time > user_info.last_stake_time {
             let time_passed = (current_time - user_info.last_stake_time) as u64;
             let reward = calculate_reward(
                 user_info.staked_amount,
                 time_passed,
-                global_state.reward_rate,
+                reward_rate,
             );
             user_info.rewards = user_info.rewards.checked_add(reward).unwrap_or(user_info.rewards);
         }
@@ -140,9 +147,9 @@ pub mod referral_staking {
         let mut penalty: u64 = 0;
         let time_staked = current_time - user_info.last_stake_time;
         
-        if time_staked < global_state.unlock_duration {
+        if time_staked < unlock_duration {
             penalty = (amount as u128)
-                .checked_mul(global_state.early_unstake_penalty as u128)
+                .checked_mul(early_unstake_penalty as u128)
                 .unwrap_or(0)
                 .checked_div(10000)
                 .unwrap_or(0) as u64;
@@ -150,24 +157,7 @@ pub mod referral_staking {
         
         let withdraw_amount = amount.checked_sub(penalty).unwrap_or(0);
         
-        // Transfer tokens from vault to user
-        let seeds = &[
-            b"global_state".as_ref(),
-            &[global_state.bump],
-        ];
-        let signer = &[&seeds[..]];
-        
-        let cpi_accounts = Transfer {
-            from: ctx.accounts.vault.to_account_info(),
-            to: ctx.accounts.user_token_account.to_account_info(),
-            authority: ctx.accounts.global_state.to_account_info(),
-        };
-        
-        let cpi_program = ctx.accounts.token_program.to_account_info();
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
-        token::transfer(cpi_ctx, withdraw_amount)?;
-        
-        // Update user state
+        // First update user state
         user_info.staked_amount = user_info.staked_amount.checked_sub(amount).unwrap_or(0);
         user_info.last_stake_time = current_time;
         
@@ -182,22 +172,47 @@ pub mod referral_staking {
         // Add penalty to reward pool
         global_state.reward_pool = global_state.reward_pool.checked_add(penalty).unwrap_or(global_state.reward_pool);
         
+        // Get a fresh reference for the global_state for transfer
+        let global_state_info = ctx.accounts.global_state.to_account_info();
+        
+        // Transfer tokens from vault to user
+        let seeds = &[
+            b"global_state".as_ref(),
+            &[bump],
+        ];
+        let signer = &[&seeds[..]];
+        
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.vault.to_account_info(),
+            to: ctx.accounts.user_token_account.to_account_info(),
+            authority: global_state_info,
+        };
+        
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+        token::transfer(cpi_ctx, withdraw_amount)?;
+        
         Ok(())
     }
     
     /// Claim rewards
     pub fn claim_rewards(ctx: Context<ClaimRewards>) -> Result<()> {
+        // Store needed values first to avoid borrowing issues
+        let current_time = Clock::get()?.unix_timestamp;
+        let bump = ctx.accounts.global_state.bump;
+        let reward_rate = ctx.accounts.global_state.reward_rate;
+        
+        // Now get mutable references
         let global_state = &mut ctx.accounts.global_state;
         let user_info = &mut ctx.accounts.user_info;
         
         // Calculate pending rewards
-        let current_time = Clock::get()?.unix_timestamp;
         if user_info.staked_amount > 0 && current_time > user_info.last_stake_time {
             let time_passed = (current_time - user_info.last_stake_time) as u64;
             let reward = calculate_reward(
                 user_info.staked_amount,
                 time_passed,
-                global_state.reward_rate,
+                reward_rate,
             );
             user_info.rewards = user_info.rewards.checked_add(reward).unwrap_or(user_info.rewards);
         }
@@ -212,23 +227,6 @@ pub mod referral_staking {
             StakingError::InsufficientRewardPool
         );
         
-        // Transfer rewards from vault to user
-        let seeds = &[
-            b"global_state".as_ref(),
-            &[global_state.bump],
-        ];
-        let signer = &[&seeds[..]];
-        
-        let cpi_accounts = Transfer {
-            from: ctx.accounts.vault.to_account_info(),
-            to: ctx.accounts.user_token_account.to_account_info(),
-            authority: ctx.accounts.global_state.to_account_info(),
-        };
-        
-        let cpi_program = ctx.accounts.token_program.to_account_info();
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
-        token::transfer(cpi_ctx, rewards_to_claim)?;
-        
         // Update user state
         user_info.rewards = 0;
         user_info.last_claim_time = current_time;
@@ -237,6 +235,26 @@ pub mod referral_staking {
         // Update global state
         global_state.reward_pool = global_state.reward_pool.checked_sub(rewards_to_claim).unwrap_or(0);
         global_state.last_update_time = current_time;
+        
+        // Get a fresh reference for the global_state for transfer
+        let global_state_info = ctx.accounts.global_state.to_account_info();
+        
+        // Transfer rewards from vault to user
+        let seeds = &[
+            b"global_state".as_ref(),
+            &[bump],
+        ];
+        let signer = &[&seeds[..]];
+        
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.vault.to_account_info(),
+            to: ctx.accounts.user_token_account.to_account_info(),
+            authority: global_state_info,
+        };
+        
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+        token::transfer(cpi_ctx, rewards_to_claim)?;
         
         Ok(())
     }
