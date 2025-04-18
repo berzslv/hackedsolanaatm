@@ -53,12 +53,21 @@ pub mod referral_staking {
         
         // If there's a referrer, increment their referral count
         if let Some(ref_pubkey) = referrer {
-            let referrer_info_pda = UserInfo::find_pda(&ref_pubkey).0;
+            let (referrer_info_pda, _) = UserInfo::find_pda(&ref_pubkey);
             
             // Only count the referral if the referrer exists in our system
-            if let Ok(mut referrer_account) = UserInfo::load(ctx.accounts.system_program.key, &referrer_info_pda) {
-                referrer_account.referral_count += 1;
-                referrer_account.save()?;
+            // Try to load the referrer account using Anchor's Account type
+            let referrer_info_account = Account::<UserInfo>::try_from_unchecked(
+                &ctx.accounts.system_program.to_account_info(),
+                &referrer_info_pda
+            );
+            
+            if let Ok(mut referrer_account) = referrer_info_account {
+                // Check if the account is initialized (not empty)
+                if !referrer_account.to_account_info().data_is_empty() {
+                    referrer_account.referral_count += 1;
+                    // Account changes are automatically saved when the Account is dropped
+                }
             }
         }
         
@@ -114,24 +123,27 @@ pub mod referral_staking {
                 // Find the referrer's account PDA
                 let (referrer_info_pda, _) = UserInfo::find_pda(&referrer_key);
                 
-                // Try to fetch the referrer account
-                if let Ok(referrer_account) = ctx.accounts.system_program.account {
-                    if referrer_account.key() == referrer_info_pda {
+                // Try to fetch the referrer account - use proper Anchor approach
+                let referrer_info_account = Account::<UserInfo>::try_from_unchecked(
+                    &ctx.accounts.system_program.to_account_info(),
+                    &referrer_info_pda
+                );
+                
+                if let Ok(mut referrer_account) = referrer_info_account {
+                    // Check if the account exists and is initialized
+                    if !referrer_account.to_account_info().data_is_empty() {
                         // Calculate referral reward
                         let referral_reward = calculate_referral_reward(amount, global_state.referral_reward_rate);
                         
-                        // Fetch the referrer's user info account
-                        if let Ok(mut referrer_info_account) = Account::<UserInfo>::try_from(referrer_account) {
-                            // Add the reward to the referrer's account
-                            referrer_info_account.total_referral_rewards = referrer_info_account.total_referral_rewards
-                                .checked_add(referral_reward)
-                                .unwrap_or(referrer_info_account.total_referral_rewards);
-                            referrer_info_account.rewards = referrer_info_account.rewards
-                                .checked_add(referral_reward)
-                                .unwrap_or(referrer_info_account.rewards);
-                            
-                            // No need to save here as Account handles that automatically when dropped
-                        }
+                        // Add the reward to the referrer's account
+                        referrer_account.total_referral_rewards = referrer_account.total_referral_rewards
+                            .checked_add(referral_reward)
+                            .unwrap_or(referrer_account.total_referral_rewards);
+                        referrer_account.rewards = referrer_account.rewards
+                            .checked_add(referral_reward)
+                            .unwrap_or(referrer_account.rewards);
+                        
+                        // No need to save here as Account handles that automatically when dropped
                     }
                 }
             }
