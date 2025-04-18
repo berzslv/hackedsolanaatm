@@ -90,6 +90,14 @@ const DirectStakingWidget: React.FC = () => {
     setIsStaking(true);
     
     try {
+      // Set up connection to Solana 
+      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+      
+      console.log("🚀 Starting staking process");
+      console.log("👛 Wallet public key:", publicKey.toString());
+      console.log("🔢 Amount to stake:", amount);
+      console.log("🔗 Network:", connection.rpcEndpoint);
+      
       toast({
         title: 'Processing Stake Request',
         description: 'Creating stake transaction...',
@@ -102,6 +110,7 @@ const DirectStakingWidget: React.FC = () => {
       };
       
       // Use stakeExistingTokens instead of buyAndStakeTokens since we're just staking tokens
+      console.log("🔧 Calling stakeExistingTokens function");
       const stakeResult = await stakeExistingTokens(
         publicKey.toString(),
         amount,
@@ -110,11 +119,13 @@ const DirectStakingWidget: React.FC = () => {
       
       // Check if there was an error in creating the transaction
       if (stakeResult.error) {
+        console.error("❌ Error from stakeExistingTokens:", stakeResult.error);
         throw new Error(stakeResult.error);
       }
       
       // Check if we have the staking transaction
       if (!stakeResult.stakingTransaction) {
+        console.error("❌ No staking transaction returned");
         throw new Error('No staking transaction received');
       }
       
@@ -126,20 +137,18 @@ const DirectStakingWidget: React.FC = () => {
       });
       
       // Log the transaction data structure to debug
-      console.log('Transaction data received:', JSON.stringify(transactionData, null, 2));
+      console.log('📦 Transaction data received:', JSON.stringify(transactionData, null, 2));
       
       if (!transactionData.transaction) {
-        console.error('Missing transaction field in response data');
+        console.error('❌ Missing transaction field in response data');
         throw new Error('Missing transaction field in server response');
       }
-      
-      // Using the utility function declared at the top of the file
       
       // Decode and deserialize the transaction
       let decodedTransaction: Transaction;
       
       try {
-        console.log('Attempting to deserialize transaction:', transactionData.transaction);
+        console.log('🔍 Attempting to deserialize transaction');
         
         // Convert base64 string to Uint8Array
         const transactionBytes = base64ToUint8Array(transactionData.transaction);
@@ -147,22 +156,52 @@ const DirectStakingWidget: React.FC = () => {
         // Create Transaction from bytes
         decodedTransaction = Transaction.from(transactionBytes);
         
-        console.log('Successfully deserialized transaction');
+        console.log('✅ Successfully deserialized transaction');
+        
+        // Ensure fee payer is set
+        if (!decodedTransaction.feePayer) {
+          console.log('⚠️ Setting fee payer to current wallet');
+          decodedTransaction.feePayer = publicKey;
+        }
+        
+        // Ensure recent blockhash is set
+        if (!decodedTransaction.recentBlockhash) {
+          console.log('⚠️ Getting fresh blockhash for transaction');
+          const { blockhash } = await connection.getLatestBlockhash('finalized');
+          decodedTransaction.recentBlockhash = blockhash;
+        }
+        
+        console.log("🧾 Fee payer:", decodedTransaction.feePayer?.toBase58());
+        console.log("🔑 Signers:", decodedTransaction.signatures.map(s => s.publicKey.toBase58()));
+        
+        // Try simulating the transaction before sending
+        try {
+          console.log("🔬 Simulating transaction before sending");
+          const simulation = await connection.simulateTransaction(decodedTransaction);
+          console.log("🔍 Simulation result:", simulation);
+          
+          if (simulation.value.err) {
+            console.error("⚠️ Transaction simulation failed:", simulation.value.err);
+            // Continue anyway as this is just a preflight check
+          }
+        } catch (simError: any) {
+          console.warn("⚠️ Simulation error (continuing anyway):", simError.message);
+        }
+        
       } catch (e: any) {
-        console.error('Error deserializing transaction:', e);
+        console.error('❌ Error deserializing transaction:', e);
         
         try {
           // Try direct method as fallback
           decodedTransaction = Transaction.from(transactionData.transaction);
-          console.log('Successfully deserialized transaction using direct method');
+          console.log('✅ Successfully deserialized transaction using direct method');
         } catch (e2: any) {
-          console.error('All deserialization methods failed:', e2);
+          console.error('❌ All deserialization methods failed:', e2);
           throw new Error(`Failed to decode transaction: ${e2.message}`);
         }
       }
       
-      // Setup Solana connection
-      const connection = new Connection(clusterApiUrl('devnet'));
+      // Re-use the existing connection created earlier
       
       // Define signature outside the try block so it's accessible throughout
       let signature: string;
@@ -575,6 +614,9 @@ const DirectStakingWidget: React.FC = () => {
     setIsSyncing(true);
     
     try {
+      console.log("🔄 Starting blockchain data refresh for wallet:", publicKey.toString());
+      console.log("🌐 Network:", new Connection(clusterApiUrl('devnet')).rpcEndpoint);
+      
       toast({
         title: 'Refreshing Data',
         description: 'Fetching latest blockchain data...',
@@ -582,6 +624,7 @@ const DirectStakingWidget: React.FC = () => {
       
       // Try to sync with our server-side API
       try {
+        console.log("📡 Sending force-sync request to API");
         const response = await fetch('/api/force-sync', {
           method: 'POST',
           headers: {
@@ -595,9 +638,10 @@ const DirectStakingWidget: React.FC = () => {
         
         if (!response.ok) {
           const errorData = await response.json();
-          console.warn('Data refresh warning:', errorData.error || 'API returned error status');
+          console.warn('⚠️ Data refresh warning:', errorData.error || 'API returned error status');
         } else {
           const syncData = await response.json();
+          console.log("✅ API force-sync response:", syncData);
           
           if (syncData.success) {
             toast({
@@ -608,17 +652,22 @@ const DirectStakingWidget: React.FC = () => {
           }
         }
       } catch (apiError) {
-        console.warn('API refresh error (will still try local refresh):', apiError);
+        console.warn('⚠️ API refresh error (will still try local refresh):', apiError);
       }
       
+      console.log("🔄 Refreshing data from all sources");
       // Refresh our data from all sources
       await Promise.all([
         refreshAllData(),
         refreshBalance()
       ]);
+      console.log("✅ Data refresh complete");
       
-    } catch (error) {
-      console.error('Data refresh error:', error);
+    } catch (error: any) {
+      console.error('🧨 Data refresh error:', error);
+      if (error.logs) console.log("📄 Logs:", error.logs);
+      if (error.message) console.log("📢 Message:", error.message);
+      
       toast({
         title: 'Refresh error',
         description: error instanceof Error ? error.message : 'Failed to refresh data',

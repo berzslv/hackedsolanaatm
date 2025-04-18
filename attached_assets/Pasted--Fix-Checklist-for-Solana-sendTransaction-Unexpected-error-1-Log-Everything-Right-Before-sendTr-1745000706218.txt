@@ -1,0 +1,86 @@
+ Fix Checklist for Solana sendTransaction "Unexpected error"
+✅ 1. Log Everything Right Before sendTransaction
+In combined-smart-contract-client.ts, near line 493 where you call:
+
+ts
+Copy
+Edit
+const txid = await wallet.sendTransaction(transaction, connection);
+Add this right before:
+
+ts
+Copy
+Edit
+console.log("🚀 Sending transaction:", transaction);
+console.log("🧾 Fee payer:", transaction.feePayer?.toBase58());
+console.log("🔑 Signers:", transaction.signatures.map(s => s.publicKey.toBase58()));
+console.log("🔗 Network:", connection.rpcEndpoint);
+console.log("💼 Wallet public key:", wallet.publicKey?.toBase58());
+✅ 2. Make Sure You're Setting the feePayer
+If you're constructing a Transaction() manually, set the fee payer:
+
+ts
+Copy
+Edit
+transaction.feePayer = wallet.publicKey;
+And add a blockhash:
+
+ts
+Copy
+Edit
+const { blockhash } = await connection.getLatestBlockhash();
+transaction.recentBlockhash = blockhash;
+If either of those is missing — the wallet will fail silently!
+
+✅ 3. Simulate the Transaction
+Before sending it with the wallet, try:
+
+ts
+Copy
+Edit
+const simulation = await connection.simulateTransaction(transaction);
+console.log("🔍 Simulation result:", simulation);
+If it logs something like:
+
+r
+Copy
+Edit
+Instruction 0 failed: missing required signature
+…you’ll instantly know what’s wrong.
+
+✅ 4. Try Catch With Deeper Error Logging
+Replace your catch (err) block with this:
+
+ts
+Copy
+Edit
+} catch (err: any) {
+  console.error("🧨 Staking failed:", err);
+  if (err.logs) console.log("📄 Logs:", err.logs);
+  if (err.message) console.log("📢 Message:", err.message);
+  if (err instanceof WalletSendTransactionError) {
+    console.log("👛 Wallet error details:", err);
+  }
+  throw new Error(`Failed to process staking transaction: ${err.message || "Unknown error"}`);
+}
+This might expose more metadata from the wallet adapter.
+
+✅ 5. Double Check Wallet and Network Match
+In your frontend, make sure the Solana connection and wallet are aligned:
+
+ts
+Copy
+Edit
+const connection = new Connection(clusterApiUrl("devnet"));
+And check wallet is on Devnet (Phantom can silently reject otherwise).
+
+✅ 6. Check PDA or Account Seeds
+If your staking instruction involves a PDA (e.g. global_state or vault_account), confirm:
+
+The seeds used are correct
+
+You're using the same bump as in the smart contract
+
+You're passing the PDA to the instruction in the right position
+
+If a PDA is wrong or out of order, it won’t throw a nice error — just "unexpected error."
