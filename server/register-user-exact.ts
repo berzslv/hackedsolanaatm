@@ -6,6 +6,7 @@ import { Connection, PublicKey, Transaction, SystemProgram, clusterApiUrl } from
 import { Request, Response } from 'express';
 import { PROGRAM_ID, VAULT_ADDRESS, TOKEN_MINT_ADDRESS, findUserStakeInfoPDA, isUserRegistered } from './staking-vault-exact';
 import { getOrCreateAssociatedTokenAccount, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import * as anchor from '@coral-xyz/anchor';
 
 export async function handleRegisterUser(req: Request, res: Response) {
   try {
@@ -49,9 +50,9 @@ export async function handleRegisterUser(req: Request, res: Response) {
     transaction.recentBlockhash = blockhash;
     transaction.lastValidBlockHeight = lastValidBlockHeight;
     
-    // For this staking contract, we'll use instruction data for the "stake" function
-    // The Anchor-generated instruction discriminator for "stake" can be derived or pre-calculated
-    // For now, we'll use a special case to register: staking 0 tokens which creates account but doesn't transfer
+    // For this staking contract, we'll use instruction data for the "registerUser" function
+    // The Anchor-generated instruction discriminator for "registerUser" can be derived or pre-calculated
+    // This will create a user staking account without requiring any token transfers
     
     try {
       // Check if the user has an associated token account for the token mint
@@ -73,25 +74,21 @@ export async function handleRegisterUser(req: Request, res: Response) {
       
       console.log(`User token account: ${userTokenAccount[0].toString()}`);
       
-      // Create the instruction data for stake with minimum amount (0)
-      // This initializes the user stake account without transferring tokens
-      // The instruction discriminator for "stake" (first 8 bytes) + amount (8 bytes for u64)
-      const stakeInstructionPrefix = Buffer.from([163, 52, 200, 231, 140, 3, 69, 186]); // Anchor discriminator for "stake"
-      const amountBytes = Buffer.alloc(8); // 8 bytes for amount (u64) = 0
+      // Create the instruction data for registerUser function
+      // The instruction discriminator for "registerUser" + optional referrer (null in this case)
+      const registerUserInstructionPrefix = Buffer.from([109, 19, 167, 111, 254, 155, 195, 112]); // Anchor discriminator for "registerUser"
+      const optionNone = Buffer.from([0]); // 0 for None option (no referrer)
       
-      // Combine the instruction discriminator and amount
-      const instructionData = Buffer.concat([stakeInstructionPrefix, amountBytes]);
+      // Combine the instruction discriminator and null referrer option
+      const instructionData = Buffer.concat([registerUserInstructionPrefix, optionNone]);
       
-      // Based on the IDL "stake" instruction has these accounts
+      // Based on the IDL, "registerUser" instruction has these accounts:
       transaction.add({
         keys: [
-          { pubkey: userPublicKey, isSigner: true, isWritable: true }, // User account (signer)
-          { pubkey: VAULT_ADDRESS, isSigner: false, isWritable: true }, // Staking vault (initialized vault account)
-          { pubkey: userStakingPDA, isSigner: false, isWritable: true }, // User stake account (PDA)
-          { pubkey: userTokenAccount[0], isSigner: false, isWritable: true }, // User token account
-          { pubkey: TOKEN_MINT_ADDRESS, isSigner: false, isWritable: false }, // Token mint address
-          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // Token program
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false } // System program to create account
+          { pubkey: userPublicKey, isSigner: true, isWritable: true }, // Owner account (signer)
+          { pubkey: userStakingPDA, isSigner: false, isWritable: true }, // User info account (PDA)
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // System program
+          { pubkey: anchor.web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false } // Rent sysvar
         ],
         programId: PROGRAM_ID,
         data: instructionData

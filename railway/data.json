@@ -11,6 +11,18 @@
       "isLocked": false,
       "estimatedAPY": 12,
       "isRegistered": false
+    },
+    "29M6Dd81rX5TURZx758s7BswDuaGtr2iRv2JuwmineeD": {
+      "amountStaked": 0,
+      "pendingRewards": 0,
+      "lastUpdateTime": "2025-04-18T22:38:54.972Z",
+      "stakedAt": "2025-04-18T22:38:54.972Z",
+      "eventCount": 6,
+      "referrer": null,
+      "timeUntilUnlock": null,
+      "isLocked": false,
+      "estimatedAPY": 12,
+      "isRegistered": false
     }
   },
   "tokenBalances": {},
@@ -19,7 +31,7 @@
     "totalStaked": 0,
     "stakersCount": 0,
     "currentAPY": 12,
-    "lastUpdated": "2025-04-18T22:36:09.764Z",
+    "lastUpdated": "2025-04-18T22:38:54.972Z",
     "totalReferrals": 0,
     "unlock_duration": 604800,
     "early_unstake_penalty": 1000,
