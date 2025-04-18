@@ -1887,6 +1887,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // For backward compatibility, also register the v1 endpoint with the v2 handler
   app.post("/api/buy-and-stake", handleBuyAndStake);
   
+  // Add the exact implementation endpoint
+  app.post("/api/buy-and-stake-exact", handleBuyAndStake);
+  
   // Add endpoint to sync staking records - this will help fix the issue with staked tokens not showing up
   app.post("/api/sync-staking", handleSyncStaking);
   
