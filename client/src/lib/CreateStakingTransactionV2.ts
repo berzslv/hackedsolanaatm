@@ -18,13 +18,25 @@ import {
 import { toast } from '@/hooks/use-toast';
 import BN from 'bn.js';
 import { stakeExistingTokens, buyAndStakeTokens } from './api-client';
+import * as buffer from 'buffer';
 
-// Polyfill Buffer for the browser environment
-// This is needed because some Solana libraries use Node's Buffer which isn't available in browsers
+// Ensure Buffer is available globally
 if (typeof window !== 'undefined') {
-  // Only run this in browser environments
-  window.Buffer = window.Buffer || require('buffer').Buffer;
+  window.Buffer = window.Buffer || buffer.Buffer;
+  console.log('Buffer polyfill working:', typeof Buffer !== 'undefined');
 }
+
+// Create a reliable Buffer polyfill for this module
+const BufferPolyfill = typeof window !== 'undefined' 
+  ? window.Buffer 
+  : (typeof buffer !== 'undefined' ? buffer.Buffer : Buffer);
+
+// Throw an error if Buffer is still not available
+if (!BufferPolyfill) {
+  throw new Error('Buffer is not available. The polyfill failed to load.');
+}
+
+// Remove duplicate code
 
 // Utility function to convert base64 to Uint8Array (for Transaction)
 export function base64ToUint8Array(base64String: string): Uint8Array {

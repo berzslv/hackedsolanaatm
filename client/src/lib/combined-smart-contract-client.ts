@@ -17,12 +17,24 @@ import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 
 // Polyfill Buffer for the browser environment
 // This is needed because some Solana libraries use Node's Buffer which isn't available in browsers
+import * as buffer from 'buffer';
+
 if (typeof window !== 'undefined') {
   // Only run this in browser environments
-  window.Buffer = window.Buffer || require('buffer').Buffer;
+  window.Buffer = window.Buffer || buffer.Buffer;
   
   // Add a debug flag to check if polyfill is working
   console.log('Buffer polyfill working:', typeof Buffer !== 'undefined');
+}
+
+// Ensure Buffer is available globally
+const BufferPolyfill = typeof window !== 'undefined' 
+  ? window.Buffer 
+  : (typeof buffer !== 'undefined' ? buffer.Buffer : Buffer);
+
+// Throw an error if Buffer is still not available
+if (!BufferPolyfill) {
+  throw new Error('Buffer is not available. The polyfill failed to load.');
 }
 
 // Token configuration
@@ -457,7 +469,7 @@ export const stakeExistingTokens = async (
             { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system program
           ],
           programId,
-          data: Buffer.from([0]) // 0 = register instruction
+          data: BufferPolyfill.from([0]) // 0 = register instruction
         });
         
         transaction.add(registerInstruction);
@@ -485,11 +497,11 @@ export const stakeExistingTokens = async (
         programId,
         data: (() => {
           // Create instruction data with code (1 = stake) followed by amount
-          const dataLayout = Buffer.alloc(9);
+          const dataLayout = BufferPolyfill.alloc(9);
           dataLayout[0] = 1; // Instruction index for stake
           
           // Write the amount as a 64-bit little-endian value
-          const amountBuffer = Buffer.from(new BN(amountLamports).toArray('le', 8));
+          const amountBuffer = BufferPolyfill.from(new BN(amountLamports).toArray('le', 8));
           amountBuffer.copy(dataLayout, 1);
           
           return dataLayout;
