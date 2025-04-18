@@ -23,7 +23,7 @@ const __dirname = dirname(__filename);
 const PORT = process.env.PORT || 3000;
 const TOKEN_MINT = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
 // Use the correct staking vault address (PDA derived from program ID and token mint)
-const STAKING_VAULT_ADDRESS = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
+const STAKING_VAULT_ADDRESS = 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu';
 // Vault token account is where tokens are actually held
 const VAULT_TOKEN_ACCOUNT = '3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL';
 // Program ID is separate from the vault address where tokens are actually sent

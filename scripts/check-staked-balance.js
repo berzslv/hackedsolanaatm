@@ -10,7 +10,7 @@ import fs from 'fs';
 const WALLET_ADDRESS = '9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX'; // Your wallet address
 const TOKEN_MINT = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
 const STAKING_PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm';
-const STAKING_VAULT_ADDRESS = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
+const STAKING_VAULT_ADDRESS = 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu';
 const DECIMALS = 9; // Solana tokens usually have 9 decimals
 
 async function main() {

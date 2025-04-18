@@ -92,7 +92,7 @@ export async function syncOnChainStakingData(walletAddress: string): Promise<any
       isLocked: stakingData.isLocked || false,
       referrer: onChainData.referrer || stakingData.referrer || null,
       walletTokenBalance: tokenData.balance,
-      stakingVaultAddress: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8',
+      stakingVaultAddress: 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu',
       dataSource: 'blockchain',
       onChainVerified: true,
       isRegistered: isRegistered
@@ -136,7 +136,7 @@ export async function syncOnChainStakingData(walletAddress: string): Promise<any
       isLocked: false,
       referrer: null,
       walletTokenBalance: 0,
-      stakingVaultAddress: 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8',
+      stakingVaultAddress: 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu',
       dataSource: 'error',
       onChainVerified: false,
       isRegistered: false,

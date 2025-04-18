@@ -1542,7 +1542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const stakingData = await stakingVaultUtils.getUserStakingInfo(walletAddress);
         
         // Use the correct staking vault address from our constants
-        const correctStakingVaultAddress = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
+        const correctStakingVaultAddress = 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu';
         
         // Add token balance and ensure staking vault address is correct
         const stakingResponse = {
@@ -1662,7 +1662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Use the actual staking vault address
         // This ensures consistency and tracks real transaction data
-        const stakingVaultAddress = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
+        const stakingVaultAddress = 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu';
         
         console.log(`Using staking vault address: ${stakingVaultAddress}`);
         
@@ -1927,7 +1927,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // For now, we'll mock the response with simulated on-chain data
         
         // Use the actual staking vault address
-        const stakingVaultAddress = 'DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8';
+        const stakingVaultAddress = 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu';
         
         // Mock staking entry as it would be returned from the smart contract
         const stakingEntry = {

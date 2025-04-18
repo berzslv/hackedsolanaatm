@@ -56,7 +56,7 @@ export class StakingVaultClient {
     this.programId = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
     
     // Staking vault address (PDA derived from program and token mint)
-    this.stakingVaultAddress = new PublicKey('DAu6i8n3EkagBNT9B9sFsRL49Swm3H3Nr8A2scNygHS8');
+    this.stakingVaultAddress = new PublicKey('EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu');
   }
   
   /**
