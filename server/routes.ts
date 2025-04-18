@@ -1980,7 +1980,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Load keypair from token-keypair-original.json using promises
         const keypairData = await fs.promises.readFile('token-keypair-original.json', 'utf-8');
-        const secretKey = Buffer.from(JSON.parse(keypairData));
+        // Parse the keypair data correctly - it should be an array of numbers
+        const keypairArray = JSON.parse(keypairData);
+        // Convert to Uint8Array which is compatible with Keypair.fromSecretKey
+        const secretKey = Uint8Array.from(keypairArray);
         serverKeypair = Keypair.fromSecretKey(secretKey);
         console.log("Loaded server keypair for transaction signing");
       } catch (error) {
