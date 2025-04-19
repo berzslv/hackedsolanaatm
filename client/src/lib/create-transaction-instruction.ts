@@ -27,10 +27,11 @@ export function createTransactionInstruction(params: InstructionParams): Transac
     isWritable: key.isWritable
   }));
 
-  // Create instruction with either Buffer or Uint8Array
+  // Create instruction with data (always convert to Buffer to be safe)
+  // Avoid using instanceof since Buffer is polyfilled
   return new TransactionInstruction({
     keys: accountMetas,
     programId,
-    data: data instanceof Buffer ? data : Buffer.from(data)
+    data: Buffer.from(data)
   });
 }
