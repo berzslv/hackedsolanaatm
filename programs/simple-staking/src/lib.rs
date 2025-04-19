@@ -81,9 +81,12 @@ pub mod simple_staking {
         // Check if user has enough staked tokens
         require!(user_info.amount_staked >= amount, ErrorCode::InsufficientStake);
 
-        // Create authority seeds for signing
-        let vault_auth_seeds = &[b"vault_auth", &[vault.vault_bump]][..];
-        let signer = &[&vault_auth_seeds];
+        // Create authority seeds for signing using a simpler syntax
+        let seeds = &[
+            b"vault_auth".as_ref(),
+            &[vault.vault_bump]
+        ];
+        let signer = &[&seeds[..]];
 
         // Transfer tokens back to user
         let cpi_accounts = Transfer {
