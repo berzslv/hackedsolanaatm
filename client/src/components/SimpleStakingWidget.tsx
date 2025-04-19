@@ -3,6 +3,7 @@ import { useSolana } from '@/context/SolanaContext';
 import { PublicKey, Transaction, Connection, clusterApiUrl, SystemProgram } from '@solana/web3.js';
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { createTransactionInstruction } from '@/lib/create-transaction-instruction';
+import { SIMPLE_STAKING_DISCRIMINATORS } from '@/lib/anchor-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -148,14 +149,12 @@ export function SimpleStakingWidget() {
           ],
           programId,
           data: (() => {
-            // In Anchor, the discriminator is a proper 8-byte hash derived from the function name
-            // For simplicity, we'll use a SHA256 hash truncated to 8 bytes
-            // In production, you'd use the function provided by Anchor.js
-            const discriminator = Buffer.from([211, 98, 31, 68, 233, 45, 108, 189]); // "register_user" discriminator
+            // Use the properly computed Anchor discriminator from our utility
+            const discriminator = SIMPLE_STAKING_DISCRIMINATORS.registerUser;
             
-            // No arguments needed for this instruction, but we still need to ensure
-            // we're returning a proper Buffer that will work in browser environment
-            return Buffer.from(new Uint8Array(discriminator));
+            // No arguments needed for this instruction, so we just return the discriminator
+            // Ensure we're returning a proper Buffer that will work in browser environment
+            return Buffer.from(discriminator);
           })()
         });
         
@@ -179,9 +178,8 @@ export function SimpleStakingWidget() {
         ],
         programId,
         data: (() => {
-          // In Anchor, the discriminator is a proper 8-byte hash derived from the function name
-          // For simplicity, we'll use a SHA256 hash truncated to 8 bytes
-          const discriminator = Buffer.from([69, 119, 235, 219, 182, 124, 161, 6]); // "stake" discriminator
+          // Use the properly computed Anchor discriminator from our utility
+          const discriminator = SIMPLE_STAKING_DISCRIMINATORS.stake;
           
           // Create buffer for the amount parameter (u64 = 8 bytes)
           const amountBuffer = Buffer.alloc(8);
