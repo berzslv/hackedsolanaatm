@@ -1,0 +1,76 @@
+Starting simple staking process
+SimpleStakingWidget.tsx:96 Wallet public key: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+SimpleStakingWidget.tsx:97 Amount to stake: 10
+SimpleStakingWidget.tsx:112 Retrieved accounts info: 
+{success: true, programId: 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm', tokenMint: '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk', vault: '9EVSppzDhmrJeZb5yXWJwbuit3HUSB2KQZN8gj7WimN1', vaultAuthority: 'BE2tDJyNnyjHrdDXWWD2EhaQgFqJ4tBMUBVpTKn4FpBE', …}
+SimpleStakingWidget.tsx:133 User token account: H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp
+SimpleStakingWidget.tsx:140 User is not registered. Adding registration instruction.
+SimpleStakingWidget.tsx:166 Amount in lamports: 10000000000
+SimpleStakingWidget.tsx:200 Transaction built successfully
+SimpleStakingWidget.tsx:203 Sending transaction to wallet for signing...
+SolanaContext.tsx:133 Transaction status: Sending transaction to the network
+SolanaContext.tsx:140 Wallet type: Phantom
+SolanaContext.tsx:144 Using Phantom-specific transaction handling...
+SolanaContext.tsx:148 WalletSendTransactionError: Unexpected error
+    at async sendTransaction (SolanaContext.tsx:148:18)
+    at async handleStake (SimpleStakingWidget.tsx:212:25) 
+StandardWalletAdapter {_events: Events, _eventsCount: 4, signIn: ƒ, signTransaction: ƒ, signAllTransactions: ƒ, …}
+await in sendTransaction		
+sendTransaction	@	SolanaContext.tsx:148
+handleStake	@	SimpleStakingWidget.tsx:212
+SolanaContext.tsx:150 Standard Phantom transaction submission failed, trying alternative approach
+SolanaContext.tsx:160 Manually submitting Phantom-signed transaction...
+SolanaContext.tsx:168 Alternative Phantom approach failed, falling back to direct server endpoint SendTransactionError: Simulation failed. 
+Message: Transaction simulation failed: Error processing Instruction 2: custom program error: 0x65. 
+Logs: 
+[
+  "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+  "Program ComputeBudget111111111111111111111111111111 success",
+  "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+  "Program ComputeBudget111111111111111111111111111111 success",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm invoke [1]",
+  "Program log: AnchorError occurred. Error Code: InstructionFallbackNotFound. Error Number: 101. Error Message: Fallback functions are not supported.",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm consumed 2687 of 399700 compute units",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm failed: custom program error: 0x65"
+]. 
+Catch the `SendTransactionError` and call `getLogs()` on it for full details.
+    at async sendTransaction (SolanaContext.tsx:161:33)
+    at async handleStake (SimpleStakingWidget.tsx:212:25)
+sendTransaction	@	SolanaContext.tsx:168
+await in sendTransaction		
+handleStake	@	SimpleStakingWidget.tsx:212
+SolanaContext.tsx:175 Detected Anchor error in Phantom wallet:  Error: Simulation failed. 
+Message: Transaction simulation failed: Error processing Instruction 2: custom program error: 0x65. 
+Logs: 
+[
+  "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+  "Program ComputeBudget111111111111111111111111111111 success",
+  "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+  "Program ComputeBudget111111111111111111111111111111 success",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm invoke [1]",
+  "Program log: AnchorError occurred. Error Code: InstructionFallbackNotFound. Error Number: 101. Error Message: Fallback functions are not supported.",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm consumed 2687 of 399700 compute units",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm failed: custom program error: 0x65"
+]. 
+Catch the `SendTransactionError` and call `getLogs()` on it for full details.
+SolanaContext.tsx:193 Direct server registration successful
+SolanaContext.tsx:195 Server returned invalid signature format: undefined
+sendTransaction	@	SolanaContext.tsx:195
+await in sendTransaction		
+handleStake	@	SimpleStakingWidget.tsx:212
+SolanaContext.tsx:203 Server-side registration failed: Error: Server returned invalid signature format
+    at sendTransaction (SolanaContext.tsx:196:27)
+    at async handleStake (SimpleStakingWidget.tsx:212:25)
+sendTransaction	@	SolanaContext.tsx:203
+await in sendTransaction		
+handleStake	@	SimpleStakingWidget.tsx:212
+SolanaContext.tsx:216 Error sending transaction through wallet adapter: Error: Server returned invalid signature format
+    at sendTransaction (SolanaContext.tsx:196:27)
+    at async handleStake (SimpleStakingWidget.tsx:212:25)
+sendTransaction	@	SolanaContext.tsx:216
+await in sendTransaction		
+handleStake	@	SimpleStakingWidget.tsx:212
+SimpleStakingWidget.tsx:244 Error in simple staking process: Error: Server returned invalid signature format
+    at sendTransaction (SolanaContext.tsx:196:27)
+    at async handleStake (SimpleStakingWidget.tsx:212:25)
+handleStake	@	SimpleStakingWidget.tsx:244

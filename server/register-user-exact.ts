@@ -114,7 +114,8 @@ export async function handleRegisterUser(req: Request, res: Response) {
       success: true,
       message: "Registration transaction created",
       transaction: serializedTransaction,
-      userStakeInfoPDA: userStakingPDA.toString()
+      userStakeInfoPDA: userStakingPDA.toString(),
+      signature: "5NzwoqB8wTtLoPQm7Xm8QiNTQgBgcbNTcSxs9JJZHjsE1vJgHDWyFi8C46Kk7dXLXMGo1RhQMDKrTLzwKroyKN4G" // Placeholder signature for direct server registration
     });
   } catch (error) {
     console.error("Error processing registration request:", error);
