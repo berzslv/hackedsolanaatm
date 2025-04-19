@@ -192,7 +192,7 @@ export async function createCombinedBuyAndStakeTransactionV2(
         
         // The discriminator bytes for 'registerUser' instruction
         const registerUserDiscriminator = Buffer.from([
-          204, 126, 85, 7, 158, 17, 197, 211
+          156, 52, 137, 65, 173, 158, 30, 105  // Updated discriminator matching SimpleStaking IDL
         ]);
         
         // If referrer is provided, include it in the instruction data
@@ -215,10 +215,11 @@ export async function createCombinedBuyAndStakeTransactionV2(
         // Create the manual instruction
         const registerInstruction = new TransactionInstruction({
           keys: [
-            { pubkey: userPublicKey, isSigner: true, isWritable: true },           // owner
-            { pubkey: userInfoPDA, isSigner: false, isWritable: true },            // userInfo
-            { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // SystemProgram.programId
-            { pubkey: new PublicKey('SysvarRent111111111111111111111111111111111'), isSigner: false, isWritable: false }, // SYSVAR_RENT_PUBKEY
+            { pubkey: userPublicKey, isSigner: true, isWritable: true },           // user (signer)
+            { pubkey: userInfoPDA, isSigner: false, isWritable: true },            // userInfo (pda)
+            { pubkey: referralStaking.STAKING_VAULT_ADDRESS, isSigner: false, isWritable: false }, // vault
+            { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // systemProgram
+            { pubkey: new PublicKey('SysvarRent111111111111111111111111111111111'), isSigner: false, isWritable: false }, // rent
           ],
           programId: referralStaking.PROGRAM_ID,
           data: instructionData,
@@ -253,7 +254,7 @@ export async function createCombinedBuyAndStakeTransactionV2(
       
       // The discriminator bytes for 'stake' instruction
       const stakeDiscriminator = Buffer.from([
-        111, 18, 107, 137, 251, 29, 19, 105
+        206, 176, 202, 18, 200, 209, 179, 108  // Updated discriminator matching SimpleStaking IDL
       ]);
       
       // Convert the bigint amount to an 8-byte buffer (little-endian)

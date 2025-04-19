@@ -320,7 +320,7 @@ export async function createDirectStakingTransaction(
       
       // The discriminator bytes for 'stake' instruction (anchor.hash('global:stake'))
       const stakeDiscriminator = Buffer.from([
-        111, 18, 107, 137, 251, 29, 19, 105
+        206, 176, 202, 18, 200, 209, 179, 108  // Updated discriminator matching SimpleStaking IDL
       ]);
       
       // Convert the bigint amount to an 8-byte buffer (little-endian)
