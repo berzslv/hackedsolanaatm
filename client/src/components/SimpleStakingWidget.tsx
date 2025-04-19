@@ -152,9 +152,16 @@ export function SimpleStakingWidget() {
             // Use the properly computed Anchor discriminator from our utility
             const discriminator = SIMPLE_STAKING_DISCRIMINATORS.registerUser;
             
-            // No arguments needed for this instruction, so we just return the discriminator
-            // Ensure we're returning a proper Buffer that will work in browser environment
-            return Buffer.from(discriminator);
+            // Add a 0 byte to indicate no referrer (None option in Rust)
+            const optionNone = new Uint8Array([0]);
+            
+            // Combine discriminator and option
+            const combinedBuffer = new Uint8Array(discriminator.length + optionNone.length);
+            combinedBuffer.set(discriminator, 0);
+            combinedBuffer.set(optionNone, discriminator.length);
+            
+            console.log("Registration instruction discriminator:", Array.from(discriminator).join(','));
+            return Buffer.from(combinedBuffer);
           })()
         });
         
@@ -189,9 +196,15 @@ export function SimpleStakingWidget() {
           
           // Combine discriminator and amount buffer manually since Buffer.concat may not be available in browser
           const combinedBuffer = new Uint8Array(discriminator.length + amountBuffer.length);
-          combinedBuffer.set(new Uint8Array(discriminator), 0);
+          combinedBuffer.set(discriminator, 0);
           combinedBuffer.set(new Uint8Array(amountBuffer), discriminator.length);
-          return Buffer.from(combinedBuffer);
+          
+          console.log("Stake instruction discriminator:", Array.from(discriminator).join(','));
+          console.log("Stake amount in lamports:", amountLamports);
+          const finalBuffer = Buffer.from(combinedBuffer);
+          console.log("Final stake instruction data:", Array.from(new Uint8Array(finalBuffer)).join(','));
+          
+          return finalBuffer;
         })()
       });
       

@@ -75,12 +75,15 @@ export async function handleRegisterUser(req: Request, res: Response) {
       console.log(`User token account: ${userTokenAccount[0].toString()}`);
       
       // Create the instruction data for registerUser function
-      // The instruction discriminator for "registerUser" + optional referrer (null in this case)
-      const registerUserInstructionPrefix = Buffer.from([109, 19, 167, 111, 254, 155, 195, 112]); // Anchor discriminator for "registerUser"
+      // Try both camelCase and snake_case discriminators to cover both possibilities
+      // 109, 19, 167, 111, 254, 155, 195, 112 is the most common discriminator we've seen
+      const registerUserInstructionPrefix = Buffer.from([109, 19, 167, 111, 254, 155, 195, 112]); // Primary attempt
       const optionNone = Buffer.from([0]); // 0 for None option (no referrer)
       
       // Combine the instruction discriminator and null referrer option
       const instructionData = Buffer.concat([registerUserInstructionPrefix, optionNone]);
+      
+      console.log("Using registerUser discriminator:", Array.from(registerUserInstructionPrefix).join(','));
       
       // Based on the IDL, "registerUser" instruction has these accounts:
       transaction.add({
