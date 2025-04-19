@@ -160,7 +160,7 @@ export async function createDirectStakingTransaction(
         // Conditionally add referrer if provided
         ...(referrer ? [{ pubkey: referrer, isSigner: false, isWritable: false }] : [])
       ],
-      data: Buffer.from([0]) // 0 = initialize instruction
+      data: Buffer.from([156, 52, 137, 65, 173, 158, 30, 105]) // Anchor discriminator for registerUser
     });
     
     transaction.add(registerInstruction);

@@ -272,13 +272,18 @@ export async function stakeTokens(
   // Convert amount to lamports (assuming 9 decimals)
   const amountLamports = amount * Math.pow(10, 9);
   
-  // Create instruction data with code (2 = stake) followed by amount
-  const stakeData = new Uint8Array(9); // 1 byte for instruction + 8 bytes for amount
-  stakeData[0] = STAKE_IX; // Instruction index for stake
+  // Create instruction data with Anchor discriminator followed by amount
+  const discriminator = [206, 176, 202, 18, 200, 209, 179, 108]; // Anchor discriminator for stake
+  const stakeData = new Uint8Array(16); // 8 bytes for discriminator + 8 bytes for amount
+  
+  // Set discriminator bytes
+  for (let i = 0; i < discriminator.length; i++) {
+    stakeData[i] = discriminator[i];
+  }
   
   // Write amount as little-endian 64-bit value
   const view = new DataView(stakeData.buffer);
-  view.setBigUint64(1, BigInt(amountLamports), true); // true = little-endian
+  view.setBigUint64(8, BigInt(amountLamports), true); // true = little-endian
   
   // Create stake instruction
   const stakeIx = new TransactionInstruction({

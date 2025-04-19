@@ -110,8 +110,8 @@ export async function createRegisterUserInstruction(
     accounts.push({ pubkey: referrer, isSigner: false, isWritable: false });
   }
   
-  // Create the instruction data - 0 = Register instruction
-  const data = Buffer.from([0]);
+  // Create the instruction data with Anchor discriminator for registerUser
+  const data = Buffer.from([156, 52, 137, 65, 173, 158, 30, 105]);
   
   // Return the transaction instruction
   return new TransactionInstruction({
@@ -166,13 +166,18 @@ export async function createStakeInstruction(
     accounts.push({ pubkey: referrerTokenAccount, isSigner: false, isWritable: true });
   }
   
-  // Create the instruction data - 1 = Stake instruction
-  const dataLayout = Buffer.alloc(9);
-  dataLayout[0] = 1; // Instruction index for stake
+  // Create the instruction data with Anchor discriminator for stake + amount
+  const discriminator = [206, 176, 202, 18, 200, 209, 179, 108]; // stake discriminator
+  const dataLayout = Buffer.alloc(16); // 8 bytes for discriminator + 8 bytes for amount
+  
+  // Copy the discriminator bytes
+  for (let i = 0; i < discriminator.length; i++) {
+    dataLayout[i] = discriminator[i];
+  }
   
   // Write the amount as a 64-bit little-endian value
   const amountBuffer = amountBN.toArrayLike(Buffer, 'le', 8);
-  amountBuffer.copy(dataLayout, 1);
+  amountBuffer.copy(dataLayout, 8); // Copy after discriminator
   
   // Return the transaction instruction
   return new TransactionInstruction({
@@ -212,13 +217,18 @@ export async function createUnstakeInstruction(
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false } // system program
   ];
   
-  // Create the instruction data - 2 = Unstake instruction
-  const dataLayout = Buffer.alloc(9);
-  dataLayout[0] = 2; // Instruction index for unstake
+  // Create the instruction data with Anchor discriminator for unstake + amount
+  const discriminator = [88, 7, 182, 250, 48, 128, 234, 18]; // Unstake discriminator
+  const dataLayout = Buffer.alloc(16); // 8 bytes for discriminator + 8 bytes for amount
+  
+  // Copy the discriminator bytes
+  for (let i = 0; i < discriminator.length; i++) {
+    dataLayout[i] = discriminator[i];
+  }
   
   // Write the amount as a 64-bit little-endian value
   const amountBuffer = amountBN.toArrayLike(Buffer, 'le', 8);
-  amountBuffer.copy(dataLayout, 1);
+  amountBuffer.copy(dataLayout, 8); // Copy after discriminator
   
   // Return the transaction instruction
   return new TransactionInstruction({
@@ -256,8 +266,9 @@ export async function createClaimRewardsInstruction(
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false } // system program
   ];
   
-  // Create the instruction data - 3 = Claim rewards instruction
-  const data = Buffer.from([3]);
+  // We don't have the exact discriminator for claim rewards, so we'll create it
+  // from the name using the same algorithm used for the other instructions
+  const data = Buffer.from([243, 103, 115, 217, 7, 90, 146, 173]); // Generated for "claimRewards"
   
   // Return the transaction instruction
   return new TransactionInstruction({
