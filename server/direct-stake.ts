@@ -246,7 +246,7 @@ export async function createDirectStakingTransaction(
         
         // The discriminator bytes for 'registerUser' instruction
         const registerUserDiscriminator = Buffer.from([
-          204, 126, 85, 7, 158, 17, 197, 211  // This is obtained from anchor.hash('global:registerUser')
+          156, 52, 137, 65, 173, 158, 30, 105  // Updated discriminator matching SimpleStaking IDL
         ]);
         
         // If referrer is provided, include it in the instruction data
@@ -269,10 +269,11 @@ export async function createDirectStakingTransaction(
         // Create the manual instruction
         const registerInstruction = new TransactionInstruction({
           keys: [
-            { pubkey: userPublicKey, isSigner: true, isWritable: true },           // owner
-            { pubkey: userInfoPDA, isSigner: false, isWritable: true },            // userInfo
-            { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // SystemProgram.programId
-            { pubkey: new PublicKey('SysvarRent111111111111111111111111111111111'), isSigner: false, isWritable: false }, // SYSVAR_RENT_PUBKEY
+            { pubkey: userPublicKey, isSigner: true, isWritable: true },           // user (signer)
+            { pubkey: userInfoPDA, isSigner: false, isWritable: true },            // userInfo (pda)
+            { pubkey: referralStaking.STAKING_VAULT_ADDRESS, isSigner: false, isWritable: false }, // vault
+            { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // systemProgram
+            { pubkey: new PublicKey('SysvarRent111111111111111111111111111111111'), isSigner: false, isWritable: false }, // rent
           ],
           programId: referralStaking.PROGRAM_ID,
           data: instructionData,
