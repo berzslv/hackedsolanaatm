@@ -134,12 +134,6 @@ export function SimpleStakingWidget() {
 
       // Create a new transaction
       const transaction = new Transaction();
-      
-      // Get latest blockhash
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
-      transaction.recentBlockhash = blockhash;
-      transaction.lastValidBlockHeight = lastValidBlockHeight;
-      transaction.feePayer = publicKey;
 
       // Add register instruction if user is not registered
       if (!isRegistered) {
@@ -202,6 +196,14 @@ export function SimpleStakingWidget() {
 
       // Send the transaction
       console.log("Sending transaction to wallet for signing...");
+      
+      // Set all the necessary properties for the transaction
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+      transaction.recentBlockhash = blockhash;
+      transaction.lastValidBlockHeight = lastValidBlockHeight;
+      transaction.feePayer = publicKey;
+      
+      // Send the transaction using the context's sendTransaction
       const signature = await sendTransaction(transaction);
       
       console.log("Transaction sent successfully, signature:", signature);

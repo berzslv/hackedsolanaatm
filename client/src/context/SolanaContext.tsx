@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Connection, PublicKey, clusterApiUrl, VersionedTransaction } from '@solana/web3.js';
+import { Connection, PublicKey, clusterApiUrl, VersionedTransaction, Transaction } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 interface SolanaContextType {
@@ -10,8 +10,8 @@ interface SolanaContextType {
   refreshBalance: () => Promise<void>;
   disconnectWallet: () => void;
   signMessage: (message: Uint8Array) => Promise<Uint8Array>;
-  signTransaction: (transaction: VersionedTransaction) => Promise<VersionedTransaction>;
-  sendTransaction: (transaction: VersionedTransaction) => Promise<string>;
+  signTransaction: (transaction: Transaction | VersionedTransaction) => Promise<Transaction | VersionedTransaction>;
+  sendTransaction: (transaction: Transaction | VersionedTransaction) => Promise<string>;
 }
 
 const SolanaContext = createContext<SolanaContextType>({
@@ -106,7 +106,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Sign transaction
-  const signTransaction = async (transaction: VersionedTransaction): Promise<VersionedTransaction> => {
+  const signTransaction = async (transaction: Transaction | VersionedTransaction): Promise<Transaction | VersionedTransaction> => {
     if (!connected || !publicKey || !adapterSignTransaction) {
       throw new Error('Wallet not connected or signTransaction not available');
     }
@@ -120,7 +120,7 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Send transaction with fallback mechanisms
-  const sendTransaction = async (transaction: VersionedTransaction): Promise<string> => {
+  const sendTransaction = async (transaction: Transaction | VersionedTransaction): Promise<string> => {
     if (!connected || !publicKey || !adapterSendTransaction) {
       throw new Error('Wallet not connected or sendTransaction not available');
     }
