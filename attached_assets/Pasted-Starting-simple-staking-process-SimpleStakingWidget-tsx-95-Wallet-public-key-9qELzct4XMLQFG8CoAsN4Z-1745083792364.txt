@@ -1,0 +1,102 @@
+Starting simple staking process
+SimpleStakingWidget.tsx:95 Wallet public key: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+SimpleStakingWidget.tsx:96 Amount to stake: 10
+SimpleStakingWidget.tsx:111 Retrieved accounts info: {success: true, programId: 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm', tokenMint: '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk', vault: '9EVSppzDhmrJeZb5yXWJwbuit3HUSB2KQZN8gj7WimN1', vaultAuthority: 'BE2tDJyNnyjHrdDXWWD2EhaQgFqJ4tBMUBVpTKn4FpBE', …}
+SimpleStakingWidget.tsx:132 User token account: H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp
+SimpleStakingWidget.tsx:139 User is not registered. Adding registration instruction.
+SimpleStakingWidget.tsx:167 Amount in lamports: 10000000000
+SimpleStakingWidget.tsx:202 Transaction built successfully
+SimpleStakingWidget.tsx:205 Sending transaction to wallet for signing...
+SolanaContext.tsx:133 Transaction status: Sending transaction to the network
+SolanaContext.tsx:140 Wallet type: Phantom
+SolanaContext.tsx:144 Using Phantom-specific transaction handling...
+SolanaContext.tsx:148 WalletSendTransactionError: Unexpected error
+    at StandardWalletAdapter.sendTransaction (chunk-HMIINQ7M.js?v=7fed3b3f:4193:15)
+    at async chunk-HMIINQ7M.js?v=7fed3b3f:4801:12
+    at async sendTransaction (SolanaContext.tsx:148:18)
+    at async handleStake (SimpleStakingWidget.tsx:214:25) StandardWalletAdapter {_events: Events, _eventsCount: 4, signIn: ƒ, signTransaction: ƒ, signAllTransactions: ƒ, …}
+overrideMethod @ hook.js:608
+(anonymous) @ chunk-HMIINQ7M.js?v=7fed3b3f:4700
+handleError @ chunk-HMIINQ7M.js?v=7fed3b3f:4761
+emit @ chunk-2MH4V4YT.js?v=7fed3b3f:81
+sendTransaction @ chunk-HMIINQ7M.js?v=7fed3b3f:4196
+await in sendTransaction
+(anonymous) @ chunk-HMIINQ7M.js?v=7fed3b3f:4801
+sendTransaction @ SolanaContext.tsx:148
+handleStake @ SimpleStakingWidget.tsx:214
+await in handleStake
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+SolanaContext.tsx:150 Standard Phantom transaction submission failed, trying alternative approach
+SolanaContext.tsx:160 Manually submitting Phantom-signed transaction...
+SolanaContext.tsx:168 Alternative Phantom approach failed, falling back to direct server endpoint SendTransactionError: Simulation failed. 
+Message: Transaction simulation failed: Error processing Instruction 2: custom program error: 0x65. 
+Logs: 
+[
+  "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+  "Program ComputeBudget111111111111111111111111111111 success",
+  "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+  "Program ComputeBudget111111111111111111111111111111 success",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm invoke [1]",
+  "Program log: AnchorError occurred. Error Code: InstructionFallbackNotFound. Error Number: 101. Error Message: Fallback functions are not supported.",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm consumed 2687 of 399700 compute units",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm failed: custom program error: 0x65"
+]. 
+Catch the `SendTransactionError` and call `getLogs()` on it for full details.
+    at Connection.sendEncodedTransaction (chunk-RTG5XY25.js?v=7fed3b3f:13886:13)
+    at async Connection.sendRawTransaction (chunk-RTG5XY25.js?v=7fed3b3f:13853:20)
+    at async sendTransaction (SolanaContext.tsx:161:33)
+    at async handleStake (SimpleStakingWidget.tsx:214:25)
+overrideMethod @ hook.js:608
+sendTransaction @ SolanaContext.tsx:168
+await in sendTransaction
+handleStake @ SimpleStakingWidget.tsx:214
+await in handleStake
+callCallback2 @ chunk-276SZO74.js?v=7fed3b3f:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=7fed3b3f:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=7fed3b3f:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=7fed3b3f:3736
+executeDispatch @ chunk-276SZO74.js?v=7fed3b3f:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=7fed3b3f:7034
+processDispatchQueue @ chunk-276SZO74.js?v=7fed3b3f:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=7fed3b3f:7051
+(anonymous) @ chunk-276SZO74.js?v=7fed3b3f:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=7fed3b3f:18913
+batchedUpdates @ chunk-276SZO74.js?v=7fed3b3f:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=7fed3b3f:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=7fed3b3f:5478
+dispatchEvent @ chunk-276SZO74.js?v=7fed3b3f:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=7fed3b3f:5449Understand this error
+SolanaContext.tsx:175 Detected Anchor error in Phantom wallet:  Error: Simulation failed. 
+Message: Transaction simulation failed: Error processing Instruction 2: custom program error: 0x65. 
+Logs: 
+[
+  "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+  "Program ComputeBudget111111111111111111111111111111 success",
+  "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+  "Program ComputeBudget111111111111111111111111111111 success",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm invoke [1]",
+  "Program log: AnchorError occurred. Error Code: InstructionFallbackNotFound. Error Number: 101. Error Message: Fallback functions are not supported.",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm consumed 2687 of 399700 compute units",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm failed: custom program error: 0x65"
+]. 
+Catch the `SendTransactionError` and call `getLogs()` on it for full details.
+SolanaContext.tsx:193 Direct server registration successful
+SimpleStakingWidget.tsx:216 Transaction sent successfully, signature: direct-server-registration-successful
+SimpleStakingWidget.tsx:224 Waiting for transaction confirmation...
+SimpleStakingWidget.tsx:246 Error in simple staking process: Error: signature must be base58 encoded: direct-server-registration-successful
+    at Connection.confirmTransaction (chunk-RTG5XY25.js?v=7fed3b3f:12298:13)
+    at handleStake (SimpleStakingWidget.tsx:225:45)

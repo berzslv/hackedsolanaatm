@@ -1,0 +1,88 @@
+You're getting a custom program error: 0x65, which maps to:
+
+🧨 Anchor Error: InstructionFallbackNotFound (0x65)
+This means that the instruction you're trying to call does not match any instruction in your Anchor program, so Anchor doesn't know how to handle it — it's a fallback trap.
+
+🔍 What This Likely Means in Your Case:
+You're trying to call your stake instruction, but the discriminator you’ve used in your transaction doesn’t match any instruction in the program IDL.
+
+In this log:
+
+bash
+Copy
+Edit
+Error Message: Fallback functions are not supported.
+That means Anchor was expecting a known discriminator, but didn’t find one — so it hit the fallback handler and errored out.
+
+✅ How to Fix This
+Option 1: Double-check your hardcoded discriminator
+In your SimpleStakingWidget.tsx you're likely doing something like this:
+
+ts
+Copy
+Edit
+const discriminator = Buffer.from([0, 0, 0, 0, 0, 0, 0, 0]); // ← this is probably incorrect
+Instead, get the real discriminator for your instruction. You can do this in two ways:
+
+🧪 Option A: Generate it manually
+If you don’t have the Anchor IDL in frontend yet, do this manually:
+
+ts
+Copy
+Edit
+import * as sha256 from "js-sha256";
+
+function getAnchorDiscriminator(name: string): Buffer {
+  const preimage = `global:${name}`;
+  const hash = sha256.digest(preimage); // returns Uint8Array
+  return Buffer.from(hash).subarray(0, 8);
+}
+
+// For example:
+const stakeDiscriminator = getAnchorDiscriminator("stake");
+Then use that buffer as your instruction discriminator. Same goes for registerUser or unstake.
+
+🧪 Option B: Use IDL and @coral-xyz/anchor in frontend
+If you bring in your Anchor IDL and use Anchor's frontend SDK, you can do:
+
+ts
+Copy
+Edit
+const provider = new AnchorProvider(connection, wallet, {});
+const program = new Program(idl, programId, provider);
+const ix = await program.methods.stake(amount).accounts({ ... }).instruction();
+This will generate the correct discriminator for you.
+
+✅ Also Fix This Minor Issue:
+ts
+Copy
+Edit
+console.log("Transaction sent successfully, signature:", txSignature);
+Later:
+
+ts
+Copy
+Edit
+await connection.confirmTransaction(txSignature);
+But you logged this:
+
+pgsql
+Copy
+Edit
+Transaction sent successfully, signature: direct-server-registration-successful
+You're treating a success message as a signature. Fix:
+
+ts
+Copy
+Edit
+if (!txSignature || !txSignature.match(/^[1-9A-HJ-NP-Za-km-z]+$/)) {
+  throw new Error("Invalid transaction signature returned");
+}
+Or ensure that sendTransaction() returns the actual base58 signature.
+
+TL;DR Fix Summary:
+Fix the instruction discriminator you're passing to match global:stake's hash prefix.
+
+Avoid sending success messages in place of transaction signatures.
+
+(Optional) Use Anchor in frontend to generate transactions easily and safely.
