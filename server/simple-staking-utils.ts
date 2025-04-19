@@ -37,7 +37,7 @@ export const CLAIM_REWARDS_IX = 4;
 
 // PDA seeds
 const VAULT_SEED = 'vault';
-const VAULT_AUTH_SEED = 'vault_authority';
+const VAULT_AUTH_SEED = 'vault_auth';
 const USER_SEED = 'user_info';
 
 // Account sizes based on our Rust struct layouts

@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Mint, Transfer};
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm");
 
 #[program]
 pub mod simple_staking {
@@ -82,7 +82,7 @@ pub mod simple_staking {
         require!(user_info.amount_staked >= amount, ErrorCode::InsufficientStake);
 
         // Create authority seeds for signing
-        let vault_auth_seeds = &[b"vault_auth", &[vault.vault_bump]];
+        let vault_auth_seeds = &[b"vault_auth".as_ref(), &[vault.vault_bump]];
         let signer = &[&vault_auth_seeds[..]];
 
         // Transfer tokens back to user
