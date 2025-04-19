@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSolana } from '@/context/SolanaContext';
-import { PublicKey, Transaction, Connection, clusterApiUrl, SystemProgram } from '@solana/web3.js';
+import { PublicKey, Transaction, Connection, clusterApiUrl, SystemProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { createTransactionInstruction } from '@/lib/create-transaction-instruction';
 import { SIMPLE_STAKING_DISCRIMINATORS } from '@/lib/anchor-utils';
@@ -141,11 +141,11 @@ export function SimpleStakingWidget() {
         
         const registerInstruction = createTransactionInstruction({
           keys: [
-            { pubkey: publicKey, isSigner: true, isWritable: true },          // user
-            { pubkey: userStakeInfoAddress, isSigner: false, isWritable: true }, // userInfo
+            { pubkey: publicKey, isSigner: true, isWritable: true },          // user (signer)
+            { pubkey: userStakeInfoAddress, isSigner: false, isWritable: true }, // userInfo (pda)
             { pubkey: vault, isSigner: false, isWritable: false },            // vault
-            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system program
-            { pubkey: PublicKey.default, isSigner: false, isWritable: false } // rent
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
+            { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }  // rent
           ],
           programId,
           data: (() => {

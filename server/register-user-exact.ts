@@ -76,21 +76,23 @@ export async function handleRegisterUser(req: Request, res: Response) {
       
       // Create the instruction data for registerUser function
       // According to the SimpleStaking IDL, registerUser takes NO arguments (unlike referral_staking)
-      // Using our manually verified discriminator for registerUser
-      const registerUserInstructionPrefix = Buffer.from([109, 19, 167, 111, 254, 155, 195, 112]); // Primary attempt
+      // Using the correct discriminator calculated from the IDL
+      const registerUserInstructionPrefix = Buffer.from([156, 52, 137, 65, 173, 158, 30, 105]); // Exact match from recalculated discriminator
       
       // No need to add option None since the function doesn't take referrer args in SimpleStaking
       const instructionData = registerUserInstructionPrefix;
       
       console.log("Using registerUser discriminator:", Array.from(registerUserInstructionPrefix).join(','));
       
-      // Based on the IDL, "registerUser" instruction has these accounts:
+      // Based on the IDL, "registerUser" instruction has exactly these accounts:
+      // From IDL: "name":"registerUser","accounts":[{"name":"user","isMut":true,"isSigner":true},{"name":"userInfo","isMut":true,"isSigner":false},{"name":"vault","isMut":false,"isSigner":false},{"name":"systemProgram","isMut":false,"isSigner":false},{"name":"rent","isMut":false,"isSigner":false}],"args":[]
       transaction.add({
         keys: [
-          { pubkey: userPublicKey, isSigner: true, isWritable: true }, // Owner account (signer)
-          { pubkey: userStakingPDA, isSigner: false, isWritable: true }, // User info account (PDA)
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // System program
-          { pubkey: anchor.web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false } // Rent sysvar
+          { pubkey: userPublicKey, isSigner: true, isWritable: true }, // user (signer)
+          { pubkey: userStakingPDA, isSigner: false, isWritable: true }, // userInfo (pda)
+          { pubkey: VAULT_ADDRESS, isSigner: false, isWritable: false }, // vault
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
+          { pubkey: anchor.web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false } // rent
         ],
         programId: PROGRAM_ID,
         data: instructionData
