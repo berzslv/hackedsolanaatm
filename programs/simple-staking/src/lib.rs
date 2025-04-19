@@ -81,12 +81,12 @@ pub mod simple_staking {
         // Check if user has enough staked tokens
         require!(user_info.amount_staked >= amount, ErrorCode::InsufficientStake);
 
-        // Create authority seeds for signing using a simpler syntax
-        let seeds = &[
+        // Create authority seeds for signing using a proper syntax for Rust/Anchor
+        let vault_auth_seeds = &[
             b"vault_auth".as_ref(),
             &[vault.vault_bump]
         ];
-        let signer = &[&seeds[..]];
+        let signer_seeds = [vault_auth_seeds.as_slice()];
 
         // Transfer tokens back to user
         let cpi_accounts = Transfer {
@@ -98,7 +98,7 @@ pub mod simple_staking {
         let cpi_ctx = CpiContext::new_with_signer(
             token_program.to_account_info(),
             cpi_accounts,
-            signer,
+            &signer_seeds,
         );
 
         token::transfer(cpi_ctx, amount)?;
