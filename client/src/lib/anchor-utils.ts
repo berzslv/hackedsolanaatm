@@ -28,17 +28,21 @@ export function getAnchorDiscriminator(name: string): Uint8Array {
   return result;
 }
 
-// Hard-coded discriminators that match the Anchor program's expected values
-// These values were extracted from the Solana program logs during transaction simulation
+// These values are extracted from the SimpleStaking IDL for the program
+// Based on the following instruction names:
+// - "initialize" 
+// - "registerUser"
+// - "stake"
+// - "unstake"
+// We generate discriminators as specified by the Anchor protocol
+
 export const SIMPLE_STAKING_DISCRIMINATORS = {
-  // These discriminators have been manually identified from the program logs
-  initialize: new Uint8Array([175, 175, 109, 31, 13, 152, 155, 237]),
-  // Trying different cases for register_user as Anchor might be using snake_case internally
-  registerUser: new Uint8Array([109, 19, 167, 111, 254, 155, 195, 112]), // from server log
-  register_user: new Uint8Array([211, 98, 31, 68, 233, 45, 108, 189]), // from previous attempts
-  // Trying different cases for stake
-  stake: new Uint8Array([69, 119, 235, 219, 182, 124, 161, 6]), // from previous attempts
-  unstake: new Uint8Array([21, 158, 66, 239, 67, 25, 98, 48]) // from previous attempts
+  // These match the discriminators expected by the Anchor program
+  initialize: new Uint8Array([175, 175, 109, 31, 13, 152, 155, 237]), 
+  // Exact match from IDL (3) for SimpleStaking
+  registerUser: new Uint8Array([156, 52, 137, 65, 173, 158, 30, 105]),
+  stake: new Uint8Array([206, 176, 202, 18, 200, 209, 179, 108]),
+  unstake: new Uint8Array([88, 7, 182, 250, 48, 128, 234, 18])
 };
 
 // Log the discriminators for debugging

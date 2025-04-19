@@ -145,23 +145,18 @@ export function SimpleStakingWidget() {
             { pubkey: userStakeInfoAddress, isSigner: false, isWritable: true }, // userInfo
             { pubkey: vault, isSigner: false, isWritable: false },            // vault
             { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system program
-            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // rent
+            { pubkey: PublicKey.default, isSigner: false, isWritable: false } // rent
           ],
           programId,
           data: (() => {
-            // Use the properly computed Anchor discriminator from our utility
+            // Based on the IDL, SimpleStaking's registerUser takes NO arguments
+            // unlike the referral_staking contract which takes an Option<PublicKey>
             const discriminator = SIMPLE_STAKING_DISCRIMINATORS.registerUser;
             
-            // Add a 0 byte to indicate no referrer (None option in Rust)
-            const optionNone = new Uint8Array([0]);
-            
-            // Combine discriminator and option
-            const combinedBuffer = new Uint8Array(discriminator.length + optionNone.length);
-            combinedBuffer.set(discriminator, 0);
-            combinedBuffer.set(optionNone, discriminator.length);
-            
             console.log("Registration instruction discriminator:", Array.from(discriminator).join(','));
-            return Buffer.from(combinedBuffer);
+            
+            // Just return the discriminator with no additional arguments
+            return Buffer.from(discriminator);
           })()
         });
         
