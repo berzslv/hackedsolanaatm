@@ -102,7 +102,7 @@ export async function initializeVault(
       { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
     ],
     programId: PROGRAM_ID,
-    data: Buffer.from([INITIALIZE_VAULT_IX]) // Instruction index for initialize_vault
+    data: Buffer.from([175, 175, 109, 31, 13, 152, 155, 237]) // Anchor discriminator for initialize
   });
   
   // Create transaction

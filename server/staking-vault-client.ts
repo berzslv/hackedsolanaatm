@@ -27,8 +27,7 @@ export function getConnection(): Connection {
 export function findUserStakeInfoPDA(userWalletAddress: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
     [
-      Buffer.from('user-stake'),
-      STAKING_VAULT_ADDRESS.toBuffer(),
+      Buffer.from('user_info'),
       userWalletAddress.toBuffer()
     ],
     PROGRAM_ID
@@ -82,7 +81,7 @@ export function createStakingInstruction(
   
   // Create the stake instruction data
   // Format: [discriminator(8 bytes)][amount(8 bytes)]
-  const stakeDiscriminator = Buffer.from([111, 18, 107, 137, 251, 29, 19, 105]);
+  const stakeDiscriminator = Buffer.from([206, 176, 202, 18, 200, 209, 179, 108]); // Updated discriminator matching SimpleStaking IDL
   
   // Convert the bigint amount to an 8-byte buffer (little-endian)
   const amountBuffer = Buffer.alloc(8);
