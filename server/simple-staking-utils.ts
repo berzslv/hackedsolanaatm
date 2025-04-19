@@ -226,7 +226,7 @@ export async function registerUser(
       { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
     ],
     programId: PROGRAM_ID,
-    data: Buffer.from([REGISTER_USER_IX]) // Instruction index for register_user
+    data: Buffer.from([156, 52, 137, 65, 173, 158, 30, 105]) // Anchor discriminator for registerUser
   });
   
   // Create and send transaction

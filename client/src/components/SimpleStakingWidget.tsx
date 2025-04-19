@@ -154,6 +154,7 @@ export function SimpleStakingWidget() {
             const discriminator = SIMPLE_STAKING_DISCRIMINATORS.registerUser;
             
             console.log("Registration instruction discriminator:", Array.from(discriminator).join(','));
+            console.log("Registration using hardcoded discriminator [156, 52, 137, 65, 173, 158, 30, 105]");
             
             // Just return the discriminator with no additional arguments
             return Buffer.from(discriminator);
