@@ -14,8 +14,8 @@ pub mod simple_staking {
         vault.authority = ctx.accounts.authority.key();
         vault.token_mint = ctx.accounts.token_mint.key();
         vault.token_vault = ctx.accounts.token_vault.key();
-        vault.bump = *ctx.bumps.get("vault").unwrap();
-        vault.vault_bump = *ctx.bumps.get("vault_authority").unwrap();
+        vault.bump = ctx.bumps.vault;
+        vault.vault_bump = ctx.bumps.vault_authority;
         
         msg!("Staking vault initialized");
         Ok(())
@@ -30,7 +30,7 @@ pub mod simple_staking {
         user_info.rewards_earned = 0;
         user_info.last_stake_timestamp = Clock::get()?.unix_timestamp;
         user_info.last_claim_timestamp = Clock::get()?.unix_timestamp;
-        user_info.bump = *ctx.bumps.get("user_info").unwrap();
+        user_info.bump = ctx.bumps.user_info;
         
         msg!("User registered for staking");
         Ok(())
@@ -82,8 +82,8 @@ pub mod simple_staking {
         require!(user_info.amount_staked >= amount, ErrorCode::InsufficientStake);
 
         // Create authority seeds for signing
-        let vault_auth_seeds = &[b"vault_auth".as_ref(), &[vault.vault_bump]];
-        let signer = &[&vault_auth_seeds[..]];
+        let vault_auth_seeds = &[b"vault_auth", &[vault.vault_bump]][..];
+        let signer = &[&vault_auth_seeds];
 
         // Transfer tokens back to user
         let cpi_accounts = Transfer {

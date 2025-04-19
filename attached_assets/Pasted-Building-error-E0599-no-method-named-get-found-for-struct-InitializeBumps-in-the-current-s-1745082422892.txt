@@ -1,0 +1,71 @@
+Building...
+error[E0599]: no method named `get` found for struct `InitializeBumps` in the current scope
+   --> src/lib.rs:17:33
+    |
+17  |         vault.bump = *ctx.bumps.get("vault").unwrap();
+    |                       ----------^^^---------
+    |                       |         |
+    |                       |         this is an associated function, not a method
+    |                       help: use associated function syntax instead: `InitializeBumps::get("vault")`
+...
+127 | #[derive(Accounts)]
+    |          -------- method `get` not found for this struct
+    |
+    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in the trait `anchor_lang::prelude::SolanaSysvar`
+   --> src/sysvar/mod.rs:223:5
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `get`, perhaps you need to implement one of them:
+            candidate #1: `SliceIndex`
+            candidate #2: `ZeroCopyAccessor`
+            candidate #3: `anchor_lang::solana_program::account_info::Account`
+            candidate #4: `log::kv::source::Source`
+            candidate #5: `SlabView`
+ 
+error[E0599]: no method named `get` found for struct `InitializeBumps` in the current scope
+   --> src/lib.rs:18:39
+    |
+18  |         vault.vault_bump = *ctx.bumps.get("vault_authority").unwrap();
+    |                             ----------^^^-------------------
+    |                             |         |
+    |                             |         this is an associated function, not a method
+    |                             help: use associated function syntax instead: `InitializeBumps::get("vault_authority")`
+...
+127 | #[derive(Accounts)]
+    |          -------- method `get` not found for this struct
+    |
+    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in the trait `anchor_lang::prelude::SolanaSysvar`
+   --> src/sysvar/mod.rs:223:5
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `get`, perhaps you need to implement one of them:
+            candidate #1: `SliceIndex`
+            candidate #2: `ZeroCopyAccessor`
+            candidate #3: `anchor_lang::solana_program::account_info::Account`
+            candidate #4: `log::kv::source::Source`
+            candidate #5: `SlabView`
+ 
+error[E0599]: no method named `get` found for struct `RegisterUserBumps` in the current scope
+   --> src/lib.rs:33:37
+    |
+33  |         user_info.bump = *ctx.bumps.get("user_info").unwrap();
+    |                           ----------^^^-------------
+    |                           |         |
+    |                           |         this is an associated function, not a method
+    |                           help: use associated function syntax instead: `RegisterUserBumps::get("user_info")`
+...
+160 | #[derive(Accounts)]
+    |          -------- method `get` not found for this struct
+    |
+    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in the trait `anchor_lang::prelude::SolanaSysvar`
+   --> src/sysvar/mod.rs:223:5
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `get`, perhaps you need to implement one of them:
+            candidate #1: `SliceIndex`
+            candidate #2: `ZeroCopyAccessor`
+            candidate #3: `anchor_lang::solana_program::account_info::Account`
+            candidate #4: `log::kv::source::Source`
+            candidate #5: `SlabView`
+ 
+error: could not compile `pirmais` due to 3 previous errors
