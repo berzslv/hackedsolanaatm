@@ -153,8 +153,9 @@ export function SimpleStakingWidget() {
             // In production, you'd use the function provided by Anchor.js
             const discriminator = Buffer.from([211, 98, 31, 68, 233, 45, 108, 189]); // "register_user" discriminator
             
-            // No arguments for this instruction in the simple version
-            return discriminator;
+            // No arguments needed for this instruction, but we still need to ensure
+            // we're returning a proper Buffer that will work in browser environment
+            return Buffer.from(new Uint8Array(discriminator));
           })()
         });
         
@@ -188,8 +189,11 @@ export function SimpleStakingWidget() {
           const view = new DataView(amountBuffer.buffer);
           view.setBigUint64(0, BigInt(amountLamports), true); // true = little-endian
           
-          // Combine discriminator and amount buffer
-          return Buffer.concat([discriminator, amountBuffer]);
+          // Combine discriminator and amount buffer manually since Buffer.concat may not be available in browser
+          const combinedBuffer = new Uint8Array(discriminator.length + amountBuffer.length);
+          combinedBuffer.set(new Uint8Array(discriminator), 0);
+          combinedBuffer.set(new Uint8Array(amountBuffer), discriminator.length);
+          return Buffer.from(combinedBuffer);
         })()
       });
       
