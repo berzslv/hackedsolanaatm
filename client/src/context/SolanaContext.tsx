@@ -191,7 +191,11 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 
                 if (result.success) {
                   console.log("Direct server registration successful");
-                  return result.signature || 'direct-server-registration-successful';
+                  if (!result.signature || typeof result.signature !== 'string' || !result.signature.match(/^[1-9A-HJ-NP-Za-km-z]+$/)) {
+                    console.error("Server returned invalid signature format:", result.signature);
+                    throw new Error("Server returned invalid signature format");
+                  }
+                  return result.signature;
                 } else {
                   throw new Error(result.error || 'Direct server registration failed');
                 }
@@ -261,7 +265,11 @@ export const SolanaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               
               if (result.success) {
                 console.log("Direct server registration successful");
-                return result.signature || 'direct-server-registration-successful';
+                if (!result.signature || typeof result.signature !== 'string' || !result.signature.match(/^[1-9A-HJ-NP-Za-km-z]+$/)) {
+                  console.error("Server returned invalid signature format:", result.signature);
+                  throw new Error("Server returned invalid signature format");
+                }
+                return result.signature;
               } else {
                 throw new Error(result.error || 'Direct server registration failed');
               }
