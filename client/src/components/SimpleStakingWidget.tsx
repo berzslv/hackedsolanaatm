@@ -154,7 +154,13 @@ export function SimpleStakingWidget() {
             { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // rent
           ],
           programId,
-          data: Buffer.from([REGISTER_USER_IX]) // register_user instruction index
+          data: (() => {
+          // Create proper Anchor instruction data with 8-byte discriminator + payload
+          const registerData = new Uint8Array(8); // 8 bytes for discriminator
+          registerData[0] = REGISTER_USER_IX; // First byte is instruction index
+          // Leave remaining 7 bytes as zeros (padding)
+          return Buffer.from(registerData);
+        })()
         });
         
         transaction.add(registerInstruction);
@@ -177,13 +183,14 @@ export function SimpleStakingWidget() {
         ],
         programId,
         data: (() => {
-          // Create instruction data with code (2 = stake) followed by amount
-          const stakeData = new Uint8Array(9);
-          stakeData[0] = STAKE_IX; // Instruction index for stake
+          // Create proper Anchor instruction data with 8-byte discriminator + payload
+          const stakeData = new Uint8Array(16); // 8 bytes discriminator + 8 bytes for amount
+          stakeData[0] = STAKE_IX; // First byte is instruction index
+          // Leave remaining 7 bytes of discriminator as zeros (padding)
           
-          // Write amount as little-endian 64-bit value
+          // Write amount as little-endian 64-bit value after the discriminator
           const view = new DataView(stakeData.buffer);
-          view.setBigUint64(1, BigInt(amountLamports), true); // true = little-endian
+          view.setBigUint64(8, BigInt(amountLamports), true); // position 8, true = little-endian
           
           return Buffer.from(stakeData);
         })()
@@ -195,7 +202,7 @@ export function SimpleStakingWidget() {
 
       // Send the transaction
       console.log("Sending transaction to wallet for signing...");
-      const signature = await sendTransaction(transaction, connection);
+      const signature = await sendTransaction(transaction);
       
       console.log("Transaction sent successfully, signature:", signature);
       

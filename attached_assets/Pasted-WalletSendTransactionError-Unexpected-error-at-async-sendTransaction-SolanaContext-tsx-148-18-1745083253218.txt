@@ -1,0 +1,34 @@
+WalletSendTransactionError: Unexpected error
+    at async sendTransaction (SolanaContext.tsx:148:18)
+    at async handleStake (SimpleStakingWidget.tsx:198:25) 
+StandardWalletAdapter {_events: Events, _eventsCount: 4, signIn: ƒ, signTransaction: ƒ, signAllTransactions: ƒ, …}
+await in sendTransaction		
+sendTransaction	@	SolanaContext.tsx:148
+handleStake	@	SimpleStakingWidget.tsx:198
+SolanaContext.tsx:150 Standard Phantom transaction submission failed, trying alternative approach
+SolanaContext.tsx:160 Manually submitting Phantom-signed transaction...
+SolanaContext.tsx:168 Alternative Phantom approach failed, falling back to direct server endpoint SendTransactionError: Simulation failed. 
+Message: Transaction simulation failed: Error processing Instruction 2: custom program error: 0x64. 
+Logs: 
+[
+  "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+  "Program ComputeBudget111111111111111111111111111111 success",
+  "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+  "Program ComputeBudget111111111111111111111111111111 success",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm invoke [1]",
+  "Program log: AnchorError occurred. Error Code: InstructionMissing. Error Number: 100. Error Message: 8 byte instruction identifier not provided.",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm consumed 2612 of 399700 compute units",
+  "Program EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm failed: custom program error: 0x64"
+]. 
+Catch the `SendTransactionError` and call `getLogs()` on it for full details.
+    at async sendTransaction (SolanaContext.tsx:161:33)
+    at async handleStake (SimpleStakingWidget.tsx:198:25)
+sendTransaction	@	SolanaContext.tsx:168
+await in sendTransaction		
+handleStake	@	SimpleStakingWidget.tsx:198
+SolanaContext.tsx:193 Direct server registration successful
+SimpleStakingWidget.tsx:200 Transaction sent successfully, signature: direct-server-registration-successful
+SimpleStakingWidget.tsx:208 Waiting for transaction confirmation...
+SimpleStakingWidget.tsx:230 Error in simple staking process: Error: signature must be base58 encoded: direct-server-registration-successful
+    at handleStake (SimpleStakingWidget.tsx:209:45)
+handleStake	@	SimpleStakingWidget.tsx:230
