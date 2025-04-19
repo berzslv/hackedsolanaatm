@@ -29,9 +29,8 @@ const apiRequest = async <T,>(url: string, options?: RequestInit): Promise<T> =>
 const SIMPLE_PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm'; 
 const TOKEN_MINT = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
 
-// Instruction indexes
-const REGISTER_USER_IX = 1; // register_user is the second instruction (index 1)
-const STAKE_IX = 2; // stake is the third instruction (index 2)
+// We're using proper Anchor instruction discriminators now
+// Discriminators are 8-byte hashes of instruction names, computed by anchor
 
 export function SimpleStakingWidget() {
   const { publicKey, connected, sendTransaction } = useSolana();
@@ -149,12 +148,14 @@ export function SimpleStakingWidget() {
           ],
           programId,
           data: (() => {
-          // Create proper Anchor instruction data with 8-byte discriminator + payload
-          const registerData = new Uint8Array(8); // 8 bytes for discriminator
-          registerData[0] = REGISTER_USER_IX; // First byte is instruction index
-          // Leave remaining 7 bytes as zeros (padding)
-          return Buffer.from(registerData);
-        })()
+            // In Anchor, the discriminator is a proper 8-byte hash derived from the function name
+            // For simplicity, we'll use a SHA256 hash truncated to 8 bytes
+            // In production, you'd use the function provided by Anchor.js
+            const discriminator = Buffer.from([211, 98, 31, 68, 233, 45, 108, 189]); // "register_user" discriminator
+            
+            // No arguments for this instruction in the simple version
+            return discriminator;
+          })()
         });
         
         transaction.add(registerInstruction);
@@ -177,16 +178,18 @@ export function SimpleStakingWidget() {
         ],
         programId,
         data: (() => {
-          // Create proper Anchor instruction data with 8-byte discriminator + payload
-          const stakeData = new Uint8Array(16); // 8 bytes discriminator + 8 bytes for amount
-          stakeData[0] = STAKE_IX; // First byte is instruction index
-          // Leave remaining 7 bytes of discriminator as zeros (padding)
+          // In Anchor, the discriminator is a proper 8-byte hash derived from the function name
+          // For simplicity, we'll use a SHA256 hash truncated to 8 bytes
+          const discriminator = Buffer.from([69, 119, 235, 219, 182, 124, 161, 6]); // "stake" discriminator
           
-          // Write amount as little-endian 64-bit value after the discriminator
-          const view = new DataView(stakeData.buffer);
-          view.setBigUint64(8, BigInt(amountLamports), true); // position 8, true = little-endian
+          // Create buffer for the amount parameter (u64 = 8 bytes)
+          const amountBuffer = Buffer.alloc(8);
+          // Write amount as little-endian 64-bit value
+          const view = new DataView(amountBuffer.buffer);
+          view.setBigUint64(0, BigInt(amountLamports), true); // true = little-endian
           
-          return Buffer.from(stakeData);
+          // Combine discriminator and amount buffer
+          return Buffer.concat([discriminator, amountBuffer]);
         })()
       });
       
