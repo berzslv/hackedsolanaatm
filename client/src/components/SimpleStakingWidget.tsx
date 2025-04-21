@@ -17,7 +17,7 @@ import { formatNumber, formatTimeRemaining } from '@/lib/utils';
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 import { stakeExistingTokens } from '@/lib/combined-smart-contract-client';
 import { checkAndCreateTokenAccount } from '@/lib/api-client';
-import { createAndSubmitStakingTransaction } from '@/lib/CreateStakingTransactionV3';
+import { executeStakingTransaction } from '@/lib/CreateStakingTransactionV3';
 
 // Helius API key - optional, would be set from environment in production
 const HELIUS_API_KEY = '';
@@ -194,27 +194,21 @@ const SimpleStakingWidget: React.FC = () => {
         description: 'Please approve the transaction in your wallet',
       });
       
-      // Call enhanced transaction handler from V3 module
-      const txResult = await createAndSubmitStakingTransaction(
-        connection,
-        publicKey,
-        wallet,
+      // Call our Anchor-based staking function
+      const txResult = await executeStakingTransaction(
+        publicKey.toString(),
         amount,
-        stakeResult,
         {
-          onStatusUpdate: (status, isFallback) => {
-            // Update UI with status updates
-            toast({
-              title: isFallback ? 'Fallback method' : 'Transaction status',
-              description: status,
-            });
+          publicKey,
+          signTransaction,
+          signAllTransactions: async (txs: any[]) => {
+            return Promise.all(txs.map(tx => signTransaction!(tx)));
           },
-          skipPreflight: false,
-          maxRetries: 3
+          sendTransaction: (tx) => wallet.sendTransaction(tx, connection)
         }
       );
       
-      if (txResult.success) {
+      if (txResult.signature && !txResult.error) {
         console.log('✅ Transaction successful with signature:', txResult.signature);
         
         // Success! Show confirmation
@@ -232,7 +226,7 @@ const SimpleStakingWidget: React.FC = () => {
         
         toast({
           title: 'Transaction failed',
-          description: txResult.message || txResult.error || 'Unknown error',
+          description: txResult.error || 'Unknown error',
           variant: 'destructive'
         });
         

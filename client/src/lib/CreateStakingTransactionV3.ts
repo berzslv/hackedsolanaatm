@@ -1,256 +1,303 @@
 /**
  * CreateStakingTransactionV3
  * 
- * This module provides a clean implementation for creating and sending 
- * staking transactions with Anchor support, detailed logging, error handling, and preflight checks.
+ * Implements proper Anchor-based staking transaction creation
+ * following Solana standards and best practices.
  */
-import { PublicKey, Connection, Transaction, VersionedTransaction, TransactionMessage, VersionedMessage, Message } from '@solana/web3.js';
-import { toast } from '@/hooks/use-toast';
-import { AnchorWallet } from '@solana/wallet-adapter-react';
+import {
+  Connection,
+  PublicKey,
+  Transaction,
+  clusterApiUrl,
+  SystemProgram,
+  sendAndConfirmTransaction
+} from '@solana/web3.js';
+import {
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction,
+  getAccount
+} from '@solana/spl-token';
+import * as anchor from '@coral-xyz/anchor';
+import { Program, AnchorProvider, BN } from '@coral-xyz/anchor';
+
+// Constants
+const PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
+const TOKEN_MINT_ADDRESS = new PublicKey('59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk');
+const GLOBAL_STATE_SEED = "global_state";
+const USER_INFO_SEED = "user_info";
+const VAULT_SEED = "vault";
+const VAULT_AUTH_SEED = "vault_auth";
 
 /**
- * Converts a base64 string to Uint8Array
+ * Create a staking transaction using Anchor
+ * 
+ * @param walletAddress User's wallet address
+ * @param amount Amount to stake
+ * @param wallet Connected wallet (with signTransaction and sendTransaction)
+ * @param referrerAddress Optional referrer address
+ * @returns Transaction result
  */
-export function base64ToUint8Array(base64String: string): Uint8Array {
-  const binaryString = atob(base64String);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
-/**
- * Type guard for VersionedTransaction
- */
-function isVersionedTransaction(tx: Transaction | VersionedTransaction): tx is VersionedTransaction {
-  return 'version' in tx;
-}
-
-/**
- * Type guard for Transaction
- */
-function isLegacyTransaction(tx: Transaction | VersionedTransaction): tx is Transaction {
-  return !('version' in tx);
-}
-
-/**
- * Options for staking transaction
- */
-interface StakingTransactionOptions {
-  onStatusUpdate?: (status: string, isFallback: boolean) => void;
-  skipPreflight?: boolean;
-  maxRetries?: number;
-  referrer?: PublicKey;  // Optional referrer public key
-}
-
-/**
- * Creates and submits a staking transaction with enhanced error handling
- */
-export async function createAndSubmitStakingTransaction(
-  connection: Connection,
-  publicKey: PublicKey,
-  wallet: AnchorWallet,
+export async function createStakingTransaction(
+  walletAddress: string,
   amount: number,
-  stakeResult: any,
-  options?: StakingTransactionOptions
-) {
-  const onStatusUpdate = options?.onStatusUpdate || (() => {});
-  
+  wallet: any,
+  referrerAddress?: string
+): Promise<{
+  signature?: string;
+  error?: string;
+  transaction?: Transaction;
+}> {
   try {
-    // Check if we got a signature directly from the Anchor execution
-    if (stakeResult.signature) {
-      console.log('✅ Anchor transaction executed successfully with signature:', stakeResult.signature);
-      onStatusUpdate("Transaction confirmed!", false);
-      
-      return {
-        success: true,
-        message: `Transaction confirmed with signature: ${stakeResult.signature}`,
-        signature: stakeResult.signature
-      };
+    console.log("🚀 Creating staking transaction with Anchor v3");
+    console.log(`👛 Wallet: ${walletAddress}`);
+    console.log(`💰 Amount: ${amount}`);
+    
+    if (!walletAddress || !amount) {
+      return { error: "Wallet address and amount are required" };
     }
     
-    // Extract transaction data from different possible result formats
-    let transactionData = stakeResult.stakingTransaction || 
-                          stakeResult.transactionDetails || 
-                          stakeResult.transaction || 
-                          stakeResult;
+    if (!wallet) {
+      return { error: "Wallet connection is required" };
+    }
     
-    // Log the transaction data structure
-    console.log('📦 Anchor transaction data received:', transactionData);
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    const userPubkey = new PublicKey(walletAddress);
     
-    // Initialize transaction variable
-    let decodedTransaction: Transaction | VersionedTransaction;
+    // Set up Anchor provider
+    const provider = new AnchorProvider(
+      connection,
+      wallet,
+      AnchorProvider.defaultOptions()
+    );
+    anchor.setProvider(provider);
     
-    // Handle direct Transaction objects from Anchor
-    if (transactionData instanceof Transaction) {
-      console.log("🎯 Direct Anchor Transaction object detected");
-      decodedTransaction = transactionData;
-      
-      onStatusUpdate("Processing Anchor transaction...", false);
-      
-      // Ensure recent blockhash is set
-      if (!decodedTransaction.recentBlockhash) {
-        console.log('⚠️ Getting fresh blockhash for Anchor transaction');
-        const { blockhash } = await connection.getLatestBlockhash('finalized');
-        decodedTransaction.recentBlockhash = blockhash;
-      }
-    } 
-    // Handle serialized transaction with transaction field
-    else if (typeof transactionData === 'object' && transactionData.transaction) {
-      console.log('🔍 Attempting to deserialize transaction from base64');
-      
-      // Convert base64 string to Uint8Array
-      const messageBytes = base64ToUint8Array(transactionData.transaction);
-      
+    console.log("📡 Fetching IDL for program:", PROGRAM_ID.toString());
+    // Fetch IDL directly from the blockchain
+    const idl = await Program.fetchIdl(PROGRAM_ID, provider);
+    if (!idl) {
+      return { error: "Failed to fetch program IDL" };
+    }
+    
+    // Create program instance with IDL
+    const program = new Program(idl, PROGRAM_ID, provider);
+    
+    // Find PDA addresses
+    const [globalStatePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from(GLOBAL_STATE_SEED)],
+      program.programId
+    );
+    
+    const [userStakePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from(USER_INFO_SEED), userPubkey.toBuffer()],
+      program.programId
+    );
+    
+    const [vaultAuthPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from(VAULT_AUTH_SEED)],
+      program.programId
+    );
+    
+    // Get token accounts
+    console.log("🪙 Fetching user token accounts");
+    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+      userPubkey,
+      { mint: TOKEN_MINT_ADDRESS }
+    );
+    
+    // Check if we have token accounts
+    if (tokenAccounts.value.length === 0) {
+      console.log("⚠️ No token accounts found, creating one");
       try {
-        // First, try to deserialize as a versioned message
-        const versionedMessage = VersionedMessage.deserialize(messageBytes);
-        console.log('✅ Successfully deserialized versioned message');
+        // Get ATA address
+        const ata = await getAssociatedTokenAddress(
+          TOKEN_MINT_ADDRESS,
+          userPubkey
+        );
         
-        // Create new transaction from the versioned message
-        decodedTransaction = new VersionedTransaction(versionedMessage);
-      } catch (versionedError) {
-        console.log('⚙️ Not a versioned message, trying Transaction.populate');
+        // Create ATA instruction
+        const ix = createAssociatedTokenAccountInstruction(
+          userPubkey,  // payer
+          ata,         // associated token account
+          userPubkey,  // owner
+          TOKEN_MINT_ADDRESS // mint
+        );
         
-        // Try regular transaction
-        const message = Message.from(messageBytes);
-        decodedTransaction = Transaction.populate(message);
-        console.log('✅ Successfully deserialized transaction message');
+        // Send transaction to create ATA
+        const tx = new Transaction().add(ix);
+        tx.feePayer = userPubkey;
+        const { blockhash } = await connection.getLatestBlockhash('confirmed');
+        tx.recentBlockhash = blockhash;
+        
+        const sig = await wallet.sendTransaction(tx, connection);
+        await connection.confirmTransaction(sig, 'confirmed');
+        console.log("✅ Created token account:", ata.toString());
+      } catch (error) {
+        console.error("Error creating token account:", error);
+        // Continue anyway, it may already exist
       }
     }
-    // Handle direct base64 string (from server API)
-    else if (typeof transactionData === 'string') {
-      console.log('📜 Got a direct base64 string transaction');
-      const txBytes = base64ToUint8Array(transactionData);
+    
+    // Find the best token account (with enough balance)
+    let userTokenAccount: PublicKey | null = null;
+    
+    // Fetch token accounts again after potential creation
+    const updatedTokenAccounts = await connection.getParsedTokenAccountsByOwner(
+      userPubkey,
+      { mint: TOKEN_MINT_ADDRESS }
+    );
+    
+    for (const account of updatedTokenAccounts.value) {
+      const parsedInfo = account.account.data.parsed.info;
+      const balance = parsedInfo.tokenAmount.uiAmount || 0;
+      console.log(`Token account ${account.pubkey.toString()} has balance: ${balance}`);
       
-      try {
-        decodedTransaction = Transaction.from(txBytes);
-        console.log('✅ Deserialized transaction from direct base64 string');
-      } catch (err) {
-        console.error('❌ Failed to deserialize transaction from string:', err);
-        return { 
-          success: false, 
-          message: 'Transaction preparation failed: Invalid format', 
-          error: 'Failed to parse transaction' 
-        };
+      if (balance >= amount) {
+        userTokenAccount = account.pubkey;
+        console.log(`✅ Using token account with sufficient balance: ${userTokenAccount.toString()}`);
+        break;
       }
     }
-    // Invalid format
-    else {
-      console.error('❌ Invalid transaction data format from Anchor');
-      return { 
-        success: false, 
-        message: 'Transaction preparation failed: Invalid Anchor response', 
-        error: 'Missing transaction data in Anchor response' 
-      };
+    
+    // If no account with sufficient balance, use ATA anyway (will fail on-chain)
+    if (!userTokenAccount) {
+      const ata = await getAssociatedTokenAddress(
+        TOKEN_MINT_ADDRESS,
+        userPubkey
+      );
+      userTokenAccount = ata;
+      console.log(`⚠️ No account with sufficient balance, using ATA: ${ata.toString()}`);
     }
     
-    // Ensure fee payer is set
-    if (decodedTransaction instanceof Transaction && !decodedTransaction.feePayer) {
-      console.log('⚠️ Setting fee payer to current wallet');
-      decodedTransaction.feePayer = publicKey;
-    }
+    // Get vault token account
+    const vaultTokenAccount = await getAssociatedTokenAddress(
+      TOKEN_MINT_ADDRESS,
+      vaultAuthPda,
+      true // Allow off-curve for PDAs
+    );
     
-    // Ensure recent blockhash is set 
-    if (decodedTransaction instanceof Transaction && !decodedTransaction.recentBlockhash) {
-      console.log('⚠️ Getting fresh blockhash for transaction');
-      const { blockhash } = await connection.getLatestBlockhash('finalized');
-      decodedTransaction.recentBlockhash = blockhash;
-    }
-    
-    // Log transaction details
-    if (isLegacyTransaction(decodedTransaction)) {
-      console.log("🧾 Fee payer:", decodedTransaction.feePayer?.toBase58());
-      console.log("🔑 Signers:", decodedTransaction.signatures.map(s => s.publicKey.toBase58()));
-    } else {
-      console.log("🧾 Using versioned transaction");
-      console.log("🔑 Signers:", decodedTransaction.signatures.length);
-    }
-    
-    // Send the transaction
-    console.log("📤 Sending transaction to the network");
-    onStatusUpdate("Sending transaction to the network...", false);
-    
-    let signature: string;
+    // Verify vault token account exists
     try {
-      // For AnchorWallet we need to sign and then send separately
-      if (isLegacyTransaction(decodedTransaction)) {
-        await wallet.signTransaction(decodedTransaction);
-        signature = await connection.sendRawTransaction(decodedTransaction.serialize());
-      } else {
-        // For versioned transactions
-        decodedTransaction = await wallet.signTransaction(decodedTransaction as Transaction);
-        signature = await connection.sendRawTransaction(decodedTransaction.serialize());
-      }
-      
-      console.log("🚀 Transaction sent with signature:", signature);
-      onStatusUpdate(`Transaction submitted! Signature: ${signature.substring(0, 8)}...`, false);
-    } catch (sendError: any) {
-      console.error("❌ Error sending transaction:", sendError);
-      
-      // Handle specific wallet errors
-      if (sendError.name === 'WalletSignTransactionError') {
-        return { 
-          success: false, 
-          message: 'Transaction was not signed by user', 
-          error: 'User rejected signing' 
-        };
-      }
-      
-      // More generic error
-      return { 
-        success: false, 
-        message: 'Error sending transaction', 
-        error: sendError.message || 'Unknown wallet error' 
-      };
+      await getAccount(connection, vaultTokenAccount);
+      console.log("✅ Vault token account verified:", vaultTokenAccount.toString());
+    } catch (error) {
+      console.error("❌ Vault token account invalid:", error);
+      return { error: "Vault token account not found or invalid" };
     }
     
-    // Wait for confirmation
-    console.log("⏳ Waiting for transaction confirmation");
-    onStatusUpdate("Confirming transaction...", false);
+    console.log("🛠️ Building transaction with program.methods");
+    // Convert amount to proper decimal format (9 decimals for our token)
+    const amountWithDecimals = new BN(amount * 1e9);
     
+    // Create transaction with Anchor methods
+    const transaction = await program.methods
+      .stake(amountWithDecimals)
+      .accounts({
+        owner: userPubkey,
+        globalState: globalStatePda,
+        stakeAccount: userStakePda,
+        userTokenAccount: userTokenAccount,
+        tokenVault: vaultTokenAccount,
+        tokenMint: TOKEN_MINT_ADDRESS,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .transaction();
+    
+    // Add recent blockhash and fee payer
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+    transaction.recentBlockhash = blockhash;
+    transaction.lastValidBlockHeight = lastValidBlockHeight;
+    transaction.feePayer = userPubkey;
+    
+    console.log("✅ Transaction built successfully");
+    
+    // Try simulation first
+    console.log("🔍 Simulating transaction...");
     try {
-      const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+      const simulation = await connection.simulateTransaction(transaction);
       
-      if (confirmation.value.err) {
-        console.error("❌ Transaction confirmed with error:", confirmation.value.err);
+      if (simulation.value.err) {
+        console.error("❌ Simulation failed:", simulation.value.err);
         return { 
-          success: false, 
-          message: 'Transaction confirmed but with errors', 
-          error: JSON.stringify(confirmation.value.err),
-          signature
+          error: `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`,
+          transaction 
         };
       }
       
-      console.log("✅ Transaction confirmed successfully!");
-      onStatusUpdate("Transaction confirmed!", false);
-      
-      return {
-        success: true,
-        message: `Transaction confirmed with signature: ${signature}`,
-        signature
-      };
-    } catch (confirmError: any) {
-      console.error("❌ Error confirming transaction:", confirmError);
-      
-      // Since we have a signature, the transaction might still be successful
-      // but we couldn't confirm it due to RPC issues
-      return { 
-        success: false, 
-        message: 'Unable to confirm transaction status', 
-        error: confirmError.message || 'Unknown confirmation error',
-        signature, // Include the signature so frontend can check manually
-        needsManualCheck: true
-      };
+      console.log("✅ Simulation successful");
+    } catch (simError) {
+      console.warn("⚠️ Simulation error:", simError);
+      // Continue anyway as real transactions sometimes succeed despite sim errors
     }
-  } catch (error: any) {
-    // Catch-all for any unexpected errors
-    console.error("❌ Unexpected error in transaction processing:", error);
-    return { 
-      success: false, 
-      message: 'Unexpected error processing transaction', 
-      error: error.message || 'Unknown error'
+    
+    // Send transaction
+    console.log("🚀 Sending transaction...");
+    const signature = await wallet.sendTransaction(transaction, connection);
+    console.log("✅ Transaction sent:", signature);
+    
+    // Return successful result
+    return {
+      signature,
+      transaction
+    };
+  } catch (error) {
+    console.error("❌ Error creating staking transaction:", error);
+    
+    // Enhanced error handling
+    let errorMessage = "Unknown error creating staking transaction";
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // Check for specific Anchor errors
+      if (error.message.includes("custom program error:")) {
+        const errorCodeMatch = error.message.match(/custom program error: (\d+)/i);
+        if (errorCodeMatch && errorCodeMatch[1]) {
+          const errorCode = parseInt(errorCodeMatch[1]);
+          
+          // Map known error codes
+          if (errorCode === 101) {
+            errorMessage = "Invalid token account. Please check your token accounts.";
+          }
+        }
+      }
+    }
+    
+    return { error: errorMessage };
+  }
+}
+
+/**
+ * Execute a staking transaction with the connected wallet
+ */
+export async function executeStakingTransaction(
+  walletAddress: string,
+  amount: number,
+  wallet: any,
+  referrerAddress?: string
+): Promise<{
+  signature?: string;
+  error?: string;
+}> {
+  try {
+    const result = await createStakingTransaction(
+      walletAddress,
+      amount,
+      wallet,
+      referrerAddress
+    );
+    
+    if (result.error) {
+      return { error: result.error };
+    }
+    
+    return { signature: result.signature };
+  } catch (error) {
+    console.error("Error executing staking transaction:", error);
+    return {
+      error: error instanceof Error ? error.message : String(error)
     };
   }
 }
