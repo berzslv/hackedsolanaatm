@@ -76,16 +76,30 @@ export default function AnchorStakingWidget({
       console.log(`👛 Wallet public key: ${publicKey.toString()}`);
       console.log(`🔢 Amount to stake: ${amountToStake}`);
       
-      // Create wallet adapter compatible with Anchor using our helper
-      const anchorWallet = createAnchorWallet(
-        publicKey,
-        // Make sure we handle potential undefined signTransaction (though it should never be undefined when connected)
-        (tx) => signTransaction ? signTransaction(tx) : Promise.reject(new Error("No signTransaction available")),
-        // Pass along the sendTransaction function
-        sendTransaction,
-        // Handle signAllTransactions with proper error handling
-        async (txs) => signTransaction ? Promise.all(txs.map(tx => signTransaction(tx))) : Promise.reject(new Error("No signTransaction available"))
-      );
+      // Create a stable and reliable wallet adapter compatible with Anchor
+      // This approach prevents any _bn issues with PublicKey objects
+      const pubKeyStr = publicKey.toString(); // Convert to string first
+      const stablePubKey = new PublicKey(pubKeyStr); // Create fresh PublicKey from string
+      
+      // Create a safe wallet object with newly created PublicKey
+      const anchorWallet = {
+        publicKey: stablePubKey,
+        signTransaction: (tx: any) => {
+          console.log("Signing transaction with safe wallet");
+          if (!signTransaction) {
+            return Promise.reject(new Error("signTransaction not available"));
+          }
+          return signTransaction(tx);
+        },
+        signAllTransactions: (txs: any[]) => {
+          console.log("Signing all transactions with safe wallet");
+          if (!signTransaction) {
+            return Promise.reject(new Error("signTransaction not available"));
+          }
+          return Promise.all(txs.map(tx => signTransaction(tx)));
+        },
+        sendTransaction: sendTransaction
+      };
       
       // Call the new Anchor-based staking function
       const stakeResult = await executeStakingTransaction(

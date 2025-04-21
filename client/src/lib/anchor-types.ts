@@ -45,14 +45,35 @@ export function createAnchorWallet(
 export function safeProvider(provider: any): any {
   // Make sure the provider's publicKey does not get used in place of a PublicKey
   if (provider && typeof provider === 'object') {
-    return {
-      ...provider,
-      // Prevent Anchor from using any internal _bn properties directly
-      publicKey: provider.publicKey ? 
-        (typeof provider.publicKey === 'string' ? 
-          new PublicKey(provider.publicKey) : provider.publicKey) : 
-        undefined
-    };
+    // Create a deep copy to avoid reference issues
+    const safeCopy = { ...provider };
+    
+    // Properly handle publicKey to ensure it's a valid PublicKey object
+    if (provider.publicKey) {
+      // Handle the case when it's a string
+      if (typeof provider.publicKey === 'string') {
+        safeCopy.publicKey = new PublicKey(provider.publicKey);
+      } 
+      // Handle when it's already a PublicKey but might have internal issues
+      else if (provider.publicKey instanceof PublicKey) {
+        // If the publicKey object exists but might have internal _bn issues
+        // recreate it from its string representation to ensure it's valid
+        try {
+          const pubkeyStr = provider.publicKey.toString();
+          safeCopy.publicKey = new PublicKey(pubkeyStr);
+        } catch (e) {
+          console.warn("Error recreating PublicKey in safeProvider:", e);
+          // If that fails, try to use it as is with a fallback
+          safeCopy.publicKey = provider.publicKey;
+        }
+      }
+      // Otherwise just use as is
+      else {
+        safeCopy.publicKey = provider.publicKey;
+      }
+    }
+    
+    return safeCopy;
   }
   return provider;
 }
