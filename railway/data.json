@@ -3,14 +3,14 @@
     "9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX": {
       "amountStaked": 0,
       "pendingRewards": 0,
-      "lastUpdateTime": "2025-04-21T14:04:45.465Z",
-      "stakedAt": "2025-04-21T14:04:45.465Z",
-      "eventCount": 399,
+      "lastUpdateTime": "2025-04-21T18:31:56.446Z",
+      "stakedAt": "2025-04-21T18:31:56.446Z",
+      "eventCount": 406,
       "referrer": null,
       "timeUntilUnlock": null,
       "isLocked": false,
       "estimatedAPY": 12,
-      "isRegistered": false
+      "isRegistered": true
     },
     "29M6Dd81rX5TURZx758s7BswDuaGtr2iRv2JuwmineeD": {
       "amountStaked": 0,
@@ -31,7 +31,7 @@
     "totalStaked": 0,
     "stakersCount": 0,
     "currentAPY": 12,
-    "lastUpdated": "2025-04-21T14:04:45.465Z",
+    "lastUpdated": "2025-04-21T18:31:56.446Z",
     "totalReferrals": 0,
     "unlock_duration": 604800,
     "early_unstake_penalty": 1000,
