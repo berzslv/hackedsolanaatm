@@ -1,554 +1,521 @@
-import { useState, useEffect } from 'react';
-import { useSolana } from '@/context/SolanaContext';
-import { PublicKey, Transaction, Connection, clusterApiUrl, SystemProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
-import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID, createTransferInstruction } from '@solana/spl-token';
-import { createTransactionInstruction } from '@/lib/create-transaction-instruction';
-import { SIMPLE_STAKING_DISCRIMINATORS } from '@/lib/anchor-utils';
-import { 
-  createAnchorWallet, 
-  createAnchorProvider, 
-  getStakingProgram,
-  createRegisterUserTransaction,
-  createStakeTransaction
-} from '../lib/anchor-client';
-import { tokenToLamports } from '../lib/bn-string';
+import React, { useState } from 'react';
+import { useSolana } from '@/hooks/use-solana';
+import { useDirectSolana } from '@/hooks/use-direct-solana';
+import { toast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { AlertCircle, Clock, Coins, Award, RefreshCcw, Info, Loader2 } from 'lucide-react';
+import { GradientText } from '@/components/ui/gradient-text';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { formatNumber, formatTimeRemaining } from '@/lib/utils';
+import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
+import { stakeExistingTokens } from '@/lib/combined-smart-contract-client';
+import { checkAndCreateTokenAccount } from '@/lib/api-client';
+import { createAndSubmitStakingTransaction } from '@/lib/CreateStakingTransactionV3';
 
-// Simple API request helper
-const apiRequest = async <T,>(url: string, options?: RequestInit): Promise<T> => {
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    ...options,
-  });
+// Helius API key - optional, would be set from environment in production
+const HELIUS_API_KEY = '';
+
+/**
+ * SimpleStakingWidget - A simplified version of the staking widget using our V3 transaction handler
+ * for better Anchor compatibility and transaction handling.
+ */
+const SimpleStakingWidget: React.FC = () => {
+  // Get wallet connection status
+  const { connected, publicKey, signTransaction, sendTransaction, balance } = useSolana();
   
-  if (!response.ok) {
-    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-  }
+  // Get direct blockchain staking data
+  const { stakingInfo, stakingStats, loading, error, refreshAllData } = useDirectSolana(HELIUS_API_KEY);
   
-  return response.json();
-};
-
-// Constants for the simple staking program
-const SIMPLE_PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm'; 
-const TOKEN_MINT = '6f6GFixp6dh2UeMzDZpgR84rWgHu8oQVPWfrUUV94aj4';
-
-// We're using proper Anchor instruction discriminators now
-// Discriminators are 8-byte hashes of instruction names, computed by anchor
-
-export function SimpleStakingWidget() {
-  const { publicKey, connected, sendTransaction } = useSolana();
-  const [amount, setAmount] = useState('10');
-  const [loading, setLoading] = useState(false);
-  const [stakingInfo, setStakingInfo] = useState<any>(null);
-  const [infoLoading, setInfoLoading] = useState(false);
-  const [tokenBalance, setTokenBalance] = useState<number | null>(null);
-  const [directMode, setDirectMode] = useState(true); // Default to direct transfer mode
-  const [balanceLoading, setBalanceLoading] = useState(false);
-
-  // Fetch staking info when wallet connects
-  useEffect(() => {
-    if (connected && publicKey) {
-      fetchStakingInfo();
-      fetchTokenBalance();
-    } else {
-      setStakingInfo(null);
-      setTokenBalance(null);
+  // Local state for input values
+  const [stakeAmount, setStakeAmount] = useState<string>('');
+  const [unstakeAmount, setUnstakeAmount] = useState<string>('');
+  const [isStaking, setIsStaking] = useState<boolean>(false);
+  const [isUnstaking, setIsUnstaking] = useState<boolean>(false);
+  const [isClaiming, setIsClaiming] = useState<boolean>(false);
+  
+  // Function to handle staking with our V3 transaction handler
+  const handleStake = async () => {
+    if (!connected || !publicKey || !signTransaction) {
+      toast({
+        title: 'Wallet not connected',
+        description: 'Please connect your wallet to stake tokens',
+        variant: 'destructive'
+      });
+      return;
     }
-  }, [connected, publicKey]);
-
-  const fetchStakingInfo = async () => {
-    if (!publicKey) return;
     
-    setInfoLoading(true);
+    if (!stakeAmount || isNaN(Number(stakeAmount)) || Number(stakeAmount) <= 0) {
+      toast({
+        title: 'Invalid amount',
+        description: 'Please enter a valid amount to stake',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    const amount = Number(stakeAmount);
+    
+    setIsStaking(true);
+    
     try {
-      const response = await apiRequest<any>(`/api/simple-staking-info/${publicKey.toString()}`);
+      // Set up connection to Solana 
+      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
       
-      if (response.success) {
-        setStakingInfo(response.stakingInfo);
-      } else {
-        console.error("Failed to fetch staking info:", response.error);
-        setStakingInfo(null);
-      }
-    } catch (error) {
-      console.error("Error fetching staking info:", error);
-      setStakingInfo(null);
-    } finally {
-      setInfoLoading(false);
-    }
-  };
-  
-  // Fetch token balance 
-  const fetchTokenBalance = async () => {
-    if (!publicKey) return;
-    
-    setBalanceLoading(true);
-    try {
-      // Get token mint information
-      const accountsResponse = await apiRequest<any>('/api/simple-staking-accounts-info', {
-        method: 'POST',
-        body: JSON.stringify({
-          walletAddress: publicKey.toString()
-        })
+      console.log("🚀 Starting staking process with Anchor client");
+      console.log("👛 Wallet public key:", publicKey.toString());
+      console.log("🔢 Amount to stake:", amount);
+      
+      toast({
+        title: 'Processing Stake Request',
+        description: 'Preparing Anchor transaction...',
       });
       
-      if (!accountsResponse.success) {
-        console.error('Failed to get account info:', accountsResponse.error);
-        setTokenBalance(0);
+      // Create a wallet object to pass to stakeExistingTokens that's compatible with Anchor
+      const wallet = { 
+        publicKey,
+        signTransaction
+      };
+      
+      // First check if the user has a token account for HATM token
+      console.log("🔧 Checking for token account and creating if needed");
+      const tokenMint = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk"; // HATM token mint
+      
+      toast({
+        title: 'Checking token account',
+        description: 'Making sure your wallet can hold HATM tokens...',
+      });
+      
+      const tokenAccountResult = await checkAndCreateTokenAccount(
+        publicKey.toString(),
+        tokenMint,
+        wallet
+      );
+      
+      if (!tokenAccountResult.success) {
+        console.error("❌ Failed to check/create token account:", tokenAccountResult.error);
+        throw new Error(`Failed to prepare token account: ${tokenAccountResult.error || 'Unknown error'}`);
+      }
+      
+      if (tokenAccountResult.exists === false) {
+        // Token account was newly created
+        toast({
+          title: 'Token account created',
+          description: 'Your wallet is now ready to hold HATM tokens',
+        });
+      }
+      
+      // Check token balance
+      try {
+        const { Connection, PublicKey, clusterApiUrl } = await import('@solana/web3.js');
+        const { TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
+        const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+        
+        // Get all token accounts for this owner
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          publicKey,
+          { mint: new PublicKey(tokenMint) }
+        );
+        
+        console.log(`Found ${tokenAccounts.value.length} token accounts for mint`);
+        
+        let sufficientBalance = false;
+        
+        if (tokenAccounts.value.length > 0) {
+          // Find token account with a balance
+          for (const account of tokenAccounts.value) {
+            const tokenBalance = account.account.data.parsed.info.tokenAmount.uiAmount;
+            console.log(`Token account ${account.pubkey.toString()} has balance: ${tokenBalance}`);
+            
+            if (tokenBalance >= amount) {
+              sufficientBalance = true;
+              break;
+            }
+          }
+        }
+        
+        if (!sufficientBalance) {
+          console.error(`❌ No token account has sufficient balance. Required: ${amount} HATM`);
+          toast({
+            title: 'Insufficient token balance',
+            description: `You need ${amount} HATM tokens to stake, but your wallet doesn't have enough. Please buy tokens first.`,
+            variant: 'destructive'
+          });
+          throw new Error(`Insufficient token balance. Required: ${amount} HATM`);
+        }
+      } catch (balanceError) {
+        console.error("Error checking token balance:", balanceError);
+        if (balanceError instanceof Error && balanceError.message.includes("Insufficient token balance")) {
+          throw balanceError; // Re-throw specific balance errors
+        }
+      }
+      
+      console.log("🔧 Calling stakeExistingTokens function with Anchor");
+      
+      // Call the Anchor-based staking function
+      const stakeResult = await stakeExistingTokens(
+        publicKey.toString(),
+        amount,
+        wallet
+      );
+      
+      // Check if there was an error in creating the transaction
+      if (stakeResult.error) {
+        console.error("❌ Error from stakeExistingTokens:", stakeResult.error);
+        throw new Error(stakeResult.error);
+      }
+      
+      // If we got a signature directly from the Anchor transaction, we're done
+      if (stakeResult.signature) {
+        console.log("✅ Anchor transaction successful with signature:", stakeResult.signature);
+        
+        // Success! Show confirmation
+        toast({
+          title: 'Staking successful!',
+          description: `Successfully staked ${amount} HATM tokens.`,
+        });
+        
+        // Clear form and refresh data
+        setStakeAmount('');
+        setIsStaking(false);
+        refreshAllData();
         return;
       }
       
-      // Connect to Solana
-      const connection = new Connection(clusterApiUrl('devnet'));
-      const tokenMint = new PublicKey(accountsResponse.tokenMint);
+      // Use our V3 transaction handler to process the transaction
+      toast({
+        title: 'Processing transaction',
+        description: 'Please approve the transaction in your wallet',
+      });
       
-      // Get user token account
-      const userTokenAccount = await getAssociatedTokenAddress(
-        tokenMint,
+      // Call enhanced transaction handler from V3 module
+      const txResult = await createAndSubmitStakingTransaction(
+        connection,
         publicKey,
-        false,
-        TOKEN_PROGRAM_ID
+        wallet,
+        amount,
+        stakeResult,
+        {
+          onStatusUpdate: (status, isFallback) => {
+            // Update UI with status updates
+            toast({
+              title: isFallback ? 'Fallback method' : 'Transaction status',
+              description: status,
+            });
+          },
+          skipPreflight: false,
+          maxRetries: 3
+        }
       );
       
-      // Check if token account exists
-      try {
-        const accountInfo = await connection.getAccountInfo(userTokenAccount);
+      if (txResult.success) {
+        console.log('✅ Transaction successful with signature:', txResult.signature);
         
-        if (accountInfo) {
-          // Get token balance
-          const balance = await connection.getTokenAccountBalance(userTokenAccount);
-          setTokenBalance(Number(balance.value.amount) / 1e9);
-          console.log('User token balance:', Number(balance.value.amount) / 1e9);
-        } else {
-          console.log('Token account does not exist yet');
-          setTokenBalance(0);
-        }
-      } catch (error) {
-        console.error('Error fetching token account:', error);
-        setTokenBalance(0);
-      }
-    } catch (error) {
-      console.error('Error fetching token balance:', error);
-      setTokenBalance(0);
-    } finally {
-      setBalanceLoading(false);
-    }
-  };
-  
-  // Direct token transfer (more reliable than contract interaction)
-  const handleDirectTransfer = async () => {
-    if (!connected || !publicKey) {
-      toast({
-        title: "Wallet not connected",
-        description: "Please connect your wallet first",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      toast({
-        title: "Invalid amount",
-        description: "Please enter a valid amount to stake",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Check token balance
-    if (tokenBalance === null || Number(amount) > tokenBalance) {
-      toast({
-        title: "Insufficient balance",
-        description: `You only have ${tokenBalance ?? 0} tokens available to stake`,
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setLoading(true);
-    
-    try {
-      console.log("Starting direct token transfer for staking");
-      console.log("Wallet public key:", publicKey.toString());
-      console.log("Amount to transfer:", amount);
-      
-      // Get account information for token accounts
-      const accountsResponse = await apiRequest<any>('/api/simple-staking-accounts-info', {
-        method: 'POST',
-        body: JSON.stringify({
-          walletAddress: publicKey.toString()
-        })
-      });
-      
-      if (!accountsResponse.success) {
-        throw new Error(`Failed to get account info: ${accountsResponse.error}`);
-      }
-      
-      console.log("Retrieved accounts info:", accountsResponse);
-      
-      // Parse account info
-      const tokenMint = new PublicKey(accountsResponse.tokenMint);
-      const vaultTokenAccount = new PublicKey(accountsResponse.vaultTokenAccount);
-      
-      // Connect to Solana
-      const connection = new Connection(clusterApiUrl('devnet'));
-      
-      // Get user token account
-      const userTokenAccount = await getAssociatedTokenAddress(
-        tokenMint,
-        publicKey,
-        false,
-        TOKEN_PROGRAM_ID
-      );
-      
-      console.log("User token account:", userTokenAccount.toString());
-      console.log("Vault token account:", vaultTokenAccount.toString());
-      
-      // Calculate amount in lamports (9 decimals)
-      const amountLamports = Number(amount) * Math.pow(10, 9);
-      console.log("Amount in lamports:", amountLamports);
-      
-      // Create transaction with transfer instruction
-      const transaction = new Transaction();
-      
-      // Create transfer instruction
-      // Try multiple approaches to accommodate different browser environments
-      
-      // IMPORTANT: Our tests showed that using a simple number works fine in Node.js
-      // but browser environments might need BigInt or other approaches
-      
-      // First attempt: Simple number approach (works in most environments)
-      try {
-        console.log(`Creating transfer instruction with amount: ${amountLamports}`);
-        const transferInstruction = createTransferInstruction(
-          userTokenAccount,
-          vaultTokenAccount, 
-          publicKey,
-          amountLamports  // Use plain number first
-        );
+        // Success! Show confirmation
+        toast({
+          title: 'Staking successful!',
+          description: `Successfully staked ${amount} HATM tokens. Transaction: ${txResult.signature?.substring(0, 8)}...`,
+        });
         
-        transaction.add(transferInstruction);
-        console.log("Transfer instruction created successfully using regular number");
-      } catch (firstError) {
-        console.warn("Could not create transfer instruction with regular number:", firstError);
-        
-        // Second attempt: BigInt approach (for browsers that need explicit BigInt)
-        try {
-          console.log("Trying BigInt approach...");
-          const bigIntAmount = BigInt(Math.floor(amountLamports));
-          console.log(`Amount as BigInt: ${bigIntAmount}`);
-          
-          const transferInstruction = createTransferInstruction(
-            userTokenAccount,
-            vaultTokenAccount,
-            publicKey,
-            bigIntAmount
-          );
-          
-          transaction.instructions = []; // Clear any previous attempts
-          transaction.add(transferInstruction);
-          console.log("Transfer instruction created successfully using BigInt");
-        } catch (secondError) {
-          console.error("All approaches failed:", secondError);
-          throw new Error("Failed to create the transfer instruction. Please try a different amount or try again later.");
-        }
-      }
-      
-      // Set transaction properties
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
-      transaction.recentBlockhash = blockhash;
-      transaction.lastValidBlockHeight = lastValidBlockHeight;
-      transaction.feePayer = publicKey;
-      
-      // Send transaction
-      const signature = await sendTransaction(transaction);
-      console.log("Transaction sent successfully, signature:", signature);
-      
-      toast({
-        title: "Transfer initiated",
-        description: "Your tokens are being transferred to the staking vault."
-      });
-      
-      // Wait for confirmation
-      const confirmation = await connection.confirmTransaction({
-        signature,
-        blockhash,
-        lastValidBlockHeight
-      });
-      
-      if (confirmation.value.err) {
-        throw new Error(`Transaction failed: ${confirmation.value.err.toString()}`);
-      }
-      
-      console.log("Transaction confirmed successfully!");
-      
-      toast({
-        title: "Tokens staked successfully",
-        description: `You have successfully transferred ${amount} tokens to the staking vault.`
-      });
-      
-      // Refresh data
-      await fetchStakingInfo();
-      await fetchTokenBalance();
-      
-    } catch (error) {
-      console.error("Error in direct token transfer:", error);
-      
-      toast({
-        title: "Transfer failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStake = async () => {
-    if (!connected || !publicKey) {
-      toast({
-        title: "Wallet not connected",
-        description: "Please connect your wallet first",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      toast({
-        title: "Invalid amount",
-        description: "Please enter a valid amount to stake",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      console.log("Starting simple staking process using Anchor client");
-      console.log("Wallet public key:", publicKey.toString());
-      console.log("Amount to stake:", amount);
-
-      // Get account information needed to build the transaction
-      const accountsResponse = await apiRequest<any>('/api/simple-staking-accounts-info', {
-        method: 'POST',
-        body: JSON.stringify({
-          walletAddress: publicKey.toString(),
-          amount: Number(amount)
-        })
-      });
-
-      if (!accountsResponse.success) {
-        throw new Error(`Failed to get account info: ${accountsResponse.error}`);
-      }
-
-      console.log("Retrieved accounts info:", accountsResponse);
-
-      // Parse token mint from response
-      const tokenMint = new PublicKey(accountsResponse.tokenMint);
-      const isRegistered = accountsResponse.isRegistered;
-
-      // Connect to Solana
-      const connection = new Connection(clusterApiUrl('devnet'));
-
-      // Create a wrapper function that adapts our sendTransaction to what Anchor expects
-      // Anchor needs a function that returns a Transaction, but our context returns a signature string
-      const signTransactionAdapter = async (tx: Transaction): Promise<Transaction> => {
-        // We'll use sendTransaction but ignore its output - we just want it to handle signing
-        await sendTransaction(tx);
-        return tx; // Return the transaction itself (now it's been through sendTransaction)
-      };
-      
-      // Create Anchor wallet adapter
-      const anchorWallet = createAnchorWallet(publicKey, signTransactionAdapter);
-      
-      // Create Anchor provider
-      const provider = createAnchorProvider(connection, anchorWallet);
-      
-      // Get program instance using proper Anchor approach
-      // This uses the IDL to generate proper transaction formats with correct instruction discriminators
-      const program = getStakingProgram(provider);
-      console.log("Provider created successfully, creating program instance");
-      
-      // Create transaction object
-      let transaction: Transaction;
-      
-      if (!isRegistered) {
-        console.log("User is not registered. Creating registration transaction...");
-        
-        // Create registration transaction
-        const registerTx = await createRegisterUserTransaction(program, publicKey);
-        
-        // Create staking transaction
-        const stakeTx = await createStakeTransaction(program, publicKey, tokenMint, Number(amount));
-        
-        // Combine them - create a new transaction with both instructions
-        transaction = new Transaction();
-        registerTx.instructions.forEach((ix: any) => transaction.add(ix));
-        stakeTx.instructions.forEach((ix: any) => transaction.add(ix));
-        
-        console.log("Created combined registration + staking transaction");
+        // Clear form and refresh data
+        setStakeAmount('');
+        setIsStaking(false);
+        refreshAllData();
       } else {
-        console.log("User is already registered. Creating staking transaction only...");
+        console.error('❌ Transaction failed:', txResult.error);
         
-        // User is already registered, just stake
-        transaction = await createStakeTransaction(program, publicKey, tokenMint, Number(amount));
-        console.log("Created staking transaction");
+        toast({
+          title: 'Transaction failed',
+          description: txResult.message || txResult.error || 'Unknown error',
+          variant: 'destructive'
+        });
+        
+        setIsStaking(false);
       }
-      
-      // Set transaction properties
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
-      transaction.recentBlockhash = blockhash;
-      transaction.lastValidBlockHeight = lastValidBlockHeight;
-      transaction.feePayer = publicKey;
-      
-      console.log("Transaction built with Anchor. Sending to wallet for signing...");
-      console.log("Transaction has", transaction.instructions.length, "instructions");
-      
-      // Send the transaction
-      const signature = await sendTransaction(transaction);
-      console.log("Transaction sent successfully, signature:", signature);
+    } catch (error: any) {
+      console.error('❌ Error processing transaction:', error);
       
       toast({
-        title: "Staking initiated",
-        description: "Your tokens are being staked. This may take a moment to confirm.",
-      });
-
-      // Wait for confirmation
-      console.log("Waiting for transaction confirmation...");
-      const confirmation = await connection.confirmTransaction({
-        signature,
-        blockhash,
-        lastValidBlockHeight
+        title: 'Transaction failed',
+        description: `Error: ${error.message || 'Unknown error'}`,
+        variant: 'destructive'
       });
       
-      if (confirmation.value.err) {
-        throw new Error(`Transaction failed: ${confirmation.value.err.toString()}`);
-      }
-      
-      console.log("Transaction confirmed successfully!");
-
-      toast({
-        title: "Staking successful",
-        description: `You have successfully staked ${amount} tokens.`,
-      });
-
-      // Refresh staking info
-      await fetchStakingInfo();
-      await fetchTokenBalance();
-
-    } catch (error) {
-      console.error("Error in Anchor staking process:", error);
-      
-      toast({
-        title: "Staking failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+      setIsStaking(false);
     }
+  };
+
+  const handleUnstake = async () => {
+    toast({
+      title: 'Coming soon',
+      description: 'Unstaking feature is coming soon',
+    });
+  };
+
+  const handleClaimRewards = async () => {
+    toast({
+      title: 'Coming soon',
+      description: 'Claiming rewards feature is coming soon',
+    });
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-4xl">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>Simple Staking</CardTitle>
-          <Badge variant={directMode ? 'default' : 'outline'}>
-            {directMode ? 'Direct Transfer' : 'Contract Mode'}
-          </Badge>
+          <div>
+            <CardTitle className="text-2xl">
+              <GradientText>HATM Staking</GradientText>
+            </CardTitle>
+            <CardDescription>Stake your HATM tokens and earn rewards</CardDescription>
+          </div>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex items-center gap-1" 
+            onClick={refreshAllData}
+          >
+            <RefreshCcw className="h-4 w-4" /> Refresh
+          </Button>
         </div>
-        <CardDescription>Stake HATM tokens to earn rewards</CardDescription>
       </CardHeader>
-      <CardContent>
-        {connected ? (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="font-medium">Your Token Balance</div>
-              {balanceLoading ? (
-                <Skeleton className="h-4 w-full" />
-              ) : (
-                <div className="text-sm flex items-center space-x-2">
-                  <span className="font-semibold">{tokenBalance !== null ? `${tokenBalance.toLocaleString()} HATM` : 'Loading...'}</span>
-                  {tokenBalance && tokenBalance > 0 && (
-                    <Badge variant="outline" className="text-green-500 bg-green-50 border-green-200">Available</Badge>
-                  )}
-                </div>
-              )}
-            </div>
 
-            <div className="space-y-2">
-              <div className="font-medium">Your Staking Info</div>
-              {infoLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-3/4" />
-                </div>
-              ) : stakingInfo ? (
-                <div className="text-sm space-y-1">
-                  <div>Amount Staked: {stakingInfo.amountStaked / 1e9} HATM</div>
-                  <div>Rewards Earned: {stakingInfo.pendingRewards / 1e9} HATM</div>
-                  {stakingInfo.lastStakeTime && (
-                    <div>Last Stake: {new Date(stakingInfo.lastStakeTime).toLocaleString()}</div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">No staking information found</div>
-              )}
+      <CardContent>
+        {!connected ? (
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Wallet not connected</AlertTitle>
+            <AlertDescription>
+              Please connect your wallet to view your staking information.
+            </AlertDescription>
+          </Alert>
+        ) : loading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-[60px] w-full rounded-xl" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Skeleton className="h-[120px] w-full rounded-xl" />
+              <Skeleton className="h-[120px] w-full rounded-xl" />
+              <Skeleton className="h-[120px] w-full rounded-xl" />
             </div>
-            
-            <div className="space-y-2">
-              <div className="font-medium">Stake Tokens</div>
-              <Input
-                type="number"
-                placeholder="Amount to stake"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                min="1"
-                step="1"
-              />
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="staking-mode"
-                  checked={directMode}
-                  onCheckedChange={setDirectMode}
-                />
-                <Label htmlFor="staking-mode" className="text-xs text-muted-foreground">
-                  {directMode 
-                    ? "Direct Transfer: Tokens are sent directly to the vault account" 
-                    : "Contract Mode: Uses on-chain contract to update staking records"}
-                </Label>
+          </div>
+        ) : error ? (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error loading staking data</AlertTitle>
+            <AlertDescription>
+              {typeof error === 'string' ? error : 'Could not load staking information. Please try again later.'}
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <>
+            {/* Staking stats overview */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-muted/30 rounded-xl p-4 flex flex-col">
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Coins className="h-3.5 w-3.5" /> Your Staked Amount
+                </span>
+                <span className="text-2xl font-bold mt-1">
+                  {formatNumber(stakingInfo?.amountStaked || 0)} HATM
+                </span>
+                {stakingInfo?.walletTokenBalance !== undefined && (
+                  <span className="text-xs text-muted-foreground mt-1">
+                    Available: {formatNumber(stakingInfo.walletTokenBalance)} HATM
+                  </span>
+                )}
+              </div>
+
+              <div className="bg-muted/30 rounded-xl p-4 flex flex-col">
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Award className="h-3.5 w-3.5" /> Pending Rewards
+                </span>
+                <span className="text-2xl font-bold mt-1">
+                  {formatNumber(stakingInfo?.pendingRewards || 0)} HATM
+                </span>
+                <div className="mt-1">
+                  <span className="text-xs text-muted-foreground">
+                    <span className="text-primary font-medium">
+                      {stakingInfo?.estimatedAPY || 0}% APY
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-muted/30 rounded-xl p-4 flex flex-col">
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" /> Lock Status
+                </span>
+                {stakingInfo?.timeUntilUnlock ? (
+                  <>
+                    <span className="text-2xl font-bold mt-1">
+                      {formatTimeRemaining(stakingInfo.timeUntilUnlock)}
+                    </span>
+                    <span className="text-xs text-muted-foreground mt-1">
+                      Until tokens unlock
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-2xl font-bold mt-1 flex items-center gap-1">
+                      {stakingInfo?.isLocked ? (
+                        <Badge variant="destructive">Locked</Badge>
+                      ) : (
+                        <Badge variant="outline">Unlocked</Badge>
+                      )}
+                    </span>
+                    <span className="text-xs text-muted-foreground mt-1">
+                      {stakingInfo?.isLocked ? '7-day lock period' : 'No tokens staked'}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="text-center py-4 text-muted-foreground">
-            Connect your wallet to view staking options
-          </div>
+
+            {/* Staking actions */}
+            <Tabs defaultValue="stake" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="stake">Stake</TabsTrigger>
+                <TabsTrigger value="unstake">Unstake</TabsTrigger>
+                <TabsTrigger value="rewards">Claim Rewards</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="stake" className="mt-4">
+                <div className="space-y-4">
+                  <div className="grid w-full gap-1.5">
+                    <Label htmlFor="stake-amount">Amount to Stake</Label>
+                    <div className="flex w-full items-center space-x-2">
+                      <Input
+                        type="number"
+                        id="stake-amount"
+                        placeholder="Enter amount"
+                        value={stakeAmount}
+                        onChange={(e) => setStakeAmount(e.target.value)}
+                        disabled={isStaking}
+                      />
+                      <Button 
+                        type="submit" 
+                        onClick={handleStake}
+                        disabled={isStaking || !stakeAmount}
+                      >
+                        {isStaking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        {isStaking ? 'Staking...' : 'Stake'}
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Staked tokens are locked for 7 days.
+                    </p>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="unstake" className="mt-4">
+                <div className="space-y-4">
+                  <div className="grid w-full gap-1.5">
+                    <Label htmlFor="unstake-amount">Amount to Unstake</Label>
+                    <div className="flex w-full items-center space-x-2">
+                      <Input
+                        type="number"
+                        id="unstake-amount"
+                        placeholder="Enter amount"
+                        value={unstakeAmount}
+                        onChange={(e) => setUnstakeAmount(e.target.value)}
+                        disabled={isUnstaking || stakingInfo?.isLocked}
+                      />
+                      <Button 
+                        type="submit" 
+                        onClick={handleUnstake}
+                        disabled={isUnstaking || !unstakeAmount || stakingInfo?.isLocked || Number(stakingInfo?.amountStaked) === 0}
+                      >
+                        {isUnstaking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        {isUnstaking ? 'Unstaking...' : 'Unstake'}
+                      </Button>
+                    </div>
+                    {stakingInfo?.isLocked ? (
+                      <div className="mt-2">
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Locked Period</AlertTitle>
+                          <AlertDescription>
+                            Your tokens are still in the 7-day lock period.
+                          </AlertDescription>
+                        </Alert>
+                      </div>
+                    ) : Number(stakingInfo?.amountStaked) === 0 ? (
+                      <div className="mt-2">
+                        <Alert>
+                          <Info className="h-4 w-4" />
+                          <AlertTitle>No tokens staked</AlertTitle>
+                          <AlertDescription>
+                            You don't have any tokens staked yet.
+                          </AlertDescription>
+                        </Alert>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        You can unstake up to {formatNumber(stakingInfo?.amountStaked || 0)} HATM.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="rewards" className="mt-4">
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-4">
+                    <div className="bg-muted/30 rounded-xl p-4">
+                      <h3 className="text-lg font-semibold">Available Rewards</h3>
+                      <p className="text-3xl font-bold mt-2">
+                        {formatNumber(stakingInfo?.pendingRewards || 0)} HATM
+                      </p>
+                      <div className="mt-4">
+                        <Button 
+                          onClick={handleClaimRewards}
+                          disabled={isClaiming || Number(stakingInfo?.pendingRewards) === 0}
+                          className="w-full"
+                        >
+                          {isClaiming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          {isClaiming ? 'Claiming...' : 'Claim Rewards'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* Global Staking Stats */}
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold mb-2">Global Staking Stats</h3>
+              <div className="bg-muted/30 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Total Staked</p>
+                  <p className="font-bold">{formatNumber(stakingStats?.totalStaked || 0)} HATM</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">APY</p>
+                  <p className="font-bold">{stakingStats?.currentAPY || 0}%</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Total Stakers</p>
+                  <p className="font-bold">{stakingStats?.stakersCount || 0}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Reward Pool</p>
+                  <p className="font-bold">{formatNumber(stakingStats?.rewardPool || 0)} HATM</p>
+                </div>
+              </div>
+            </div>
+          </>
         )}
       </CardContent>
-      <CardFooter className="flex flex-col gap-2">
-        <Button 
-          className="w-full" 
-          onClick={directMode ? handleDirectTransfer : handleStake} 
-          disabled={!connected || loading || tokenBalance === 0}
-        >
-          {loading ? "Processing..." : `Stake ${directMode ? "(Direct Transfer)" : "(Contract)"}`}
-        </Button>
-        <div className="text-xs text-center text-muted-foreground">
-          Staking locks tokens for 7 days. Early unstaking incurs a 25% fee.
-        </div>
-      </CardFooter>
     </Card>
   );
-}
+};
+
+export default SimpleStakingWidget;

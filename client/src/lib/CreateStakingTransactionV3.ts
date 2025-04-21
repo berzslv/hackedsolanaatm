@@ -174,7 +174,16 @@ export async function createAndSubmitStakingTransaction(
     
     let signature: string;
     try {
-      signature = await wallet.sendTransaction(decodedTransaction, connection);
+      // For AnchorWallet we need to sign and then send separately
+      if (isLegacyTransaction(decodedTransaction)) {
+        await wallet.signTransaction(decodedTransaction);
+        signature = await connection.sendRawTransaction(decodedTransaction.serialize());
+      } else {
+        // For versioned transactions
+        decodedTransaction = await wallet.signTransaction(decodedTransaction as Transaction);
+        signature = await connection.sendRawTransaction(decodedTransaction.serialize());
+      }
+      
       console.log("🚀 Transaction sent with signature:", signature);
       onStatusUpdate(`Transaction submitted! Signature: ${signature.substring(0, 8)}...`, false);
     } catch (sendError: any) {
