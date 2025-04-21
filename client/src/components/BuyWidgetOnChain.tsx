@@ -13,6 +13,7 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { Transaction, VersionedTransaction, PublicKey, Connection, clusterApiUrl } from '@solana/web3.js';
 import { executeStakingTransaction } from '@/lib/CreateStakingTransactionV3';
 import { checkAndCreateTokenAccount } from '@/lib/api-client';
+import { createAnchorWallet, AnchorWallet } from '@/lib/anchor-types';
 
 export interface BuyWidgetProps {
   flashRef?: React.MutableRefObject<(() => void) | null>;
@@ -293,21 +294,13 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
         }
       }
 
-      // Create Anchor-compatible wallet
-      const anchorWallet = {
+      // Create Anchor-compatible wallet using our helper
+      const anchorWallet = createAnchorWallet(
         publicKey,
-        signTransaction: async (tx: any) => {
-          // Anchor expects a signTransaction function that returns the signed transaction
-          return tx; // Simplified for our example since sendTransaction handles signing
-        },
-        signAllTransactions: async (txs: any[]) => {
-          // Return the transactions unchanged for our simplified example
-          return txs;
-        },
-        sendTransaction: async (tx: any) => {
-          return await sendTransaction(tx);
-        }
-      };
+        async (tx) => tx, // placeholder since we need to pass something but anchor will handle it
+        sendTransaction,
+        async (txs) => txs // placeholder since we need to pass something but anchor will handle it
+      );
       
       // Execute transaction with Anchor-based implementation
       const result = await executeStakingTransaction(

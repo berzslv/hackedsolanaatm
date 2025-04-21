@@ -1,0 +1,48 @@
+Error creating staking transaction: TypeError: Cannot read properties of undefined (reading '_bn')
+    at isPublicKeyData (chunk-NMUPII5P.js?v=8e8ced8d:8242:16)
+    at new _PublicKey2 (chunk-NMUPII5P.js?v=8e8ced8d:8859:13)
+    at translateAddress (@coral-xyz_anchor.js?v=516a71f8:6178:51)
+    at new _Program (@coral-xyz_anchor.js?v=516a71f8:11308:23)
+    at createStakingTransaction (CreateStakingTransactionV3.ts:85:21)
+    at async executeStakingTransaction (CreateStakingTransactionV3.ts:286:20)
+    at async AnchorStakingWidget.tsx:88:27
+overrideMethod @ hook.js:608
+createStakingTransaction @ CreateStakingTransactionV3.ts:247
+await in createStakingTransaction
+executeStakingTransaction @ CreateStakingTransactionV3.ts:286
+(anonymous) @ AnchorStakingWidget.tsx:88
+callCallback2 @ chunk-276SZO74.js?v=8e8ced8d:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=8e8ced8d:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=8e8ced8d:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=8e8ced8d:3736
+executeDispatch @ chunk-276SZO74.js?v=8e8ced8d:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=8e8ced8d:7034
+processDispatchQueue @ chunk-276SZO74.js?v=8e8ced8d:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=8e8ced8d:7051
+(anonymous) @ chunk-276SZO74.js?v=8e8ced8d:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=8e8ced8d:18913
+batchedUpdates @ chunk-276SZO74.js?v=8e8ced8d:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=8e8ced8d:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=8e8ced8d:5478
+dispatchEvent @ chunk-276SZO74.js?v=8e8ced8d:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=8e8ced8d:5449Understand this error
+AnchorStakingWidget.tsx:95 ❌ Error from staking transaction: Cannot read properties of undefined (reading '_bn')
+overrideMethod @ hook.js:608
+(anonymous) @ AnchorStakingWidget.tsx:95
+await in (anonymous)
+callCallback2 @ chunk-276SZO74.js?v=8e8ced8d:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=8e8ced8d:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=8e8ced8d:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=8e8ced8d:3736
+executeDispatch @ chunk-276SZO74.js?v=8e8ced8d:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=8e8ced8d:7034
+processDispatchQueue @ chunk-276SZO74.js?v=8e8ced8d:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=8e8ced8d:7051
+(anonymous) @ chunk-276SZO74.js?v=8e8ced8d:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=8e8ced8d:18913
+batchedUpdates @ chunk-276SZO74.js?v=8e8ced8d:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=8e8ced8d:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=8e8ced8d:5478
+dispatchEvent @ chunk-276SZO74.js?v=8e8ced8d:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=8e8ced8d:5449Understand this error
+AnchorStakingWidget.tsx:123 Staking error: Error: Cannot read properties of undefined (reading '_bn')

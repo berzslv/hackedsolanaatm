@@ -10,6 +10,8 @@ import { PublicKey } from '@solana/web3.js';
 import { ToastAction } from '@/components/ui/toast';
 import { useToast } from '@/hooks/use-toast';
 import { executeStakingTransaction } from '@/lib/CreateStakingTransactionV3';
+import { createAnchorWallet, AnchorWallet } from '@/lib/anchor-types';
+import { useSolana } from '@/hooks/use-solana';
 
 interface AnchorStakingWidgetProps {
   tokenBalance: number;
@@ -74,15 +76,13 @@ export default function AnchorStakingWidget({
       console.log(`👛 Wallet public key: ${publicKey.toString()}`);
       console.log(`🔢 Amount to stake: ${amountToStake}`);
       
-      // Create wallet adapter compatible with Anchor
-      const anchorWallet = {
+      // Create wallet adapter compatible with Anchor using our helper
+      const anchorWallet = createAnchorWallet(
         publicKey,
         signTransaction,
-        signAllTransactions: async (txs: any[]) => {
-          return Promise.all(txs.map(tx => signTransaction!(tx)));
-        },
-        sendTransaction
-      };
+        sendTransaction,
+        async (txs) => Promise.all(txs.map(tx => signTransaction!(tx)))
+      );
       
       // Call the new Anchor-based staking function
       const stakeResult = await executeStakingTransaction(
