@@ -17,7 +17,9 @@ import {
 } from '@solana/web3.js';
 import { toast } from '@/hooks/use-toast';
 import BN from 'bn.js';
-import { stakeExistingTokens, buyAndStakeTokens } from './api-client';
+import { stakeExistingTokens, buyAndStakeTokens } from './combined-smart-contract-client';
+import * as anchor from '@project-serum/anchor';
+import { Program, AnchorProvider } from '@project-serum/anchor';
 import * as buffer from 'buffer';
 
 // Ensure Buffer is available globally and log its status
@@ -123,15 +125,31 @@ export async function createAndSubmitStakingTransaction(
   console.log("🔗 Network:", connection.rpcEndpoint);
   
   try {
-    // Create a wallet object for the operation
+    // Create a wallet adapter for Anchor
     const walletAdapter = { 
       sendTransaction: wallet.sendTransaction, 
+      signTransaction: wallet.signTransaction,
       publicKey
     };
     
+    console.log("🔄 Setting up Anchor provider");
+    
+    // Create an Anchor provider from the wallet
+    const provider = new AnchorProvider(
+      connection,
+      walletAdapter as any,
+      AnchorProvider.defaultOptions()
+    );
+    
+    // Set the provider globally for Anchor
+    anchor.setProvider(provider);
+    
+    // Update status
+    onStatusUpdate("Creating Anchor transaction...", false);
+    
     // Call the appropriate method based on whether we're using existing tokens
     const stakingFunction = useExistingTokens ? stakeExistingTokens : buyAndStakeTokens;
-    console.log(`🔧 Calling ${useExistingTokens ? 'stakeExistingTokens' : 'buyAndStakeTokens'} function`);
+    console.log(`🔧 Calling ${useExistingTokens ? 'stakeExistingTokens' : 'buyAndStakeTokens'} function with Anchor`);
     
     // If referrer is provided in options, pass it to the API
     const referrerAddress = options?.referrer ? options.referrer.toString() : undefined;
@@ -139,6 +157,9 @@ export async function createAndSubmitStakingTransaction(
       console.log('📣 Using referrer for transaction:', referrerAddress);
     }
     
+    onStatusUpdate("Building Anchor transaction...", false);
+    
+    // Use the updated Anchor-based functions
     const stakeResult = await stakingFunction(
       publicKey.toString(),
       amount,
@@ -155,29 +176,65 @@ export async function createAndSubmitStakingTransaction(
         error: stakeResult.error 
       };
     }
-    
-    // Check if we got back a transaction
-    if (!stakeResult.stakingTransaction) {
-      console.error("❌ No staking transaction returned");
-      return { 
-        success: false, 
-        message: 'Transaction preparation failed: No transaction returned', 
-        error: 'No transaction data received' 
+
+    // Check if we got a signature directly from the Anchor execution
+    if (stakeResult.signature) {
+      console.log('✅ Anchor transaction executed successfully with signature:', stakeResult.signature);
+      onStatusUpdate("Transaction confirmed!", false);
+      
+      return {
+        success: true,
+        message: `Transaction confirmed with signature: ${stakeResult.signature}`,
+        signature: stakeResult.signature
       };
     }
     
-    const transactionData = stakeResult.stakingTransaction;
-    
-    // Log the transaction data structure
-    console.log('📦 Transaction data received:', JSON.stringify(transactionData, null, 2));
-    
-    // Make sure we have the transaction field
-    if (!transactionData.transaction) {
-      console.error('❌ Missing transaction field in response data');
+    // If we don't have a signature yet, we should have a transaction
+    if (!stakeResult.stakingTransaction && !stakeResult.transactionDetails) {
+      console.error("❌ No transaction returned from Anchor client");
       return { 
         success: false, 
-        message: 'Transaction preparation failed: Invalid response format', 
-        error: 'Missing transaction field in server response' 
+        message: 'Transaction preparation failed: No transaction returned', 
+        error: 'No transaction data received from Anchor' 
+      };
+    }
+    
+    // Handle different response formats based on which function was called
+    const transactionData = stakeResult.stakingTransaction || stakeResult.transactionDetails;
+    
+    // Log the transaction data structure
+    console.log('📦 Anchor transaction data received:', JSON.stringify(transactionData, null, 2));
+    
+    // For direct Transaction objects from Anchor
+    if (transactionData instanceof Transaction) {
+      console.log("🎯 Direct Anchor Transaction object detected");
+      
+      // We can use this Transaction directly
+      decodedTransaction = transactionData;
+      
+      // Skip to the transaction sending phase
+      onStatusUpdate("Processing Anchor transaction...", false);
+      
+      // Ensure recent blockhash is set
+      if (!decodedTransaction.recentBlockhash) {
+        console.log('⚠️ Getting fresh blockhash for Anchor transaction');
+        const { blockhash } = await connection.getLatestBlockhash('finalized');
+        decodedTransaction.recentBlockhash = blockhash;
+      }
+      
+      // We'll skip the deserialization steps and continue with sending
+      // (the code below will process it)
+    }
+    // Handle serialized transaction with transaction field
+    else if (transactionData.transaction) {
+      // Continue with standard serialized transaction format
+    }
+    else {
+      console.error('❌ Invalid transaction data format from Anchor');
+      return { 
+        success: false, 
+        message: 'Transaction preparation failed: Invalid Anchor response', 
+        error: 'Missing transaction data in Anchor response' 
       };
     }
     
