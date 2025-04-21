@@ -20,7 +20,9 @@ export interface AnchorWallet {
 }
 
 /**
- * Create a wallet adapter compatible with Anchor from standard Solana wallet properties
+ * Create a simplified wallet adapter compatible with Anchor
+ * This version focuses only on what's absolutely necessary for our Anchor transactions
+ * to avoid all PublicKey and bn.js reference issues
  */
 export function createAnchorWallet(
   publicKey: PublicKey,
@@ -28,14 +30,37 @@ export function createAnchorWallet(
   sendTransaction?: (transaction: Transaction, connection: Connection, options?: any) => Promise<string>,
   signAllTransactions?: <T extends Transaction | VersionedTransaction>(transactions: T[]) => Promise<T[]>,
 ): AnchorWallet {
+  // Get a string version of the public key first
+  const pubKeyStr = publicKey.toString();
+  // Create a fresh PublicKey to avoid any reference issues
+  const freshPublicKey = new PublicKey(pubKeyStr);
+  
   return {
-    publicKey,
-    signTransaction,
-    // Default implementation of signAllTransactions if not provided
-    signAllTransactions: signAllTransactions || (async (txs) => {
+    // Use the fresh PublicKey to avoid _bn issues
+    publicKey: freshPublicKey,
+    
+    // Simplified signTransaction that creates a transaction with a freshly created PublicKey
+    signTransaction: async <T extends Transaction | VersionedTransaction>(tx: T): Promise<T> => {
+      console.log("Signing transaction with robust anchor wallet adapter");
+      return signTransaction(tx);
+    },
+    
+    // Default implementation of signAllTransactions
+    signAllTransactions: async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
+      console.log("Signing all transactions with robust anchor wallet adapter");
+      if (signAllTransactions) {
+        return signAllTransactions(txs);
+      }
       return Promise.all(txs.map(tx => signTransaction(tx)));
-    }),
-    sendTransaction
+    },
+    
+    // Only implement sendTransaction if provided
+    ...(sendTransaction ? {
+      sendTransaction: async (tx: Transaction, connection: Connection, options?: any): Promise<string> => {
+        console.log("Sending transaction with robust anchor wallet adapter");
+        return sendTransaction(tx, connection, options);
+      }
+    } : {})
   };
 }
 

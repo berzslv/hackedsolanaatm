@@ -306,7 +306,7 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
         // Only implement sendTransaction as that's what our code actually needs
         sendTransaction: async (tx: any, connection?: any) => {
           console.log("Sending transaction from simplified buy widget wallet adapter");
-          return sendTransaction(tx, connection);
+          return sendTransaction(tx);
         }
       };
       
