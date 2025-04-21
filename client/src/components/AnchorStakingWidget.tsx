@@ -81,24 +81,15 @@ export default function AnchorStakingWidget({
       const pubKeyStr = publicKey.toString(); // Convert to string first
       const stablePubKey = new PublicKey(pubKeyStr); // Create fresh PublicKey from string
       
-      // Create a safe wallet object with newly created PublicKey
+      // Create a simplified wallet adapter that only includes what we need
+      // This avoids the complex issues with TypeScript interfaces
       const anchorWallet = {
         publicKey: stablePubKey,
-        signTransaction: (tx: any) => {
-          console.log("Signing transaction with safe wallet");
-          if (!wallet?.signTransaction) {
-            return Promise.reject(new Error("signTransaction not available"));
-          }
-          return wallet.signTransaction(tx);
-        },
-        signAllTransactions: (txs: any[]) => {
-          console.log("Signing all transactions with safe wallet");
-          if (!wallet?.signTransaction) {
-            return Promise.reject(new Error("signTransaction not available"));
-          }
-          return Promise.all(txs.map(tx => wallet.signTransaction(tx)));
-        },
-        sendTransaction: sendTransaction
+        // Only implement sendTransaction as that's what our code actually needs
+        sendTransaction: async (tx: any, connection?: any) => {
+          console.log("Sending transaction from simplified wallet adapter");
+          return sendTransaction(tx, connection);
+        }
       };
       
       // Call the new Anchor-based staking function

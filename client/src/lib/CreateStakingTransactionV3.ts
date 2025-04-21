@@ -21,7 +21,8 @@ import {
 } from '@solana/spl-token';
 import * as anchor from '@coral-xyz/anchor';
 import { Program, AnchorProvider, BN } from '@coral-xyz/anchor';
-import { safeProvider } from './anchor-types';
+// Import BN from bn.js directly to ensure it's the correct version
+import BN_Direct from 'bn.js';
 
 // Constants
 const PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
@@ -194,7 +195,10 @@ export async function createStakingTransaction(
     
     console.log("🛠️ Building transaction with program.methods");
     // Convert amount to proper decimal format (9 decimals for our token)
-    const amountWithDecimals = new BN(amount * 1e9);
+    // Use direct BN implementation to avoid _bn undefined issues
+    const amountInDecimalStr = Math.floor(amount * 1e9).toString();
+    console.log("Amount in decimals (string):", amountInDecimalStr);
+    const amountWithDecimals = new BN_Direct(amountInDecimalStr);
     
     // Create transaction with Anchor methods
     const transaction = await program.methods
