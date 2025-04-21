@@ -16,6 +16,7 @@ import BN from 'bn.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 import * as anchor from '@coral-xyz/anchor';
 import { Program, AnchorProvider } from '@coral-xyz/anchor';
+import { safeProvider } from './anchor-types';
 
 // Import our comprehensive buffer polyfill
 import { 

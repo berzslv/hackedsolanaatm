@@ -21,6 +21,7 @@ import {
 } from '@solana/spl-token';
 import * as anchor from '@coral-xyz/anchor';
 import { Program, AnchorProvider, BN } from '@coral-xyz/anchor';
+import { safeProvider } from './anchor-types';
 
 // Constants
 const PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
@@ -81,7 +82,7 @@ export async function createStakingTransaction(
     }
     
     // Create program instance with IDL
-    const program = new Program(idl, PROGRAM_ID, provider);
+    const program = new Program(idl, PROGRAM_ID, safeProvider(provider));
     
     // Find PDA addresses
     const [globalStatePda] = PublicKey.findProgramAddressSync(
