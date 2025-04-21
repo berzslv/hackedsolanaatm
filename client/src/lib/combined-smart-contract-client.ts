@@ -30,7 +30,7 @@ import * as buffer from 'buffer';
 import { BrowserBuffer } from './browser-polyfills';
 
 // Import our enhanced transaction handler
-import { createAndSubmitStakingTransaction } from './CreateStakingTransactionV3';
+import { executeStakingTransaction } from './CreateStakingTransactionV3';
 
 if (typeof window !== 'undefined') {
   // Only run this in browser environments

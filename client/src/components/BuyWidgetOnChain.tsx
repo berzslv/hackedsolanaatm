@@ -296,11 +296,17 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
       // Create Anchor-compatible wallet
       const anchorWallet = {
         publicKey,
-        signTransaction: sendTransaction,
-        signAllTransactions: async (txs: any[]) => {
-          return Promise.all(txs.map(tx => sendTransaction(tx, connection)));
+        signTransaction: async (tx: any) => {
+          // Anchor expects a signTransaction function that returns the signed transaction
+          return tx; // Simplified for our example since sendTransaction handles signing
         },
-        sendTransaction: (tx: any) => sendTransaction(tx, connection)
+        signAllTransactions: async (txs: any[]) => {
+          // Return the transactions unchanged for our simplified example
+          return txs;
+        },
+        sendTransaction: async (tx: any) => {
+          return await sendTransaction(tx);
+        }
       };
       
       // Execute transaction with Anchor-based implementation
@@ -311,43 +317,33 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
         referrerPublicKey?.toString()
       );
       
-      if (!result.success) {
+      if (!result.signature) {
         console.error("Transaction failed:", result.error);
         
-        // Show detailed error toast with retry option if available
-        if (result.canRetry) {
-          toast({
-            title: "Transaction failed",
-            description: `${result.message}. You can try again with a fresh blockhash.`,
-            variant: "destructive",
-            action: (
-              <div className="flex space-x-2">
-                <button 
-                  onClick={() => handleBuy()}
-                  className="px-3 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-md"
-                >
-                  Retry
-                </button>
-              </div>
-            )
-          });
-        } else {
-          toast({
-            title: "Transaction failed",
-            description: `${result.message}. ${result.error || ''}`,
-            variant: "destructive"
-          });
-        }
+        // Show detailed error toast with retry option
+        toast({
+          title: "Transaction failed",
+          description: `${result.error || 'Unknown error'}. You can try again with a fresh transaction.`,
+          variant: "destructive",
+          action: (
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => handleBuy()}
+                className="px-3 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-md"
+              >
+                Retry
+              </button>
+            </div>
+          )
+        });
         
-        throw new Error(result.error || result.message);
+        throw new Error(result.error || "Transaction failed with no signature");
       }
       
       const signature = result.signature;
       console.log("Transaction successful with signature:", signature);
       
-      const completionMessage = result.usedFallback
-        ? "Transaction completed via fallback method. Finalizing purchase..."
-        : "Your transaction has been confirmed. Finalizing purchase...";
+      const completionMessage = "Your transaction has been confirmed. Finalizing purchase...";
       
       toast({
         title: "Transaction successful!",
