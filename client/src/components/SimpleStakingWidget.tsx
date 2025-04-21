@@ -211,15 +211,26 @@ export function SimpleStakingWidget() {
       // Create transaction with transfer instruction
       const transaction = new Transaction();
       
-      // Create transfer instruction - convert to BigInt to avoid numeric precision issues
-      const transferInstruction = createTransferInstruction(
-        userTokenAccount,
-        vaultTokenAccount,
-        publicKey,
-        BigInt(amountLamports)
-      );
-      
-      transaction.add(transferInstruction);
+      try {
+        // For direct transfers, use the numeric amount directly with bigint
+        // This is the safest approach when dealing with browser compatibility issues
+        const bigIntAmount = BigInt(Math.floor(amountLamports));
+        console.log(`Amount as BigInt: ${bigIntAmount}`);
+        
+        // Create transfer instruction using BigInt directly
+        const transferInstruction = createTransferInstruction(
+          userTokenAccount,
+          vaultTokenAccount,
+          publicKey,
+          bigIntAmount
+        );
+        
+        // Add to the transaction
+        transaction.add(transferInstruction);
+      } catch (error) {
+        console.error("Error creating transfer instruction:", error);
+        throw new Error("Failed to create the transfer instruction. Please try a different amount or try again later.");
+      }
       
       // Set transaction properties
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
