@@ -3,8 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { Trophy, Info } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import DirectStakingWidget from "@/components/DirectStakingWidget";
-import { SimpleStakingWidget } from "@/components/SimpleStakingWidget";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const StakingSection = () => {
   return (
@@ -55,18 +53,9 @@ const StakingSection = () => {
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 -translate-x-1/2"></div>
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
           
-          <Tabs defaultValue="main" className="w-full max-w-2xl mx-auto">
-            <TabsList className="grid grid-cols-2 mb-6">
-              <TabsTrigger value="main">Main Staking</TabsTrigger>
-              <TabsTrigger value="simple">Simple Testing</TabsTrigger>
-            </TabsList>
-            <TabsContent value="main">
-              <DirectStakingWidget />
-            </TabsContent>
-            <TabsContent value="simple">
-              <SimpleStakingWidget />
-            </TabsContent>
-          </Tabs>
+          <div className="w-full max-w-2xl mx-auto">
+            <DirectStakingWidget />
+          </div>
         </div>
       </div>
     </section>
