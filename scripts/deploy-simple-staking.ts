@@ -34,7 +34,8 @@ async function main() {
     
     // Load the mint authority keypair for token operations
     const tokenKeypairData = JSON.parse(fs.readFileSync('./token-keypair.json', 'utf-8'));
-    const tokenKeypair = Keypair.fromSecretKey(new Uint8Array(tokenKeypairData));
+    const authoritySecretKey = new Uint8Array(tokenKeypairData.authority.secretKey);
+    const tokenKeypair = Keypair.fromSecretKey(authoritySecretKey);
     
     // Connect to Solana devnet
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
@@ -50,12 +51,16 @@ async function main() {
       {
         publicKey: tokenKeypair.publicKey,
         signTransaction: async (tx) => {
-          tx.partialSign(tokenKeypair);
+          if ('partialSign' in tx) {
+            tx.partialSign(tokenKeypair);
+          }
           return tx;
         },
         signAllTransactions: async (txs) => {
           return txs.map(tx => {
-            tx.partialSign(tokenKeypair);
+            if ('partialSign' in tx) {
+              tx.partialSign(tokenKeypair);
+            }
             return tx;
           });
         },
