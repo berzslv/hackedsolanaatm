@@ -150,7 +150,6 @@ export function SimpleStakingWidget() {
           programId,
           data: (() => {
             // Based on the IDL, SimpleStaking's registerUser takes NO arguments
-            // unlike the referral_staking contract which takes an Option<PublicKey>
             const discriminator = SIMPLE_STAKING_DISCRIMINATORS.registerUser;
             
             console.log("Registration instruction discriminator:", Array.from(discriminator).join(','));
@@ -210,6 +209,17 @@ export function SimpleStakingWidget() {
 
       // Send the transaction
       console.log("Sending transaction to wallet for signing...");
+      console.log("Transaction accounts:");
+      transaction.instructions.forEach((ix, i) => {
+        console.log(`Instruction ${i} programId:`, ix.programId.toString());
+        console.log(`Instruction ${i} data:`, Array.from(ix.data));
+        console.log(`Instruction ${i} keys:`, ix.keys.map((k, j) => ({
+          index: j,
+          pubkey: k.pubkey.toString(),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable
+        })));
+      });
       
       // Set all the necessary properties for the transaction
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
@@ -219,7 +229,6 @@ export function SimpleStakingWidget() {
       
       // Send the transaction using the context's sendTransaction
       const signature = await sendTransaction(transaction);
-      
       console.log("Transaction sent successfully, signature:", signature);
       
       toast({
