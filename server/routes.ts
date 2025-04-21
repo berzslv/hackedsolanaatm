@@ -102,7 +102,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({
         success: true,
         walletAddress,
-        balance
+        balance,
+        formatted: true, // Indicate this balance is already formatted (divided by 10^9)
+        decimals: 9
       });
     } catch (error) {
       console.error("Error getting token balance:", error);
