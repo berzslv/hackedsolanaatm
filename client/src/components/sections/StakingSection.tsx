@@ -32,8 +32,19 @@ const StakingSection = () => {
         const balanceResponse = await fetch(`/api/token-balance/${publicKey.toString()}`);
         if (balanceResponse.ok) {
           const balanceData = await balanceResponse.json();
-          // Convert from raw amount to UI amount (9 decimals)
-          setTokenBalance(balanceData.balance / 1e9);
+          
+          // Check if this is the raw or formatted balance
+          let formattedBalance;
+          if (balanceData.balance > 1000000000) {
+            // This is raw balance with 9 decimals
+            formattedBalance = balanceData.balance / 1e9;
+          } else {
+            // This is already formatted (less than 1 billion)
+            formattedBalance = balanceData.balance;
+          }
+          
+          setTokenBalance(formattedBalance);
+          console.log("Token balance updated:", formattedBalance);
         }
         
         // Fetch staking info
@@ -66,7 +77,19 @@ const StakingSection = () => {
       const balanceResponse = await fetch(`/api/token-balance/${publicKey.toString()}`);
       if (balanceResponse.ok) {
         const balanceData = await balanceResponse.json();
-        setTokenBalance(balanceData.balance / 1e9);
+        
+        // Check if this is the raw or formatted balance
+        let formattedBalance;
+        if (balanceData.balance > 1000000000) {
+          // This is raw balance with 9 decimals
+          formattedBalance = balanceData.balance / 1e9;
+        } else {
+          // This is already formatted (less than 1 billion)
+          formattedBalance = balanceData.balance;
+        }
+        
+        setTokenBalance(formattedBalance);
+        console.log("Token balance updated after stake:", formattedBalance);
       }
     } catch (error) {
       console.error("Error refreshing data after staking:", error);

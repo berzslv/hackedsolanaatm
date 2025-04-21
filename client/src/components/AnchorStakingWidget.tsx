@@ -60,7 +60,7 @@ export default function AnchorStakingWidget({
     const amountToStake = parseFloat(amount);
     
     if (amountToStake > tokenBalance) {
-      setStakeError(`Insufficient balance. You have ${tokenBalance} tokens available.`);
+      setStakeError(`Insufficient balance. You have ${tokenBalance.toLocaleString()} tokens available.`);
       return;
     }
 
@@ -172,7 +172,7 @@ export default function AnchorStakingWidget({
           <div className="flex justify-between">
             <Label htmlFor="amount">Amount to stake</Label>
             <span className="text-sm text-muted-foreground">
-              Balance: {tokenBalance} HATM {' '}
+              Balance: {tokenBalance.toLocaleString()} HATM {' '}
               <button 
                 onClick={setMaxAmount} 
                 className="text-primary hover:underline"
