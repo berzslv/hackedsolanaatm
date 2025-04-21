@@ -26,7 +26,6 @@ import {
 // Legacy buffer handling for reference/fallback
 import * as buffer from 'buffer';
 import { BrowserBuffer } from './browser-polyfills';
-import { runBufferDiagnostics, getSafeArrayConverter } from './buffer-diagnostics';
 
 if (typeof window !== 'undefined') {
   // Only run this in browser environments
@@ -34,16 +33,26 @@ if (typeof window !== 'undefined') {
   
   // Add a debug flag to check if polyfill is working
   console.log('Buffer polyfill working:', typeof Buffer !== 'undefined');
-  console.log('✅ Uint8Array buffer operations working correctly');
 }
 
-// Run buffer diagnostics to check for potential issues
-const bufferDiagnostics = runBufferDiagnostics();
-console.log("📊 Buffer diagnostics in combined-smart-contract-client:", 
-  bufferDiagnostics.success ? "All tests passed" : "Some tests failed");
+// Simple safe converter function for BN to array conversion
+const bnToArray = (bn: BN): number[] => {
+  const hex = bn.toString(16);
+  // Ensure even number of characters
+  const normalizedHex = hex.length % 2 ? '0' + hex : hex;
+  
+  // Convert hex string to byte array
+  const result = [];
+  for (let i = 0; i < normalizedHex.length; i += 2) {
+    result.push(parseInt(normalizedHex.substr(i, 2), 16));
+  }
+  return result;
+};
 
-// Get safe converter functions that don't depend on problematic Buffer methods
-const { bnToArray, arrayToUint8Array } = getSafeArrayConverter();
+// Simple conversion from array to Uint8Array
+const arrayToUint8Array = (arr: number[]): Uint8Array => {
+  return new Uint8Array(arr);
+};
 
 // Create a reliable Buffer polyfill for this module
 const BufferPolyfill = typeof window !== 'undefined' 

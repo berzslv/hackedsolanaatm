@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { GradientText } from "@/components/ui/gradient-text";
 import { useToast } from "@/hooks/use-toast";
 import { useSolana } from "@/context/SolanaContext";
-import TokenTransferWidget from "@/components/TokenTransferWidget";
-import BuyWidget from "@/components/BuyWidget";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatNumber } from "@/lib/utils";
@@ -110,12 +108,17 @@ const TokensSection = () => {
           </div>
         </div>
         
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          <BuyWidget />
-          
-          {connected && tokenBalance !== null && (
-            <TokenTransferWidget tokenBalance={tokenBalance} />
-          )}
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-foreground/70">
+            Token management features are currently being upgraded for better user experience.
+          </p>
+          <Button
+            variant="default"
+            className="mt-4"
+            onClick={() => window.open("https://solfaucet.com", "_blank")}
+          >
+            Get Devnet SOL
+          </Button>
         </div>
       </div>
     </section>
