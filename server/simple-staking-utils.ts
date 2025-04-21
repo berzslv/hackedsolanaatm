@@ -25,8 +25,8 @@ import { Buffer } from 'buffer';
 // Simple staking program ID - update this with the actual program ID after deployment
 export const PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
 
-// Our token mint address
-export const TOKEN_MINT_ADDRESS = new PublicKey('59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk');
+// Our new token mint address
+export const TOKEN_MINT_ADDRESS = new PublicKey('6f6GFixp6dh2UeMzDZpgR84rWgHu8oQVPWfrUUV94aj4');
 
 // Instruction indexes for our program
 export const INITIALIZE_VAULT_IX = 0;
