@@ -13,6 +13,12 @@ import {
 } from '@coral-xyz/anchor';
 import { PublicKey, Connection, Transaction } from '@solana/web3.js';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
+
+// Import our simplified BN helper functions
+import { safeBN, tokenToLamports } from './bn-string';
+
+// Export these functions for use in other modules
+export { safeBN, tokenToLamports };
 // Import the IDL
 // We'll define it inline here to avoid path issues
 const IDL = {
@@ -530,8 +536,12 @@ export async function createStakeTransaction(
     const { pda: vaultPDA } = await findVaultPDA(program);
     const { pda: vaultAuthorityPDA } = await findVaultAuthorityPDA(program);
     
-    // Calculate lamports amount
-    const amountLamports = new BN(Math.floor(amount * Math.pow(10, 9)));
+    // Import directly from the bn-string module to avoid circular dependencies
+    const { tokenToLamports } = require('./bn-string');
+    
+    // Calculate lamports amount using our browser-compatible BN helper
+    // This safely converts tokens to lamports (1 token = 10^9 lamports)
+    const amountLamports = tokenToLamports(amount, 9);
     
     // Get token accounts
     const userTokenAccount = await getAssociatedTokenAddress(
