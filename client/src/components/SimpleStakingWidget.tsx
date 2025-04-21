@@ -211,12 +211,12 @@ export function SimpleStakingWidget() {
       // Create transaction with transfer instruction
       const transaction = new Transaction();
       
-      // Create transfer instruction
+      // Create transfer instruction - convert to BigInt to avoid numeric precision issues
       const transferInstruction = createTransferInstruction(
         userTokenAccount,
         vaultTokenAccount,
         publicKey,
-        amountLamports
+        BigInt(amountLamports)
       );
       
       transaction.add(transferInstruction);
@@ -386,9 +386,11 @@ export function SimpleStakingWidget() {
           
           // Create buffer for the amount parameter (u64 = 8 bytes)
           const amountBuffer = Buffer.alloc(8);
+          // Make sure we use BigInt for the amount to prevent precision loss
+          const bigIntAmount = BigInt(Math.floor(amountLamports));
           // Write amount as little-endian 64-bit value
           const view = new DataView(amountBuffer.buffer);
-          view.setBigUint64(0, BigInt(amountLamports), true); // true = little-endian
+          view.setBigUint64(0, bigIntAmount, true); // true = little-endian
           
           // Combine discriminator and amount buffer manually since Buffer.concat may not be available in browser
           const combinedBuffer = new Uint8Array(discriminator.length + amountBuffer.length);
@@ -491,8 +493,11 @@ export function SimpleStakingWidget() {
               {balanceLoading ? (
                 <Skeleton className="h-4 w-full" />
               ) : (
-                <div className="text-sm">
-                  {tokenBalance !== null ? `${tokenBalance.toLocaleString()} HATM` : 'Loading...'}
+                <div className="text-sm flex items-center space-x-2">
+                  <span className="font-semibold">{tokenBalance !== null ? `${tokenBalance.toLocaleString()} HATM` : 'Loading...'}</span>
+                  {tokenBalance && tokenBalance > 0 && (
+                    <Badge variant="outline" className="text-green-500 bg-green-50 border-green-200">Available</Badge>
+                  )}
                 </div>
               )}
             </div>
