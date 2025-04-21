@@ -28,8 +28,8 @@ const HELIUS_API_KEY = '';
  */
 const SimpleStakingWidget: React.FC = () => {
   // Get wallet connection status
-  const { connected, publicKey, signTransaction, sendTransaction, balance } = useSolana();
-  const wallet = { publicKey, signTransaction, sendTransaction };
+  const { connected, publicKey, signTransaction, sendTransaction, balance, getAnchorWallet } = useSolana();
+  const wallet = getAnchorWallet(); // Get Anchor-compatible wallet
   
   // Get direct blockchain staking data
   const { stakingInfo, stakingStats, loading, error, refreshAllData } = useDirectSolana(HELIUS_API_KEY);
@@ -78,11 +78,10 @@ const SimpleStakingWidget: React.FC = () => {
         description: 'Preparing Anchor transaction...',
       });
       
-      // Create a wallet object to pass to stakeExistingTokens that's compatible with Anchor
-      const wallet = { 
-        publicKey,
-        signTransaction
-      };
+      // Use the Anchor-compatible wallet from our hook
+      if (!wallet) {
+        throw new Error("Wallet not properly configured for Anchor");
+      }
       
       // First check if the user has a token account for HATM token
       console.log("🔧 Checking for token account and creating if needed");
@@ -195,23 +194,11 @@ const SimpleStakingWidget: React.FC = () => {
         description: 'Please approve the transaction in your wallet',
       });
       
-      // Call our Anchor-based staking function
+      // Call our Anchor-based staking function using our properly typed wallet
       const txResult = await executeStakingTransaction(
         publicKey.toString(),
         amount,
-        {
-          publicKey,
-          signTransaction,
-          signAllTransactions: async (txs: any[]) => {
-            return Promise.all(txs.map(tx => signTransaction!(tx)));
-          },
-          sendTransaction: async (tx: any) => {
-            if (!sendTransaction) {
-              throw new Error("Wallet adapter doesn't support sendTransaction");
-            }
-            return await sendTransaction(tx, connection);
-          }
-        }
+        wallet // Use the Anchor-compatible wallet we got from our hook
       );
       
       if (txResult.signature && !txResult.error) {

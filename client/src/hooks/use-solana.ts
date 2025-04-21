@@ -60,6 +60,18 @@ export function useSolana() {
     }
   }, [connected, publicKey, refreshBalance]);
   
+  // Get a wallet that's compatible with Anchor
+  const getAnchorWallet = useCallback((): AnchorWallet | null => {
+    if (!publicKey || !signTransaction) return null;
+    
+    return createAnchorWallet(
+      publicKey,
+      signTransaction,
+      sendTransaction,
+      signAllTransactions
+    );
+  }, [publicKey, signTransaction, sendTransaction, signAllTransactions]);
+
   return {
     publicKey,
     connected,
@@ -73,6 +85,7 @@ export function useSolana() {
     balanceLoading,
     refreshBalance,
     openWalletModal,
-    getConnection
+    getConnection,
+    getAnchorWallet
   };
 }
