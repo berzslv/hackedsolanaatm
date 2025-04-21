@@ -294,23 +294,30 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
         }
       }
 
-      // Create Anchor-compatible wallet using our helper
-      const anchorWallet = createAnchorWallet(
-        publicKey,
-        // We need a proper signTransaction function
-        async (tx) => {
-          console.log("Signing transaction for buy and stake");
-          // For transactions sent via sendTransaction, this won't actually be called
-          // but we need to provide a valid implementation
-          return tx;
+      // Create a stable and reliable wallet adapter compatible with Anchor
+      // This approach prevents any _bn issues with PublicKey objects
+      const pubKeyStr = publicKey.toString(); // Convert to string first
+      const stablePubKey = new PublicKey(pubKeyStr); // Create fresh PublicKey from string
+      
+      // Create a safe wallet object with newly created PublicKey
+      const anchorWallet = {
+        publicKey: stablePubKey,
+        signTransaction: (tx: any) => {
+          console.log("Signing transaction with safe wallet for buy and stake");
+          if (!signTransaction) {
+            return Promise.reject(new Error("signTransaction not available"));
+          }
+          return signTransaction(tx);
         },
-        sendTransaction,
-        // Handle signAllTransactions with proper implementation
-        async (txs) => {
-          console.log("Signing all transactions for buy and stake");
-          return txs;
-        }
-      );
+        signAllTransactions: (txs: any[]) => {
+          console.log("Signing all transactions with safe wallet for buy and stake");
+          if (!signTransaction) {
+            return Promise.reject(new Error("signTransaction not available"));
+          }
+          return Promise.all(txs.map(tx => signTransaction(tx)));
+        },
+        sendTransaction: sendTransaction
+      };
       
       // Execute transaction with Anchor-based implementation
       const result = await executeStakingTransaction(
