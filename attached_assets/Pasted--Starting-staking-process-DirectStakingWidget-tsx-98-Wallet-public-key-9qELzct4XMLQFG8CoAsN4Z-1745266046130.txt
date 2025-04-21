@@ -1,0 +1,99 @@
+🚀 Starting staking process
+DirectStakingWidget.tsx:98 👛 Wallet public key: 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX
+DirectStakingWidget.tsx:99 🔢 Amount to stake: 22
+DirectStakingWidget.tsx:100 🔗 Network: https://api.devnet.solana.com
+DirectStakingWidget.tsx:121 🔧 Checking for token account and creating if needed
+api-client.ts:423 Checking token account for wallet 9qELzct4XMLQFG8CoAsN4Zx7vsZHEwBxoVG81tm4ToQX and mint 59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk
+api-client.ts:441 Expected token account address: H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp
+api-client.ts:448 Token account exists with 2039280 lamports
+DirectStakingWidget.tsx:164 Found 1 token accounts for mint
+DirectStakingWidget.tsx:172 Token account H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp has balance: 68743
+DirectStakingWidget.tsx:191 ✅ Sufficient token balance verified
+DirectStakingWidget.tsx:200 🔧 Calling stakeExistingTokens function
+combined-smart-contract-client.ts:447 Building transaction locally with account info: 
+{success: true, tokenMint: '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk', programId: 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm', vault: 'EvhJjv9Azx1Ja5BHAE7zBuxv1fdSQZciLYGWAxUUJ2Qu', vaultTokenAccount: '3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL', …}
+combined-smart-contract-client.ts:483 Checking if user token account H3HzzDFaKW2cdXFmoTLu9ta4CokKu5nSCf3UCbcUTaUp exists and has sufficient balance...
+combined-smart-contract-client.ts:485 User token account balance: 68743 tokens
+combined-smart-contract-client.ts:528 Verifying vault token account: 3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL
+combined-smart-contract-client.ts:567 Vault token account exists and is accessible
+combined-smart-contract-client.ts:647 ✅ Created instruction data without using Buffer.alloc
+combined-smart-contract-client.ts:654 Transaction built successfully
+combined-smart-contract-client.ts:658 Simulating transaction before sending...
+combined-smart-contract-client.ts:662 Transaction simulation failed: 
+{InstructionError: Array(2)}
+InstructionError
+: 
+Array(2)
+0
+: 
+0
+1
+: 
+{Custom: 101}
+length
+: 
+2
+[[Prototype]]
+: 
+Array(0)
+[[Prototype]]
+: 
+Object
+constructor
+: 
+ƒ Object()
+hasOwnProperty
+: 
+ƒ hasOwnProperty()
+isPrototypeOf
+: 
+ƒ isPrototypeOf()
+propertyIsEnumerable
+: 
+ƒ propertyIsEnumerable()
+toLocaleString
+: 
+ƒ toLocaleString()
+toString
+: 
+ƒ toString()
+valueOf
+: 
+ƒ valueOf()
+__defineGetter__
+: 
+ƒ __defineGetter__()
+__defineSetter__
+: 
+ƒ __defineSetter__()
+__lookupGetter__
+: 
+ƒ __lookupGetter__()
+__lookupSetter__
+: 
+ƒ __lookupSetter__()
+__proto__
+: 
+(...)
+get __proto__
+: 
+ƒ __proto__()
+set __proto__
+: 
+ƒ __proto__()
+stakeExistingTokens	@	combined-smart-contract-client.ts:662
+await in stakeExistingTokens		
+handleStake	@	DirectStakingWidget.tsx:201
+combined-smart-contract-client.ts:673 Custom program error in instruction 0: Code 101
+stakeExistingTokens	@	combined-smart-contract-client.ts:673
+await in stakeExistingTokens		
+handleStake	@	DirectStakingWidget.tsx:201
+combined-smart-contract-client.ts:684 Error explanation: Invalid token account
+stakeExistingTokens	@	combined-smart-contract-client.ts:684
+await in stakeExistingTokens		
+handleStake	@	DirectStakingWidget.tsx:201
+DirectStakingWidget.tsx:209 ❌ Error from stakeExistingTokens: Transaction simulation failed: Custom program error 101 - Invalid token account
+handleStake	@	DirectStakingWidget.tsx:209
+DirectStakingWidget.tsx:446 Staking error: Error: Transaction simulation failed: Custom program error 101 - Invalid token account
+    at handleStake (DirectStakingWidget.tsx:210:15)
+handleStake	@	DirectStakingWidget.tsx:446
