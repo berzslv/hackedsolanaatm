@@ -28,7 +28,7 @@ const apiRequest = async <T,>(url: string, options?: RequestInit): Promise<T> =>
 
 // Constants for the simple staking program
 const SIMPLE_PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm'; 
-const TOKEN_MINT = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
+const TOKEN_MINT = '6f6GFixp6dh2UeMzDZpgR84rWgHu8oQVPWfrUUV94aj4';
 
 // We're using proper Anchor instruction discriminators now
 // Discriminators are 8-byte hashes of instruction names, computed by anchor

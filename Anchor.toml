@@ -7,12 +7,12 @@ skip-lint = false
 # Using the deployed program ID from Solana Playground
 staking_vault = "EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm"
 referral_tracker = "59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk"
-simple_staking = "SimpleStaking1111111111111111111111111111111"
+simple_staking = "HD9d34ZJaYb7jQtwjrxLCxfiRKxiPj31VxaWwRwGcWc9"
 
 [programs.localnet]
 staking_vault = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 referral_tracker = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-simple_staking = "SimpleStaking1111111111111111111111111111111"
+simple_staking = "HD9d34ZJaYb7jQtwjrxLCxfiRKxiPj31VxaWwRwGcWc9"
 
 [registry]
 url = "https://api.apr.dev"

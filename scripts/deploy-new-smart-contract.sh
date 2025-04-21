@@ -26,7 +26,7 @@ echo "Building the new smart contract..."
 anchor build
 
 # Get the new program ID (we actually set it in lib.rs, so we're just echoing it here)
-NEW_PROGRAM_ID="SimpleStaking1111111111111111111111111111111"
+NEW_PROGRAM_ID="HD9d34ZJaYb7jQtwjrxLCxfiRKxiPj31VxaWwRwGcWc9"
 echo "New Program ID: $NEW_PROGRAM_ID"
 
 # Deploy the new program
