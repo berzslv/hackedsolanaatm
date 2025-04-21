@@ -359,15 +359,22 @@ export function SimpleStakingWidget() {
       // Connect to Solana
       const connection = new Connection(clusterApiUrl('devnet'));
 
-      // Use anchor client
-
-      // Create Anchor wallet from publicKey and sendTransaction
-      const anchorWallet = createAnchorWallet(publicKey, sendTransaction);
+      // Create a wrapper function that adapts our sendTransaction to what Anchor expects
+      // Anchor needs a function that returns a Transaction, but our context returns a signature string
+      const signTransactionAdapter = async (tx: Transaction): Promise<Transaction> => {
+        // We'll use sendTransaction but ignore its output - we just want it to handle signing
+        await sendTransaction(tx);
+        return tx; // Return the transaction itself (now it's been through sendTransaction)
+      };
+      
+      // Create Anchor wallet adapter
+      const anchorWallet = createAnchorWallet(publicKey, signTransactionAdapter);
       
       // Create Anchor provider
       const provider = createAnchorProvider(connection, anchorWallet);
       
-      // Get program instance
+      // Get program instance using proper Anchor approach
+      // This uses the IDL to generate proper transaction formats with correct instruction discriminators
       const program = getStakingProgram(provider);
       console.log("Provider created successfully, creating program instance");
       
@@ -385,8 +392,8 @@ export function SimpleStakingWidget() {
         
         // Combine them - create a new transaction with both instructions
         transaction = new Transaction();
-        registerTx.instructions.forEach(ix => transaction.add(ix));
-        stakeTx.instructions.forEach(ix => transaction.add(ix));
+        registerTx.instructions.forEach((ix: any) => transaction.add(ix));
+        stakeTx.instructions.forEach((ix: any) => transaction.add(ix));
         
         console.log("Created combined registration + staking transaction");
       } else {

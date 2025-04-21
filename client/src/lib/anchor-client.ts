@@ -409,12 +409,22 @@ const STAKING_PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD5
 const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 
 // Create a wallet that can be used with Anchor
-export function createAnchorWallet(pubkey: PublicKey, signTransaction: (tx: Transaction) => Promise<Transaction>) {
+export function createAnchorWallet(pubkey: PublicKey, sendTransaction: any) {
+  // Create a wallet adapter that works with Anchor
   return {
     publicKey: pubkey,
-    signTransaction,
+    // Anchor needs signTransaction but our SolanaContext provides sendTransaction
+    // This wrapper handles the conversion
+    signTransaction: async (tx: Transaction): Promise<Transaction> => {
+      // Sign the transaction (sendTransaction will handle this)
+      // But we need to return the signed transaction for Anchor's Program
+      // This is just for Anchor's API - the actual signing is done elsewhere
+      await sendTransaction(tx);
+      return tx;
+    },
     signAllTransactions: async (txs: Transaction[]) => {
-      return Promise.all(txs.map(tx => signTransaction(tx)));
+      // Just return the transactions - actual signing happens in sendTransaction
+      return txs;
     },
   };
 }
@@ -431,7 +441,9 @@ export function createAnchorProvider(connection: Connection, wallet: any) {
 // Get the Anchor program instance
 export function getStakingProgram(provider: AnchorProvider) {
   try {
-    return new Program(IDL, STAKING_PROGRAM_ID, provider);
+    // Cast IDL to any to address TypeScript typing issues
+    // The IDL is structurally correct but may not match exactly the expected type
+    return new Program(IDL as any, STAKING_PROGRAM_ID, provider);
   } catch (error) {
     console.error("Error creating staking program:", error);
     throw error;
@@ -440,12 +452,21 @@ export function getStakingProgram(provider: AnchorProvider) {
 
 // Get PDA for user staking account
 export async function findUserStakingAccountPDA(program: any, walletAddress: PublicKey) {
-  const [pda, bump] = await PublicKey.findProgramAddress(
-    [Buffer.from("user_info"), walletAddress.toBuffer()],
-    program.programId
-  );
-  
-  return { pda, bump };
+  try {
+    // Get the program ID from the program instance
+    const programId = program.programId;
+    
+    // Find the PDA for user staking account
+    const [pda, bump] = await PublicKey.findProgramAddress(
+      [Buffer.from("user_info"), walletAddress.toBuffer()],
+      programId
+    );
+    
+    return { pda, bump };
+  } catch (error) {
+    console.error("Error finding user staking account PDA:", error);
+    throw error;
+  }
 }
 
 // Get PDA for the vault
@@ -470,7 +491,7 @@ export async function findVaultAuthorityPDA(program: any) {
 
 // Create a registration transaction using Anchor
 export async function createRegisterUserTransaction(
-  program: Program,
+  program: any,
   userWallet: PublicKey
 ) {
   try {
@@ -498,7 +519,7 @@ export async function createRegisterUserTransaction(
 
 // Create a stake transaction using Anchor
 export async function createStakeTransaction(
-  program: Program,
+  program: any,
   userWallet: PublicKey,
   tokenMint: PublicKey,
   amount: number
