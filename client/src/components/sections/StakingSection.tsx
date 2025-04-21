@@ -71,15 +71,8 @@ const StakingSection = () => {
       if (balanceResponse.ok) {
         const balanceData = await balanceResponse.json();
         
-        // Check if this is the raw or formatted balance
-        let formattedBalance;
-        if (balanceData.balance > 1000000000) {
-          // This is raw balance with 9 decimals
-          formattedBalance = balanceData.balance / 1e9;
-        } else {
-          // This is already formatted (less than 1 billion)
-          formattedBalance = balanceData.balance;
-        }
+        // Use the balance directly as the server already provides it in the correct format
+        const formattedBalance = balanceData.balance;
         
         setTokenBalance(formattedBalance);
         console.log("Token balance updated after stake:", formattedBalance);

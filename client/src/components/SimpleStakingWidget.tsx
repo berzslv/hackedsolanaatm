@@ -29,6 +29,7 @@ const HELIUS_API_KEY = '';
 const SimpleStakingWidget: React.FC = () => {
   // Get wallet connection status
   const { connected, publicKey, signTransaction, sendTransaction, balance } = useSolana();
+  const wallet = { publicKey, signTransaction, sendTransaction };
   
   // Get direct blockchain staking data
   const { stakingInfo, stakingStats, loading, error, refreshAllData } = useDirectSolana(HELIUS_API_KEY);
@@ -205,10 +206,10 @@ const SimpleStakingWidget: React.FC = () => {
             return Promise.all(txs.map(tx => signTransaction!(tx)));
           },
           sendTransaction: async (tx: any) => {
-            if (!wallet.sendTransaction) {
+            if (!sendTransaction) {
               throw new Error("Wallet adapter doesn't support sendTransaction");
             }
-            return await wallet.sendTransaction(tx, connection);
+            return await sendTransaction(tx, connection);
           }
         }
       );
