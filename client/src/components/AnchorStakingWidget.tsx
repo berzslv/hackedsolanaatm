@@ -86,17 +86,17 @@ export default function AnchorStakingWidget({
         publicKey: stablePubKey,
         signTransaction: (tx: any) => {
           console.log("Signing transaction with safe wallet");
-          if (!signTransaction) {
+          if (!wallet?.signTransaction) {
             return Promise.reject(new Error("signTransaction not available"));
           }
-          return signTransaction(tx);
+          return wallet.signTransaction(tx);
         },
         signAllTransactions: (txs: any[]) => {
           console.log("Signing all transactions with safe wallet");
-          if (!signTransaction) {
+          if (!wallet?.signTransaction) {
             return Promise.reject(new Error("signTransaction not available"));
           }
-          return Promise.all(txs.map(tx => signTransaction(tx)));
+          return Promise.all(txs.map(tx => wallet.signTransaction(tx)));
         },
         sendTransaction: sendTransaction
       };
