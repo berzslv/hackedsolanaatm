@@ -17,7 +17,7 @@ import { formatNumber, formatTimeRemaining } from '@/lib/utils';
 import { Connection, PublicKey, Transaction, clusterApiUrl } from '@solana/web3.js';
 import { buyAndStakeTokens, stakeExistingTokens } from '@/lib/combined-smart-contract-client';
 import { registerUserForStaking, checkAndCreateTokenAccount } from '@/lib/api-client';
-import { createAndSubmitStakingTransaction } from '@/lib/CreateStakingTransactionV3';
+import { executeStakingTransaction } from '@/lib/CreateStakingTransactionV3';
 
 
 // Optional Helius API key - would be set from environment in production

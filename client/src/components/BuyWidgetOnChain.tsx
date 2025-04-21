@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import AirdropButton from './AirdropButton';
 import { Loader2, AlertCircle } from "lucide-react";
 import { Transaction, VersionedTransaction, PublicKey, Connection, clusterApiUrl } from '@solana/web3.js';
-import { createAndSubmitStakingTransaction } from '@/lib/CreateStakingTransactionV2';
+import { executeStakingTransaction } from '@/lib/CreateStakingTransactionV3';
 import { checkAndCreateTokenAccount } from '@/lib/api-client';
 
 export interface BuyWidgetProps {
@@ -293,17 +293,22 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
         }
       }
 
-      const result = await createAndSubmitStakingTransaction(
-        connection,
+      // Create Anchor-compatible wallet
+      const anchorWallet = {
         publicKey,
-        tokenAmount, // We pass the token amount, not SOL amount
-        wallet,
-        false, // false means "buy and stake" instead of "stake existing"
-        {
-          // Optional config with status updates
-          onStatusUpdate: statusCallback,
-          referrer: referrerPublicKey
-        }
+        signTransaction: sendTransaction,
+        signAllTransactions: async (txs: any[]) => {
+          return Promise.all(txs.map(tx => sendTransaction(tx, connection)));
+        },
+        sendTransaction: (tx: any) => sendTransaction(tx, connection)
+      };
+      
+      // Execute transaction with Anchor-based implementation
+      const result = await executeStakingTransaction(
+        publicKey.toString(),
+        tokenAmount,
+        anchorWallet,
+        referrerPublicKey?.toString()
       );
       
       if (!result.success) {
