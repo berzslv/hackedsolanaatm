@@ -94,17 +94,17 @@ const DirectStakingWidget: React.FC = () => {
       // Set up connection to Solana 
       const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
       
-      console.log("🚀 Starting staking process");
+      console.log("🚀 Starting staking process with Anchor client");
       console.log("👛 Wallet public key:", publicKey.toString());
       console.log("🔢 Amount to stake:", amount);
       console.log("🔗 Network:", connection.rpcEndpoint);
       
       toast({
         title: 'Processing Stake Request',
-        description: 'Checking registration status...',
+        description: 'Preparing Anchor transaction...',
       });
       
-      // Create a wallet object to pass to stakeExistingTokens
+      // Create a wallet object to pass to stakeExistingTokens that's compatible with Anchor
       const wallet = { 
         sendTransaction, 
         publicKey,
@@ -113,7 +113,7 @@ const DirectStakingWidget: React.FC = () => {
       
       toast({
         title: 'Creating stake transaction',
-        description: 'Please wait...',
+        description: 'Building Anchor transaction...',
       });
       
       // Now proceed with staking
@@ -197,7 +197,9 @@ const DirectStakingWidget: React.FC = () => {
         // Continue anyway even if balance check fails - the smart contract will catch it
       }
       
-      console.log("🔧 Calling stakeExistingTokens function");
+      console.log("🔧 Calling stakeExistingTokens function with Anchor");
+      
+      // Call the updated Anchor-based staking function
       const stakeResult = await stakeExistingTokens(
         publicKey.toString(),
         amount,
@@ -210,12 +212,30 @@ const DirectStakingWidget: React.FC = () => {
         throw new Error(stakeResult.error);
       }
       
-      // Check if we have the staking transaction
+      // If we got a signature directly from the Anchor transaction, we're done
+      if (stakeResult.signature) {
+        console.log("✅ Anchor transaction successful with signature:", stakeResult.signature);
+        
+        // Success! Show confirmation
+        toast({
+          title: 'Staking successful!',
+          description: `Successfully staked ${amount} HATM tokens.`,
+        });
+        
+        // Clear form and refresh data
+        setStakeAmount('');
+        setIsStaking(false);
+        refreshAllData();
+        return;
+      }
+      
+      // Check if we have the staking transaction - needed if we need to sign it
       if (!stakeResult.stakingTransaction) {
         console.error("❌ No staking transaction returned");
         throw new Error('No staking transaction received');
       }
       
+      // Otherwise proceed with the transaction that Anchor created
       const transactionData = stakeResult.stakingTransaction;
       
       toast({

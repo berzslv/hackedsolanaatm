@@ -1,0 +1,85 @@
+ 1. Update stakeExistingTokens function
+In your project’s anchor.ts or similar, find stakeExistingTokens and ensure it:
+
+Uses the right Anchor provider (Phantom injected wallet)
+
+Loads the program IDL and program
+
+Derives correct PDAs
+
+Calls program.methods.stake(...) with the correct arguments
+
+Passes the required accounts (user, vault, stake account, global state, token account, etc.)
+
+Here’s a minimal example for stakeExistingTokens:
+
+ts
+Copy
+Edit
+export async function stakeExistingTokens(
+  userPubkeyStr: string,
+  amount: number,
+  wallet: Wallet
+) {
+  try {
+    const provider = new AnchorProvider(
+      new Connection(clusterApiUrl('devnet'), 'confirmed'),
+      wallet as any,
+      AnchorProvider.defaultOptions()
+    );
+    anchor.setProvider(provider);
+
+    const idl = await Program.fetchIdl(PROGRAM_ID, provider);
+    const program = new Program(idl!, PROGRAM_ID, provider);
+
+    const userPubkey = new PublicKey(userPubkeyStr);
+    const tokenMint = new PublicKey(TOKEN_MINT_ADDRESS);
+
+    const [globalStatePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("global_state")],
+      program.programId
+    );
+
+    const [userStakePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("stake"), userPubkey.toBuffer()],
+      program.programId
+    );
+
+    const userTokenAccount = await getAssociatedTokenAddress(
+      tokenMint,
+      userPubkey
+    );
+
+    const tx = await program.methods.stake(new BN(amount * 1e9)).accounts({
+      owner: userPubkey,
+      globalState: globalStatePda,
+      stakeAccount: userStakePda,
+      userTokenAccount,
+      tokenMint,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    }).transaction();
+
+    return {
+      stakingTransaction: tx
+    };
+  } catch (error) {
+    console.error("stakeExistingTokens error:", error);
+    return { error: error.message || "Unknown error" };
+  }
+}
+✅ 2. Send the transaction in handleStake
+After calling stakeExistingTokens():
+
+ts
+Copy
+Edit
+const signature = await sendTransaction(transactionData, connection);
+await connection.confirmTransaction(signature, "confirmed");
+
+toast({
+  title: 'Staking Successful',
+  description: `Transaction confirmed: ${signature}`,
+});
+✅ 3. Ensure Constants Are Correct
+Make sure PROGRAM_ID and TOKEN_MINT_ADDRESS in constants.ts are correctly set to your deployed Anchor program ID and token mint.

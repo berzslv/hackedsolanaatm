@@ -14,6 +14,8 @@ import {
 } from '@solana/web3.js';
 import BN from 'bn.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
+import * as anchor from '@project-serum/anchor';
+import { Program, AnchorProvider } from '@project-serum/anchor';
 
 // Import our comprehensive buffer polyfill
 import { 
@@ -388,8 +390,7 @@ export const registerUser = async (
 };
 
 /**
- * Stakes tokens using the referral staking program with a client-side built transaction
- * This approach avoids any serialization/deserialization issues
+ * Stakes tokens using the referral staking program with proper Anchor client
  * 
  * @param walletAddress The wallet address of the user
  * @param amount Amount of tokens to stake
@@ -414,6 +415,8 @@ export const stakeExistingTokens = async (
       return { error: "Wallet connection is required" };
     }
     
+    console.log("Starting staking process with Anchor client");
+
     // Get token balance first to make sure user has enough tokens
     const tokenBalance = await getTokenBalance(walletAddress);
     
@@ -423,320 +426,122 @@ export const stakeExistingTokens = async (
       };
     }
     
-    // Fetch the necessary account info from the server
-    const response = await fetch('/api/staking-accounts-info', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        walletAddress,
-        amount
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      return { error: errorData.message || "Failed to get staking account info" };
-    }
-    
-    const accountsInfo = await response.json();
-    
-    if (!accountsInfo.success) {
-      return { error: accountsInfo.error || "Failed to get staking accounts info" };
-    }
-    
-    console.log('Building transaction locally with account info:', accountsInfo);
-    
-    // Now build the transaction on the client side
+    // Use Anchor approach as per Solana standards
     try {
-      const connection = new Connection(clusterApiUrl('devnet'));
+      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+      
+      // Create Anchor provider from wallet connection
+      const provider = new AnchorProvider(
+        connection,
+        wallet as any,
+        AnchorProvider.defaultOptions()
+      );
+      
+      // Set the provider globally
+      anchor.setProvider(provider);
+      
+      // Using constants from our project
+      const PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
+      const TOKEN_MINT_ADDRESS = new PublicKey('59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk');
+      
+      console.log("Fetching IDL for program:", PROGRAM_ID.toString());
+      
+      // Fetch the IDL from chain
+      const idl = await Program.fetchIdl(PROGRAM_ID, provider);
+      if (!idl) {
+        console.error("Failed to fetch IDL");
+        return { error: "Failed to fetch program IDL" };
+      }
+      
+      console.log("Creating program instance with fetched IDL");
+      const program = new Program(idl, PROGRAM_ID, provider);
+      
       const userPubkey = new PublicKey(walletAddress);
       
-      // Parse all the account addresses from the server response
-      const tokenMint = new PublicKey(accountsInfo.tokenMint);
-      const programId = new PublicKey(accountsInfo.programId);
-      const vaultPubkey = new PublicKey(accountsInfo.vault);
-      // Make this a 'let' so we can modify it if needed
-      let vaultTokenAccount = new PublicKey(accountsInfo.vaultTokenAccount);
+      console.log("Finding global state PDA");
+      // Find global state PDA
+      const [globalStatePda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("global_state")],
+        program.programId
+      );
       
-      // Get the user's token account
+      console.log("Finding user stake PDA");
+      // Find user stake PDA using "user_info" seed
+      const [userStakePda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("user_info"), userPubkey.toBuffer()],
+        program.programId
+      );
+      
+      console.log("Getting associated token address");
+      // Get user's token account 
       const userTokenAccount = await getAssociatedTokenAddress(
-        tokenMint,
-        userPubkey,
-        false,
-        TOKEN_PROGRAM_ID
+        TOKEN_MINT_ADDRESS,
+        userPubkey
       );
       
-      // 2. Create a new transaction
-      const transaction = new Transaction();
+      // Find vault PDA
+      const [vaultPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vault")],
+        program.programId
+      );
       
-      // 3. Get latest blockhash for the transaction
+      // Find vault authority PDA
+      const [vaultAuthPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vault_auth")],
+        program.programId
+      );
+      
+      // Find vault token account
+      const vaultTokenAccount = await getAssociatedTokenAddress(
+        TOKEN_MINT_ADDRESS,
+        vaultAuthPda,
+        true // Allow off-curve addresses (PDAs)
+      );
+      
+      console.log("Building transaction with program.methods");
+      // Convert amount to proper decimal format (9 decimals for HATM)
+      const amountWithDecimals = new BN(amount * 1e9);
+      
+      // Build the transaction using program.methods
+      const tx = await program.methods
+        .stake(amountWithDecimals)
+        .accounts({
+          owner: userPubkey,
+          globalState: globalStatePda,
+          stakeAccount: userStakePda,
+          userTokenAccount: userTokenAccount,
+          tokenVault: vaultTokenAccount,
+          tokenMint: TOKEN_MINT_ADDRESS,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .transaction();
+      
+      console.log("Transaction built successfully using Anchor");
+      
+      // Get recent block hash and add to transaction
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
-      transaction.recentBlockhash = blockhash;
-      transaction.lastValidBlockHeight = lastValidBlockHeight;
-      transaction.feePayer = userPubkey;
+      tx.recentBlockhash = blockhash;
+      tx.lastValidBlockHeight = lastValidBlockHeight;
+      tx.feePayer = userPubkey;
       
-      // 3.1 Check if the user has a token account and sufficient balance
-      let tokenAccountExists = false;
-      let userTokenBalance = 0;
+      console.log("Transaction ready for signing");
       
-      try {
-        console.log(`Checking if user token account ${userTokenAccount.toString()} exists and has sufficient balance...`);
-        const tokenAccountInfo = await connection.getTokenAccountBalance(userTokenAccount);
-        console.log(`User token account balance: ${tokenAccountInfo.value.uiAmount} tokens`);
-        
-        // Account exists, now check if balance is sufficient
-        tokenAccountExists = true;
-        userTokenBalance = tokenAccountInfo.value.uiAmount;
-        
-        if (userTokenBalance < amount) {
-          console.error(`Insufficient token balance: ${userTokenBalance} < ${amount}`);
-          return { error: `Insufficient token balance. You have ${userTokenBalance} tokens, but trying to stake ${amount}.` };
-        }
-      } catch (err) {
-        console.error("Error checking token account:", err);
-        console.log("User may not have a token account for this token mint.");
-        
-        // Check if Railway API reports a token balance
-        try {
-          const railwayBalanceResponse = await fetch(`/api/staking-info/${walletAddress}`);
-          if (railwayBalanceResponse.ok) {
-            const railwayData = await railwayBalanceResponse.json();
-            if (railwayData.success && railwayData.stakingInfo && railwayData.stakingInfo.walletTokenBalance) {
-              const railwayBalance = railwayData.stakingInfo.walletTokenBalance / Math.pow(10, 9);
-              console.log(`Railway API reports token balance: ${railwayBalance}`);
-              
-              if (railwayBalance >= amount) {
-                console.log("Token balance from Railway API is sufficient");
-                userTokenBalance = railwayBalance;
-                
-                // Token account doesn't exist but we have tokens according to Railway
-                // This suggests an issue with the token account - proceed with caution
-                console.warn("Railway reports tokens but token account not accessible - possible token account issue");
-                return { error: "Your wallet has tokens according to our records, but the token account cannot be accessed directly. There might be an issue with your token account." };
-              }
-            }
-          }
-        } catch (railwayErr) {
-          console.error("Error checking Railway API for token balance:", railwayErr);
-        }
-        
-        return { error: "Token account not found or cannot be accessed. You might not have any HATM tokens in your wallet." };
-      }
-      
-      // 3.2 Verify that the vault token account is valid and accessible
-      try {
-        console.log(`Verifying vault token account: ${vaultTokenAccount.toString()}`);
-        
-        // Test if we can access the vault token account
-        const vaultAccountInfo = await connection.getAccountInfo(vaultTokenAccount);
-        
-        if (!vaultAccountInfo) {
-          console.error("⚠️ Vault token account doesn't exist or can't be accessed");
-          
-          // Re-derive the vault token account using the vault authority PDA
-          const [vaultAuthority] = PublicKey.findProgramAddressSync(
-            [new TextEncoder().encode('vault_auth')],
-            programId
-          );
-          
-          console.log(`Re-deriving vault token account using vault authority: ${vaultAuthority.toString()}`);
-          
-          // Get the correct vault token account for the vault authority
-          const correctVaultTokenAccount = await getAssociatedTokenAddress(
-            tokenMint,
-            vaultAuthority,
-            true, // allowOwnerOffCurve = true since the vault authority is a PDA
-            TOKEN_PROGRAM_ID
-          );
-          
-          console.log(`Re-derived vault token account: ${correctVaultTokenAccount.toString()}`);
-          
-          // Check if this account exists
-          const correctVaultInfo = await connection.getAccountInfo(correctVaultTokenAccount);
-          
-          if (correctVaultInfo) {
-            console.log("Found correct vault token account, using it instead");
-            vaultTokenAccount = correctVaultTokenAccount;
-          } else {
-            // As a last resort, use the known working vault token account
-            const hardcodedVaultTokenAccount = new PublicKey("3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL");
-            console.log(`Using known working vault token account: ${hardcodedVaultTokenAccount.toString()}`);
-            vaultTokenAccount = hardcodedVaultTokenAccount;
-          }
-        } else {
-          console.log("Vault token account exists and is accessible");
-        }
-      } catch (vaultError) {
-        console.error("Error verifying vault token account:", vaultError);
-        
-        // Use the known working vault token account as a fallback
-        const hardcodedVaultTokenAccount = new PublicKey("3UE98oWtqmxHZ8wgjHfbmmmHYPhMBx3JQTRgrPdvyshL");
-        console.log(`Using known working vault token account after error: ${hardcodedVaultTokenAccount.toString()}`);
-        vaultTokenAccount = hardcodedVaultTokenAccount;
-      }
-      
-      // 4. Check if user is registered, and create registration instruction if needed
-      if (!accountsInfo.isRegistered) {
-        console.log('User is not registered. Adding registration instruction.');
-        
-        // Find user stake info PDA
-        const [userStakeInfoPDA] = PublicKey.findProgramAddressSync(
-          [new TextEncoder().encode('user_info'), userPubkey.toBuffer()],
-          programId
-        );
-        
-        console.log('User stake info PDA:', userStakeInfoPDA.toString());
-        
-        // Add register instruction - being explicit about all required accounts
-        const registerInstruction = new TransactionInstruction({
-          keys: [
-            { pubkey: userPubkey, isSigner: true, isWritable: true }, // user/payer
-            { pubkey: userStakeInfoPDA, isSigner: false, isWritable: true }, // user stake info account (PDA)
-            { pubkey: vaultPubkey, isSigner: false, isWritable: false }, // vault account
-            { pubkey: tokenMint, isSigner: false, isWritable: false }, // token mint
-            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system program
-          ],
-          programId,
-          data: EnhancedBufferPolyfill.from([0]) // 0 = register instruction
-        });
-        
-        transaction.add(registerInstruction);
-      }
-      
-      // 5. Add stake instruction
-      const [userStakeInfoPDA] = PublicKey.findProgramAddressSync(
-        [new TextEncoder().encode('user_info'), userPubkey.toBuffer()],
-        programId
-      );
-      
-      // Calculate amount in lamports (9 decimals)
-      const amountLamports = amount * Math.pow(10, 9);
-      
-      // Create stake instruction - follows IDL account order exactly
-      const stakeInstruction = new TransactionInstruction({
-        keys: [
-          { pubkey: userPubkey, isSigner: true, isWritable: true },        // user/payer
-          { pubkey: vaultPubkey, isSigner: false, isWritable: true },      // stakingVault
-          { pubkey: userStakeInfoPDA, isSigner: false, isWritable: true }, // userStake info account
-          { pubkey: userTokenAccount, isSigner: false, isWritable: true }, // user token account
-          { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // tokenVault account  
-          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token program
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system program
-        ],
-        programId,
-        data: (() => {
-          // Create instruction data with code (1 = stake) followed by amount
-          // Use buffer-safe methods from our diagnostics utility
-          
-          // First create the stake instruction discriminator (1)
-          const discriminator = new Uint8Array(1);
-          discriminator[0] = 1; // Instruction index for stake
-          
-          // Convert BN amount to array using our safe converter
-          const amountArray = bnToArray(new BN(amountLamports), 8, 'le');
-          
-          // Create final instruction data by combining both
-          const finalData = new Uint8Array(9);
-          finalData[0] = discriminator[0];
-          
-          // Copy amount bytes
-          for (let i = 0; i < 8; i++) {
-            finalData[i+1] = amountArray[i];
-          }
-          
-          console.log("✅ Created instruction data without using Buffer.alloc");
-          return finalData;
-        })()
-      });
-      
-      transaction.add(stakeInstruction);
-      
-      console.log('Transaction built successfully');
-      
-      // 6. Simulate the transaction first to catch any errors
-      try {
-        console.log('Simulating transaction before sending...');
-        const simulation = await connection.simulateTransaction(transaction);
-        
-        if (simulation.value.err) {
-          console.error('Transaction simulation failed:', simulation.value.err);
-          
-          // Provide more detailed error information for Custom errors
-          if (typeof simulation.value.err === 'object' && 'InstructionError' in simulation.value.err) {
-            const instructionError = simulation.value.err.InstructionError;
-            if (Array.isArray(instructionError) && instructionError.length >= 2) {
-              const instructionIndex = instructionError[0];
-              const errorInfo = instructionError[1];
-              
-              if (typeof errorInfo === 'object' && 'Custom' in errorInfo) {
-                const customCode = errorInfo.Custom;
-                console.error(`Custom program error in instruction ${instructionIndex}: Code ${customCode}`);
-                
-                // Provide more accurate explanations for custom program errors
-                const errorExplanations: {[key: number]: string} = {
-                  100: 'Insufficient funds or missing account',
-                  101: 'Invalid token account',
-                  102: 'Invalid token owner',
-                  103: 'Account not registered with staking program'
-                };
-                const errorExplanation = errorExplanations[customCode] || 'Unknown custom error';
-                
-                console.error(`Error explanation: ${errorExplanation}`);
-                return { error: `Transaction simulation failed: Custom program error ${customCode} - ${errorExplanation}` };
-              }
-            }
-          }
-          
-          return { error: `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}` };
-        }
-        
-        // Successful simulation - log logs for debugging
-        if (simulation.value.logs) {
-          console.log('Simulation logs:', simulation.value.logs);
-        }
-        
-        console.log('Transaction simulation successful');
-      } catch (simError) {
-        console.warn('Simulation error (continuing anyway):', simError);
-      }
-      
-      // 7. Sign and send transaction with explicit options
-      const signature = await wallet.sendTransaction(transaction, connection, {
-        skipPreflight: false,
-        preflightCommitment: 'confirmed',
-        maxRetries: 3
-      });
-      
-      console.log('Transaction sent successfully with signature:', signature);
-      
-      // 7. Wait for confirmation (optional)
-      const confirmation = await connection.confirmTransaction({
-        signature,
-        blockhash,
-        lastValidBlockHeight
-      });
-      
-      console.log('Transaction confirmed:', confirmation);
+      // Sign and send the transaction
+      const signature = await wallet.sendTransaction(tx, connection);
+      console.log("Transaction sent with signature:", signature);
       
       // Return success
       return {
         signature,
-        stakingTransaction: {
-          success: true,
-          message: `Successfully staked ${amount} tokens`,
-          signature
-        }
+        stakingTransaction: tx
       };
-    } catch (txError) {
-      console.error('Error building/sending transaction:', txError);
-      return {
-        error: `Failed to process staking transaction: ${txError instanceof Error ? txError.message : String(txError)}`
-      };
+    } catch (buildError) {
+      console.error('Error building stake transaction with Anchor:', buildError);
+      return { error: `Error building stake transaction: ${buildError instanceof Error ? buildError.message : String(buildError)}` };
     }
   } catch (error) {
     console.error('Error in staking process:', error);
-    return { 
-      error: error instanceof Error ? error.message : String(error)
-    };
+    return { error: error instanceof Error ? error.message : String(error) };
   }
 };
