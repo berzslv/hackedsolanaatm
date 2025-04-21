@@ -68,7 +68,7 @@ export async function createStakingTransaction(
     // Set up Anchor provider
     const provider = new AnchorProvider(
       connection,
-      wallet,
+      wallet as any, // Type casting to overcome LSP issues
       AnchorProvider.defaultOptions()
     );
     anchor.setProvider(provider);
