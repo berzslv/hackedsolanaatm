@@ -211,25 +211,47 @@ export function SimpleStakingWidget() {
       // Create transaction with transfer instruction
       const transaction = new Transaction();
       
+      // Create transfer instruction
+      // Try multiple approaches to accommodate different browser environments
+      
+      // IMPORTANT: Our tests showed that using a simple number works fine in Node.js
+      // but browser environments might need BigInt or other approaches
+      
+      // First attempt: Simple number approach (works in most environments)
       try {
-        // For direct transfers, use the numeric amount directly with bigint
-        // This is the safest approach when dealing with browser compatibility issues
-        const bigIntAmount = BigInt(Math.floor(amountLamports));
-        console.log(`Amount as BigInt: ${bigIntAmount}`);
-        
-        // Create transfer instruction using BigInt directly
+        console.log(`Creating transfer instruction with amount: ${amountLamports}`);
         const transferInstruction = createTransferInstruction(
           userTokenAccount,
-          vaultTokenAccount,
+          vaultTokenAccount, 
           publicKey,
-          bigIntAmount
+          amountLamports  // Use plain number first
         );
         
-        // Add to the transaction
         transaction.add(transferInstruction);
-      } catch (error) {
-        console.error("Error creating transfer instruction:", error);
-        throw new Error("Failed to create the transfer instruction. Please try a different amount or try again later.");
+        console.log("Transfer instruction created successfully using regular number");
+      } catch (firstError) {
+        console.warn("Could not create transfer instruction with regular number:", firstError);
+        
+        // Second attempt: BigInt approach (for browsers that need explicit BigInt)
+        try {
+          console.log("Trying BigInt approach...");
+          const bigIntAmount = BigInt(Math.floor(amountLamports));
+          console.log(`Amount as BigInt: ${bigIntAmount}`);
+          
+          const transferInstruction = createTransferInstruction(
+            userTokenAccount,
+            vaultTokenAccount,
+            publicKey,
+            bigIntAmount
+          );
+          
+          transaction.instructions = []; // Clear any previous attempts
+          transaction.add(transferInstruction);
+          console.log("Transfer instruction created successfully using BigInt");
+        } catch (secondError) {
+          console.error("All approaches failed:", secondError);
+          throw new Error("Failed to create the transfer instruction. Please try a different amount or try again later.");
+        }
       }
       
       // Set transaction properties
