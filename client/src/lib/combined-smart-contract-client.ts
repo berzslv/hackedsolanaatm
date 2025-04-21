@@ -29,6 +29,9 @@ import {
 import * as buffer from 'buffer';
 import { BrowserBuffer } from './browser-polyfills';
 
+// Import our enhanced transaction handler
+import { createAndSubmitStakingTransaction } from './CreateStakingTransactionV3';
+
 if (typeof window !== 'undefined') {
   // Only run this in browser environments
   window.Buffer = window.Buffer || buffer.Buffer;
@@ -291,45 +294,153 @@ export const getStakingVaultInfo = async (
  */
 export const buyAndStakeTokens = async (
   walletAddress: string,
-  solAmount: number,
+  amount: number,
+  wallet: any,
   referralAddress?: string
-): Promise<{ 
-  signature?: string; 
-  error?: string; 
+): Promise<{
+  signature?: string;
+  error?: string;
   transactionDetails?: any;
 }> => {
   try {
-    if (!walletAddress || !solAmount) {
+    if (!walletAddress || !amount) {
       return { error: "Wallet address and amount are required" };
     }
     
-    // Step 1: Get the buy and stake transaction from our V2 endpoint
-    const buyStakeResponse = await fetch('/api/buy-and-stake-v2', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        walletAddress,
-        amount: solAmount,
-        referrer: referralAddress // Make sure we use the right parameter name
-      })
-    });
-    
-    if (!buyStakeResponse.ok) {
-      const errorData = await buyStakeResponse.json();
-      return { error: errorData.message || "Failed to create buy and stake transaction" };
+    if (!wallet) {
+      return { error: "Wallet connection is required" };
     }
     
-    const buyStakeData = await buyStakeResponse.json();
-    
-    // Return the transaction details - the frontend will need to sign and send this
-    return { 
-      transactionDetails: buyStakeData
-    };
+    console.log("Starting buy and stake process with Anchor");
+
+    // Use Anchor approach as per Solana standards
+    try {
+      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+      
+      // Create Anchor provider from wallet connection
+      const provider = new AnchorProvider(
+        connection,
+        wallet as any,
+        AnchorProvider.defaultOptions()
+      );
+      
+      // Set the provider globally
+      anchor.setProvider(provider);
+      
+      // Using constants from our project
+      const PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
+      const TOKEN_MINT_ADDRESS = new PublicKey('59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk');
+      
+      console.log("Fetching IDL for program:", PROGRAM_ID.toString());
+      
+      // Fetch the IDL from chain
+      const idl = await Program.fetchIdl(PROGRAM_ID, provider);
+      if (!idl) {
+        console.error("Failed to fetch IDL");
+        return { error: "Failed to fetch program IDL" };
+      }
+      
+      console.log("Creating program instance with fetched IDL");
+      const program = new Program(idl, PROGRAM_ID, provider);
+      
+      const userPubkey = new PublicKey(walletAddress);
+      
+      console.log("Finding global state PDA");
+      // Find global state PDA
+      const [globalStatePda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("global_state")],
+        program.programId
+      );
+      
+      console.log("Finding user stake PDA");
+      // Find user stake PDA using "user_info" seed
+      const [userStakePda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("user_info"), userPubkey.toBuffer()],
+        program.programId
+      );
+      
+      console.log("Getting associated token address");
+      // Get user's token account 
+      const userTokenAccount = await getAssociatedTokenAddress(
+        TOKEN_MINT_ADDRESS,
+        userPubkey
+      );
+      
+      // Find vault PDA
+      const [vaultPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vault")],
+        program.programId
+      );
+      
+      // Find vault authority PDA
+      const [vaultAuthPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vault_auth")],
+        program.programId
+      );
+      
+      // Find vault token account
+      const vaultTokenAccount = await getAssociatedTokenAddress(
+        TOKEN_MINT_ADDRESS,
+        vaultAuthPda,
+        true // Allow off-curve addresses (PDAs)
+      );
+      
+      console.log("Building buy and stake transaction with program.methods");
+      // Convert amount to proper decimal format (9 decimals for HATM)
+      const amountWithDecimals = new BN(amount * 1e9);
+      
+      // Check if we have a referral address to use
+      let referrerPubkey: PublicKey | null = null;
+      if (referralAddress) {
+        try {
+          referrerPubkey = new PublicKey(referralAddress);
+          console.log("Using referrer for buy and stake:", referrerPubkey.toString());
+        } catch (err) {
+          console.warn("Invalid referrer address, ignoring", err);
+        }
+      }
+      
+      // Build the transaction using program.methods
+      const tx = await program.methods
+        .buyAndStake(amountWithDecimals, referrerPubkey)
+        .accounts({
+          owner: userPubkey,
+          globalState: globalStatePda,
+          stakeAccount: userStakePda,
+          userTokenAccount: userTokenAccount,
+          tokenVault: vaultTokenAccount,
+          tokenMint: TOKEN_MINT_ADDRESS,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .transaction();
+      
+      console.log("Buy and stake transaction built successfully using Anchor");
+      
+      // Get recent block hash and add to transaction
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+      tx.recentBlockhash = blockhash;
+      tx.lastValidBlockHeight = lastValidBlockHeight;
+      tx.feePayer = userPubkey;
+      
+      console.log("Buy and stake transaction ready for signing");
+      
+      // Sign and send the transaction
+      const signature = await wallet.sendTransaction(tx, connection);
+      console.log("Buy and stake transaction sent with signature:", signature);
+      
+      // Return success
+      return {
+        signature,
+        transactionDetails: tx
+      };
+    } catch (buildError) {
+      console.error('Error building buy and stake transaction with Anchor:', buildError);
+      return { error: `Error building buy and stake transaction: ${buildError instanceof Error ? buildError.message : String(buildError)}` };
+    }
   } catch (error) {
     console.error('Error in buy and stake process:', error);
-    return { 
-      error: error instanceof Error ? error.message : String(error)
-    };
+    return { error: error instanceof Error ? error.message : String(error) };
   }
 };
 
@@ -400,7 +511,8 @@ export const registerUser = async (
 export const stakeExistingTokens = async (
   walletAddress: string,
   amount: number,
-  wallet: any // wallet with sign & send methods
+  wallet: any, // wallet with sign & send methods
+  referralAddress?: string
 ): Promise<{
   signature?: string;
   error?: string;
