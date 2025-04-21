@@ -345,7 +345,8 @@ export const buyAndStakeTokens = async (
       }
       
       console.log("Creating program instance with fetched IDL");
-      const program = new Program(idl, PROGRAM_ID, safeProvider(provider));
+      const safeProviderObj = safeProvider(provider);
+      const program = new Program(idl, PROGRAM_ID, safeProviderObj);
       
       const userPubkey = new PublicKey(walletAddress);
       
