@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSolana } from '@/context/SolanaContext';
 import { PublicKey, Transaction, Connection, clusterApiUrl, SystemProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
-import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID, createTransferInstruction } from '@solana/spl-token';
 import { createTransactionInstruction } from '@/lib/create-transaction-instruction';
 import { SIMPLE_STAKING_DISCRIMINATORS } from '@/lib/anchor-utils';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 // Simple API request helper
 const apiRequest = async <T,>(url: string, options?: RequestInit): Promise<T> => {
@@ -39,13 +42,18 @@ export function SimpleStakingWidget() {
   const [loading, setLoading] = useState(false);
   const [stakingInfo, setStakingInfo] = useState<any>(null);
   const [infoLoading, setInfoLoading] = useState(false);
+  const [tokenBalance, setTokenBalance] = useState<number | null>(null);
+  const [directMode, setDirectMode] = useState(true); // Default to direct transfer mode
+  const [balanceLoading, setBalanceLoading] = useState(false);
 
   // Fetch staking info when wallet connects
   useEffect(() => {
     if (connected && publicKey) {
       fetchStakingInfo();
+      fetchTokenBalance();
     } else {
       setStakingInfo(null);
+      setTokenBalance(null);
     }
   }, [connected, publicKey]);
 
@@ -67,6 +75,199 @@ export function SimpleStakingWidget() {
       setStakingInfo(null);
     } finally {
       setInfoLoading(false);
+    }
+  };
+  
+  // Fetch token balance 
+  const fetchTokenBalance = async () => {
+    if (!publicKey) return;
+    
+    setBalanceLoading(true);
+    try {
+      // Get token mint information
+      const accountsResponse = await apiRequest<any>('/api/simple-staking-accounts-info', {
+        method: 'POST',
+        body: JSON.stringify({
+          walletAddress: publicKey.toString()
+        })
+      });
+      
+      if (!accountsResponse.success) {
+        console.error('Failed to get account info:', accountsResponse.error);
+        setTokenBalance(0);
+        return;
+      }
+      
+      // Connect to Solana
+      const connection = new Connection(clusterApiUrl('devnet'));
+      const tokenMint = new PublicKey(accountsResponse.tokenMint);
+      
+      // Get user token account
+      const userTokenAccount = await getAssociatedTokenAddress(
+        tokenMint,
+        publicKey,
+        false,
+        TOKEN_PROGRAM_ID
+      );
+      
+      // Check if token account exists
+      try {
+        const accountInfo = await connection.getAccountInfo(userTokenAccount);
+        
+        if (accountInfo) {
+          // Get token balance
+          const balance = await connection.getTokenAccountBalance(userTokenAccount);
+          setTokenBalance(Number(balance.value.amount) / 1e9);
+          console.log('User token balance:', Number(balance.value.amount) / 1e9);
+        } else {
+          console.log('Token account does not exist yet');
+          setTokenBalance(0);
+        }
+      } catch (error) {
+        console.error('Error fetching token account:', error);
+        setTokenBalance(0);
+      }
+    } catch (error) {
+      console.error('Error fetching token balance:', error);
+      setTokenBalance(0);
+    } finally {
+      setBalanceLoading(false);
+    }
+  };
+  
+  // Direct token transfer (more reliable than contract interaction)
+  const handleDirectTransfer = async () => {
+    if (!connected || !publicKey) {
+      toast({
+        title: "Wallet not connected",
+        description: "Please connect your wallet first",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid amount to stake",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check token balance
+    if (tokenBalance === null || Number(amount) > tokenBalance) {
+      toast({
+        title: "Insufficient balance",
+        description: `You only have ${tokenBalance ?? 0} tokens available to stake`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      console.log("Starting direct token transfer for staking");
+      console.log("Wallet public key:", publicKey.toString());
+      console.log("Amount to transfer:", amount);
+      
+      // Get account information for token accounts
+      const accountsResponse = await apiRequest<any>('/api/simple-staking-accounts-info', {
+        method: 'POST',
+        body: JSON.stringify({
+          walletAddress: publicKey.toString()
+        })
+      });
+      
+      if (!accountsResponse.success) {
+        throw new Error(`Failed to get account info: ${accountsResponse.error}`);
+      }
+      
+      console.log("Retrieved accounts info:", accountsResponse);
+      
+      // Parse account info
+      const tokenMint = new PublicKey(accountsResponse.tokenMint);
+      const vaultTokenAccount = new PublicKey(accountsResponse.vaultTokenAccount);
+      
+      // Connect to Solana
+      const connection = new Connection(clusterApiUrl('devnet'));
+      
+      // Get user token account
+      const userTokenAccount = await getAssociatedTokenAddress(
+        tokenMint,
+        publicKey,
+        false,
+        TOKEN_PROGRAM_ID
+      );
+      
+      console.log("User token account:", userTokenAccount.toString());
+      console.log("Vault token account:", vaultTokenAccount.toString());
+      
+      // Calculate amount in lamports (9 decimals)
+      const amountLamports = Number(amount) * Math.pow(10, 9);
+      console.log("Amount in lamports:", amountLamports);
+      
+      // Create transaction with transfer instruction
+      const transaction = new Transaction();
+      
+      // Create transfer instruction
+      const transferInstruction = createTransferInstruction(
+        userTokenAccount,
+        vaultTokenAccount,
+        publicKey,
+        amountLamports
+      );
+      
+      transaction.add(transferInstruction);
+      
+      // Set transaction properties
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+      transaction.recentBlockhash = blockhash;
+      transaction.lastValidBlockHeight = lastValidBlockHeight;
+      transaction.feePayer = publicKey;
+      
+      // Send transaction
+      const signature = await sendTransaction(transaction);
+      console.log("Transaction sent successfully, signature:", signature);
+      
+      toast({
+        title: "Transfer initiated",
+        description: "Your tokens are being transferred to the staking vault."
+      });
+      
+      // Wait for confirmation
+      const confirmation = await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight
+      });
+      
+      if (confirmation.value.err) {
+        throw new Error(`Transaction failed: ${confirmation.value.err.toString()}`);
+      }
+      
+      console.log("Transaction confirmed successfully!");
+      
+      toast({
+        title: "Tokens staked successfully",
+        description: `You have successfully transferred ${amount} tokens to the staking vault.`
+      });
+      
+      // Refresh data
+      await fetchStakingInfo();
+      await fetchTokenBalance();
+      
+    } catch (error) {
+      console.error("Error in direct token transfer:", error);
+      
+      toast({
+        title: "Transfer failed",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -274,12 +475,28 @@ export function SimpleStakingWidget() {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle>Simple Staking (Testing)</CardTitle>
-        <CardDescription>Stake your tokens with our simplified contract</CardDescription>
+        <div className="flex justify-between items-center">
+          <CardTitle>Simple Staking</CardTitle>
+          <Badge variant={directMode ? 'default' : 'outline'}>
+            {directMode ? 'Direct Transfer' : 'Contract Mode'}
+          </Badge>
+        </div>
+        <CardDescription>Stake HATM tokens to earn rewards</CardDescription>
       </CardHeader>
       <CardContent>
         {connected ? (
           <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="font-medium">Your Token Balance</div>
+              {balanceLoading ? (
+                <Skeleton className="h-4 w-full" />
+              ) : (
+                <div className="text-sm">
+                  {tokenBalance !== null ? `${tokenBalance.toLocaleString()} HATM` : 'Loading...'}
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <div className="font-medium">Your Staking Info</div>
               {infoLoading ? (
@@ -289,8 +506,8 @@ export function SimpleStakingWidget() {
                 </div>
               ) : stakingInfo ? (
                 <div className="text-sm space-y-1">
-                  <div>Amount Staked: {stakingInfo.amountStaked / 1e9} tokens</div>
-                  <div>Rewards Earned: {stakingInfo.pendingRewards / 1e9} tokens</div>
+                  <div>Amount Staked: {stakingInfo.amountStaked / 1e9} HATM</div>
+                  <div>Rewards Earned: {stakingInfo.pendingRewards / 1e9} HATM</div>
                   {stakingInfo.lastStakeTime && (
                     <div>Last Stake: {new Date(stakingInfo.lastStakeTime).toLocaleString()}</div>
                   )}
@@ -310,6 +527,18 @@ export function SimpleStakingWidget() {
                 min="1"
                 step="1"
               />
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="staking-mode"
+                  checked={directMode}
+                  onCheckedChange={setDirectMode}
+                />
+                <Label htmlFor="staking-mode" className="text-xs text-muted-foreground">
+                  {directMode 
+                    ? "Direct Transfer: Tokens are sent directly to the vault account" 
+                    : "Contract Mode: Uses on-chain contract to update staking records"}
+                </Label>
+              </div>
             </div>
           </div>
         ) : (
@@ -318,14 +547,17 @@ export function SimpleStakingWidget() {
           </div>
         )}
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-col gap-2">
         <Button 
           className="w-full" 
-          onClick={handleStake} 
-          disabled={!connected || loading}
+          onClick={directMode ? handleDirectTransfer : handleStake} 
+          disabled={!connected || loading || tokenBalance === 0}
         >
-          {loading ? "Processing..." : "Stake Tokens"}
+          {loading ? "Processing..." : `Stake ${directMode ? "(Direct Transfer)" : "(Contract)"}`}
         </Button>
+        <div className="text-xs text-center text-muted-foreground">
+          Staking locks tokens for 7 days. Early unstaking incurs a 25% fee.
+        </div>
       </CardFooter>
     </Card>
   );
