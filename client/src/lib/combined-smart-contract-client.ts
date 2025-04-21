@@ -14,8 +14,8 @@ import {
 } from '@solana/web3.js';
 import BN from 'bn.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
-import * as anchor from '@project-serum/anchor';
-import { Program, AnchorProvider } from '@project-serum/anchor';
+import * as anchor from '@coral-xyz/anchor';
+import { Program, AnchorProvider } from '@coral-xyz/anchor';
 
 // Import our comprehensive buffer polyfill
 import { 
@@ -88,6 +88,7 @@ export interface StakingUserInfo {
   dataSource: 'blockchain' | 'helius' | 'external' | 'default';
   walletTokenBalance?: number;
   stakingVaultAddress?: string;
+  isLocked?: boolean; // Flag indicating if tokens are currently locked in the vault
 }
 
 export interface StakingVaultInfo {
@@ -226,7 +227,8 @@ export const getUserStakingInfo = async (
       timeUntilUnlock: stakingData.timeUntilUnlock || null,
       estimatedAPY: stakingData.estimatedAPY || 0,
       dataSource: stakingData.dataSource || 'blockchain',
-      walletTokenBalance: tokenBalance
+      walletTokenBalance: tokenBalance,
+      isLocked: stakingData.isLocked || false
     } as StakingUserInfo;
   } catch (error) {
     console.error('Error fetching staking info:', error);
@@ -241,7 +243,8 @@ export const getUserStakingInfo = async (
       timeUntilUnlock: null,
       estimatedAPY: 0,
       dataSource: 'default',
-      stakingVaultAddress: stakingVaultAddress
+      stakingVaultAddress: stakingVaultAddress,
+      isLocked: false
     };
   }
 };

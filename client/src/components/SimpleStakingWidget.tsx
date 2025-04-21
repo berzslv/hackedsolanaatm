@@ -204,7 +204,12 @@ const SimpleStakingWidget: React.FC = () => {
           signAllTransactions: async (txs: any[]) => {
             return Promise.all(txs.map(tx => signTransaction!(tx)));
           },
-          sendTransaction: (tx) => wallet.sendTransaction(tx, connection)
+          sendTransaction: async (tx: any) => {
+            if (!wallet.sendTransaction) {
+              throw new Error("Wallet adapter doesn't support sendTransaction");
+            }
+            return await wallet.sendTransaction(tx, connection);
+          }
         }
       );
       

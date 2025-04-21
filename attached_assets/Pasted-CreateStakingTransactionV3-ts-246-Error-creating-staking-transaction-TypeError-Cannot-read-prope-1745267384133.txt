@@ -1,0 +1,49 @@
+CreateStakingTransactionV3.ts:246 ❌ Error creating staking transaction: TypeError: Cannot read properties of undefined (reading '_bn')
+    at isPublicKeyData (chunk-6VEBMGFL.js?v=b6cb1309:8242:16)
+    at new _PublicKey2 (chunk-6VEBMGFL.js?v=b6cb1309:8859:13)
+    at translateAddress (@coral-xyz_anchor.js?v=3f048257:517:51)
+    at new _Program (@coral-xyz_anchor.js?v=3f048257:5647:23)
+    at createStakingTransaction (CreateStakingTransactionV3.ts:84:21)
+    at async executeStakingTransaction (CreateStakingTransactionV3.ts:285:20)
+    at async handleBuy (BuyWidgetOnChain.tsx:313:22)
+overrideMethod @ hook.js:608
+createStakingTransaction @ CreateStakingTransactionV3.ts:246
+await in createStakingTransaction
+executeStakingTransaction @ CreateStakingTransactionV3.ts:285
+handleBuy @ BuyWidgetOnChain.tsx:313
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=b6cb1309:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=b6cb1309:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=b6cb1309:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=b6cb1309:3736
+executeDispatch @ chunk-276SZO74.js?v=b6cb1309:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=b6cb1309:7034
+processDispatchQueue @ chunk-276SZO74.js?v=b6cb1309:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=b6cb1309:7051
+(anonymous) @ chunk-276SZO74.js?v=b6cb1309:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=b6cb1309:18913
+batchedUpdates @ chunk-276SZO74.js?v=b6cb1309:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=b6cb1309:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=b6cb1309:5478
+dispatchEvent @ chunk-276SZO74.js?v=b6cb1309:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=b6cb1309:5449Understand this error
+BuyWidgetOnChain.tsx:321 Transaction failed: Cannot read properties of undefined (reading '_bn')
+overrideMethod @ hook.js:608
+handleBuy @ BuyWidgetOnChain.tsx:321
+await in handleBuy
+callCallback2 @ chunk-276SZO74.js?v=b6cb1309:3674
+invokeGuardedCallbackDev @ chunk-276SZO74.js?v=b6cb1309:3699
+invokeGuardedCallback @ chunk-276SZO74.js?v=b6cb1309:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-276SZO74.js?v=b6cb1309:3736
+executeDispatch @ chunk-276SZO74.js?v=b6cb1309:7014
+processDispatchQueueItemsInOrder @ chunk-276SZO74.js?v=b6cb1309:7034
+processDispatchQueue @ chunk-276SZO74.js?v=b6cb1309:7043
+dispatchEventsForPlugins @ chunk-276SZO74.js?v=b6cb1309:7051
+(anonymous) @ chunk-276SZO74.js?v=b6cb1309:7174
+batchedUpdates$1 @ chunk-276SZO74.js?v=b6cb1309:18913
+batchedUpdates @ chunk-276SZO74.js?v=b6cb1309:3579
+dispatchEventForPluginEventSystem @ chunk-276SZO74.js?v=b6cb1309:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-276SZO74.js?v=b6cb1309:5478
+dispatchEvent @ chunk-276SZO74.js?v=b6cb1309:5472
+dispatchDiscreteEvent @ chunk-276SZO74.js?v=b6cb1309:5449Understand this error
+BuyWidgetOnChain.tsx:445 Error processing purchase: Error: Cannot read properties of undefined (reading '_bn')
