@@ -1,11 +1,21 @@
 /**
- * Staking Vault IDL
+ * Anchor Client
  * 
- * This provides the interface definition for our staking contract.
+ * This module provides a proper Anchor client setup for our contract interactions.
+ * It ensures we use the correct instruction discriminators by relying on Anchor's
+ * Program class instead of manually creating transactions.
  */
-
-// Raw IDL exported from Anchor
-const stakingVaultRaw = {
+import { 
+  AnchorProvider,
+  BN,
+  Program, 
+  web3
+} from '@coral-xyz/anchor';
+import { PublicKey, Connection, Transaction } from '@solana/web3.js';
+import { getAssociatedTokenAddress } from '@solana/spl-token';
+// Import the IDL
+// We'll define it inline here to avoid path issues
+const IDL = {
   "version": "0.1.0",
   "name": "staking_vault",
   "instructions": [
@@ -394,6 +404,154 @@ const stakingVaultRaw = {
   ]
 };
 
-// Export the IDL with proper type
-export type StakingVault = typeof stakingVaultRaw;
-export const IDL: StakingVault = stakingVaultRaw as StakingVault;
+// Constants
+const STAKING_PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
+const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+
+// Create a wallet that can be used with Anchor
+export function createAnchorWallet(pubkey: PublicKey, signTransaction: (tx: Transaction) => Promise<Transaction>) {
+  return {
+    publicKey: pubkey,
+    signTransaction,
+    signAllTransactions: async (txs: Transaction[]) => {
+      return Promise.all(txs.map(tx => signTransaction(tx)));
+    },
+  };
+}
+
+// Create an Anchor provider from connection and wallet
+export function createAnchorProvider(connection: Connection, wallet: any) {
+  return new AnchorProvider(
+    connection,
+    wallet,
+    { preflightCommitment: 'confirmed' }
+  );
+}
+
+// Get the Anchor program instance
+export function getStakingProgram(provider: AnchorProvider) {
+  try {
+    return new Program(IDL, STAKING_PROGRAM_ID, provider);
+  } catch (error) {
+    console.error("Error creating staking program:", error);
+    throw error;
+  }
+}
+
+// Get PDA for user staking account
+export async function findUserStakingAccountPDA(program: any, walletAddress: PublicKey) {
+  const [pda, bump] = await PublicKey.findProgramAddress(
+    [Buffer.from("user_info"), walletAddress.toBuffer()],
+    program.programId
+  );
+  
+  return { pda, bump };
+}
+
+// Get PDA for the vault
+export async function findVaultPDA(program: any) {
+  const [pda, bump] = await PublicKey.findProgramAddress(
+    [Buffer.from("vault")],
+    program.programId
+  );
+  
+  return { pda, bump };
+}
+
+// Get PDA for the vault authority
+export async function findVaultAuthorityPDA(program: any) {
+  const [pda, bump] = await PublicKey.findProgramAddress(
+    [Buffer.from("vault_auth")],
+    program.programId
+  );
+  
+  return { pda, bump };
+}
+
+// Create a registration transaction using Anchor
+export async function createRegisterUserTransaction(
+  program: Program,
+  userWallet: PublicKey
+) {
+  try {
+    // Find PDAs
+    const { pda: userStakingAccountPDA } = await findUserStakingAccountPDA(program, userWallet);
+    const { pda: vaultPDA } = await findVaultPDA(program);
+    
+    // Use Anchor's method builder to create the transaction
+    return program.methods
+      .registerUser()
+      .accounts({
+        user: userWallet,
+        userInfo: userStakingAccountPDA,
+        vault: vaultPDA,
+        systemProgram: web3.SystemProgram.programId,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+      })
+      .transaction();
+    
+  } catch (error) {
+    console.error("Error creating register user transaction:", error);
+    throw error;
+  }
+}
+
+// Create a stake transaction using Anchor
+export async function createStakeTransaction(
+  program: Program,
+  userWallet: PublicKey,
+  tokenMint: PublicKey,
+  amount: number
+) {
+  try {
+    // Find PDAs
+    const { pda: userStakingAccountPDA } = await findUserStakingAccountPDA(program, userWallet);
+    const { pda: vaultPDA } = await findVaultPDA(program);
+    const { pda: vaultAuthorityPDA } = await findVaultAuthorityPDA(program);
+    
+    // Calculate lamports amount
+    const amountLamports = new BN(Math.floor(amount * Math.pow(10, 9)));
+    
+    // Get token accounts
+    const userTokenAccount = await getAssociatedTokenAddress(
+      tokenMint,
+      userWallet,
+      false,
+      TOKEN_PROGRAM_ID
+    );
+    
+    // Find vault token account
+    const vaultTokenAccount = await getAssociatedTokenAddress(
+      tokenMint,
+      vaultAuthorityPDA,
+      true,
+      TOKEN_PROGRAM_ID
+    );
+    
+    console.log('Creating stake transaction with Anchor client');
+    console.log('Amount:', amountLamports.toString());
+    console.log('User wallet:', userWallet.toString());
+    console.log('User staking account PDA:', userStakingAccountPDA.toString());
+    console.log('Vault PDA:', vaultPDA.toString());
+    console.log('User token account:', userTokenAccount.toString());
+    console.log('Vault token account:', vaultTokenAccount.toString());
+    
+    // Use Anchor's method builder to create the transaction
+    return program.methods
+      .stake(amountLamports)
+      .accounts({
+        user: userWallet,
+        userInfo: userStakingAccountPDA,
+        vault: vaultPDA,
+        userTokenAccount: userTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .transaction();
+    
+  } catch (error) {
+    console.error("Error creating stake transaction:", error);
+    throw error;
+  }
+}

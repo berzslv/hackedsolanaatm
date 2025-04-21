@@ -4,6 +4,13 @@ import { PublicKey, Transaction, Connection, clusterApiUrl, SystemProgram, SYSVA
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID, createTransferInstruction } from '@solana/spl-token';
 import { createTransactionInstruction } from '@/lib/create-transaction-instruction';
 import { SIMPLE_STAKING_DISCRIMINATORS } from '@/lib/anchor-utils';
+import { 
+  createAnchorWallet, 
+  createAnchorProvider, 
+  getStakingProgram,
+  createRegisterUserTransaction,
+  createStakeTransaction
+} from '../lib/anchor-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -326,7 +333,7 @@ export function SimpleStakingWidget() {
     setLoading(true);
 
     try {
-      console.log("Starting simple staking process");
+      console.log("Starting simple staking process using Anchor client");
       console.log("Wallet public key:", publicKey.toString());
       console.log("Amount to stake:", amount);
 
@@ -345,125 +352,61 @@ export function SimpleStakingWidget() {
 
       console.log("Retrieved accounts info:", accountsResponse);
 
-      // Parse accounts from response
-      const programId = new PublicKey(accountsResponse.programId);
-      const vault = new PublicKey(accountsResponse.vault);
-      const vaultTokenAccount = new PublicKey(accountsResponse.vaultTokenAccount);
+      // Parse token mint from response
       const tokenMint = new PublicKey(accountsResponse.tokenMint);
-      const userStakeInfoAddress = new PublicKey(accountsResponse.userStakeInfoAddress);
       const isRegistered = accountsResponse.isRegistered;
 
       // Connect to Solana
       const connection = new Connection(clusterApiUrl('devnet'));
 
-      // Get the user's token account
-      const userTokenAccount = await getAssociatedTokenAddress(
-        tokenMint,
-        publicKey,
-        false,
-        TOKEN_PROGRAM_ID
-      );
+      // Use anchor client
 
-      console.log("User token account:", userTokenAccount.toString());
-
-      // Create a new transaction
-      const transaction = new Transaction();
-
-      // Add register instruction if user is not registered
+      // Create Anchor wallet from publicKey and sendTransaction
+      const anchorWallet = createAnchorWallet(publicKey, sendTransaction);
+      
+      // Create Anchor provider
+      const provider = createAnchorProvider(connection, anchorWallet);
+      
+      // Get program instance
+      const program = getStakingProgram(provider);
+      console.log("Provider created successfully, creating program instance");
+      
+      // Create transaction object
+      let transaction: Transaction;
+      
       if (!isRegistered) {
-        console.log("User is not registered. Adding registration instruction.");
+        console.log("User is not registered. Creating registration transaction...");
         
-        const registerInstruction = createTransactionInstruction({
-          keys: [
-            { pubkey: publicKey, isSigner: true, isWritable: true },          // user (signer)
-            { pubkey: userStakeInfoAddress, isSigner: false, isWritable: true }, // userInfo (pda)
-            { pubkey: vault, isSigner: false, isWritable: false },            // vault
-            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
-            { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }  // rent
-          ],
-          programId,
-          data: (() => {
-            // Based on the IDL, SimpleStaking's registerUser takes NO arguments
-            const discriminator = SIMPLE_STAKING_DISCRIMINATORS.registerUser;
-            
-            console.log("Registration instruction discriminator:", Array.from(discriminator).join(','));
-            console.log("Registration using hardcoded discriminator [156, 52, 137, 65, 173, 158, 30, 105]");
-            
-            // Just return the discriminator with no additional arguments
-            return Buffer.from(discriminator);
-          })()
-        });
+        // Create registration transaction
+        const registerTx = await createRegisterUserTransaction(program, publicKey);
         
-        transaction.add(registerInstruction);
+        // Create staking transaction
+        const stakeTx = await createStakeTransaction(program, publicKey, tokenMint, Number(amount));
+        
+        // Combine them - create a new transaction with both instructions
+        transaction = new Transaction();
+        registerTx.instructions.forEach(ix => transaction.add(ix));
+        stakeTx.instructions.forEach(ix => transaction.add(ix));
+        
+        console.log("Created combined registration + staking transaction");
+      } else {
+        console.log("User is already registered. Creating staking transaction only...");
+        
+        // User is already registered, just stake
+        transaction = await createStakeTransaction(program, publicKey, tokenMint, Number(amount));
+        console.log("Created staking transaction");
       }
-
-      // Calculate amount in lamports (9 decimals)
-      const amountLamports = Number(amount) * Math.pow(10, 9);
-      console.log("Amount in lamports:", amountLamports);
-
-      // Create stake instruction
-      const stakeInstruction = createTransactionInstruction({
-        keys: [
-          { pubkey: publicKey, isSigner: true, isWritable: true },         // user
-          { pubkey: userStakeInfoAddress, isSigner: false, isWritable: true }, // userInfo
-          { pubkey: vault, isSigner: false, isWritable: false },           // vault
-          { pubkey: userTokenAccount, isSigner: false, isWritable: true },  // userTokenAccount
-          { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // vaultTokenAccount
-          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // tokenProgram
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
-        ],
-        programId,
-        data: (() => {
-          // Use the properly computed Anchor discriminator from our utility
-          const discriminator = SIMPLE_STAKING_DISCRIMINATORS.stake;
-          
-          // Create buffer for the amount parameter (u64 = 8 bytes)
-          const amountBuffer = Buffer.alloc(8);
-          // Make sure we use BigInt for the amount to prevent precision loss
-          const bigIntAmount = BigInt(Math.floor(amountLamports));
-          // Write amount as little-endian 64-bit value
-          const view = new DataView(amountBuffer.buffer);
-          view.setBigUint64(0, bigIntAmount, true); // true = little-endian
-          
-          // Combine discriminator and amount buffer manually since Buffer.concat may not be available in browser
-          const combinedBuffer = new Uint8Array(discriminator.length + amountBuffer.length);
-          combinedBuffer.set(discriminator, 0);
-          combinedBuffer.set(new Uint8Array(amountBuffer), discriminator.length);
-          
-          console.log("Stake instruction discriminator:", Array.from(discriminator).join(','));
-          console.log("Stake amount in lamports:", amountLamports);
-          const finalBuffer = Buffer.from(combinedBuffer);
-          console.log("Final stake instruction data:", Array.from(new Uint8Array(finalBuffer)).join(','));
-          
-          return finalBuffer;
-        })()
-      });
       
-      transaction.add(stakeInstruction);
-
-      console.log("Transaction built successfully");
-
-      // Send the transaction
-      console.log("Sending transaction to wallet for signing...");
-      console.log("Transaction accounts:");
-      transaction.instructions.forEach((ix, i) => {
-        console.log(`Instruction ${i} programId:`, ix.programId.toString());
-        console.log(`Instruction ${i} data:`, Array.from(ix.data));
-        console.log(`Instruction ${i} keys:`, ix.keys.map((k, j) => ({
-          index: j,
-          pubkey: k.pubkey.toString(),
-          isSigner: k.isSigner,
-          isWritable: k.isWritable
-        })));
-      });
-      
-      // Set all the necessary properties for the transaction
+      // Set transaction properties
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
       transaction.recentBlockhash = blockhash;
       transaction.lastValidBlockHeight = lastValidBlockHeight;
       transaction.feePayer = publicKey;
       
-      // Send the transaction using the context's sendTransaction
+      console.log("Transaction built with Anchor. Sending to wallet for signing...");
+      console.log("Transaction has", transaction.instructions.length, "instructions");
+      
+      // Send the transaction
       const signature = await sendTransaction(transaction);
       console.log("Transaction sent successfully, signature:", signature);
       
@@ -493,9 +436,10 @@ export function SimpleStakingWidget() {
 
       // Refresh staking info
       await fetchStakingInfo();
+      await fetchTokenBalance();
 
     } catch (error) {
-      console.error("Error in simple staking process:", error);
+      console.error("Error in Anchor staking process:", error);
       
       toast({
         title: "Staking failed",
