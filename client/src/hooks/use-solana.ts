@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Connection, PublicKey, Transaction, VersionedTransaction, clusterApiUrl } from '@solana/web3.js';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { createAnchorWallet, AnchorWallet } from '@/lib/anchor-types';
 
 /**
  * A composable hook for interacting with Solana blockchain
