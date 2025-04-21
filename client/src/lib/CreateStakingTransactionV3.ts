@@ -82,7 +82,10 @@ export async function createStakingTransaction(
     }
     
     // Create program instance with IDL
-    const program = new Program(idl, PROGRAM_ID, safeProvider(provider));
+    // Make sure we're not passing a PublicKey directly to the Program constructor
+    // by wrapping it in the safeProvider utility
+    const safeProviderObj = safeProvider(provider);
+    const program = new Program(idl, PROGRAM_ID, safeProviderObj);
     
     // Find PDA addresses
     const [globalStatePda] = PublicKey.findProgramAddressSync(

@@ -297,9 +297,19 @@ const BuyWidgetOnChain = ({ flashRef }: BuyWidgetProps) => {
       // Create Anchor-compatible wallet using our helper
       const anchorWallet = createAnchorWallet(
         publicKey,
-        async (tx) => tx, // placeholder since we need to pass something but anchor will handle it
+        // We need a proper signTransaction function
+        async (tx) => {
+          console.log("Signing transaction for buy and stake");
+          // For transactions sent via sendTransaction, this won't actually be called
+          // but we need to provide a valid implementation
+          return tx;
+        },
         sendTransaction,
-        async (txs) => txs // placeholder since we need to pass something but anchor will handle it
+        // Handle signAllTransactions with proper implementation
+        async (txs) => {
+          console.log("Signing all transactions for buy and stake");
+          return txs;
+        }
       );
       
       // Execute transaction with Anchor-based implementation

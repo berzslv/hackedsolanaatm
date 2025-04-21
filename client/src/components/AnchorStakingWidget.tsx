@@ -79,9 +79,12 @@ export default function AnchorStakingWidget({
       // Create wallet adapter compatible with Anchor using our helper
       const anchorWallet = createAnchorWallet(
         publicKey,
-        signTransaction,
+        // Make sure we handle potential undefined signTransaction (though it should never be undefined when connected)
+        (tx) => signTransaction ? signTransaction(tx) : Promise.reject(new Error("No signTransaction available")),
+        // Pass along the sendTransaction function
         sendTransaction,
-        async (txs) => Promise.all(txs.map(tx => signTransaction!(tx)))
+        // Handle signAllTransactions with proper error handling
+        async (txs) => signTransaction ? Promise.all(txs.map(tx => signTransaction(tx))) : Promise.reject(new Error("No signTransaction available"))
       );
       
       // Call the new Anchor-based staking function

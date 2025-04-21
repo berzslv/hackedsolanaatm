@@ -40,8 +40,19 @@ export function createAnchorWallet(
 }
 
 /**
- * Utility to safely cast a PublicKey to a provider with appropriate error handling
+ * Utility to safely cast a provider to avoid PublicKey errors with appropriate error handling
  */
 export function safeProvider(provider: any): any {
+  // Make sure the provider's publicKey does not get used in place of a PublicKey
+  if (provider && typeof provider === 'object') {
+    return {
+      ...provider,
+      // Prevent Anchor from using any internal _bn properties directly
+      publicKey: provider.publicKey ? 
+        (typeof provider.publicKey === 'string' ? 
+          new PublicKey(provider.publicKey) : provider.publicKey) : 
+        undefined
+    };
+  }
   return provider;
 }
