@@ -19,6 +19,9 @@ import { buyAndStakeTokens, stakeExistingTokens } from '@/lib/combined-smart-con
 import { registerUserForStaking, checkAndCreateTokenAccount } from '@/lib/api-client';
 import { executeStakingTransaction } from '@/lib/CreateStakingTransactionV3';
 
+// Create a shared Solana connection to use throughout the component
+const sharedSolanaConnection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
 
 // Optional Helius API key - would be set from environment in production
 const HELIUS_API_KEY = '';

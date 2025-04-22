@@ -68,7 +68,7 @@ export async function createStakingTransaction(
     
     console.log("Creating fresh connection to Solana devnet");
     const devnetUrl = clusterApiUrl('devnet'); 
-    const connection = new Connection(devnetUrl, 'confirmed');
+    const stakingConnection = new Connection(devnetUrl, 'confirmed');
     const userPubkey = new PublicKey(walletAddress);
     const programId = new PublicKey(PROGRAM_ID);
     const tokenMint = new PublicKey(TOKEN_MINT_ADDRESS);
