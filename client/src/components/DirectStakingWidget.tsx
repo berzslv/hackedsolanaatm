@@ -93,12 +93,12 @@ const DirectStakingWidget: React.FC = () => {
     
     try {
       // Set up connection to Solana 
-      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+      const mainConnection = new Connection(clusterApiUrl('devnet'), 'confirmed');
       
       console.log("🚀 Starting staking process with Anchor client");
       console.log("👛 Wallet public key:", publicKey.toString());
       console.log("🔢 Amount to stake:", amount);
-      console.log("🔗 Network:", connection.rpcEndpoint);
+      console.log("🔗 Network:", mainConnection.rpcEndpoint);
       
       toast({
         title: 'Processing Stake Request',
@@ -110,10 +110,15 @@ const DirectStakingWidget: React.FC = () => {
       const pubKeyStr = publicKey.toString();  // Get string representation
       const stablePubKey = new PublicKey(pubKeyStr);  // Create fresh PublicKey
       
+      // Create a Solana connection for the minimal wallet adapter
+      const solanaConnection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+      
+      // Create a minimal wallet adapter that matches what's actually used in the app
       const wallet = { 
-        sendTransaction: async (tx: any) => {
+        sendTransaction: async (tx: any, conn?: any, options?: any) => {
           console.log("Sending transaction with ultra-minimal wallet adapter");
-          return sendTransaction(tx);
+          // Use the provided connection if available, otherwise use the created one
+          return sendTransaction(tx, conn || solanaConnection, options);
         }, 
         publicKey: stablePubKey
       };
@@ -154,16 +159,17 @@ const DirectStakingWidget: React.FC = () => {
       
       // Before proceeding, let's directly check the token balance
       try {
-        const { Connection, PublicKey, clusterApiUrl } = await import('@solana/web3.js');
         const { TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
-        const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+        
+        // Create connection for balance check
+        const solanaConnection = new Connection(clusterApiUrl('devnet'), 'confirmed');
         
         // Get token account address
         const userPubkey = new PublicKey(publicKey.toString());
         const mintPubkey = new PublicKey(tokenMint);
         
         // Get all token accounts for this owner
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+        const tokenAccounts = await solanaConnection.getParsedTokenAccountsByOwner(
           userPubkey,
           { mint: mintPubkey }
         );

@@ -300,8 +300,23 @@ export async function executeStakingTransaction(
     
     try {
       // Send the transaction to the blockchain
-      const signature = await wallet.sendTransaction(result.transaction, connection);
-      console.log("✅ Transaction sent with signature:", signature);
+      console.log("Sending transaction...");
+      let signature;
+      
+      // Try with wallet's sendTransaction method
+      if (wallet.sendTransaction) {
+        try {
+          console.log("Using wallet.sendTransaction method");
+          signature = await wallet.sendTransaction(result.transaction);
+          console.log("✅ Transaction sent with signature:", signature);
+        } catch (err) {
+          console.error("Error with wallet.sendTransaction:", err);
+          throw err;
+        }
+      } else {
+        console.error("Wallet does not have sendTransaction method");
+        throw new Error("Wallet does not support sendTransaction");
+      }
       
       return { signature };
     } catch (sendError) {
