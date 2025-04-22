@@ -1,43 +1,45 @@
 /**
  * CreateStakingTransactionV3
  * 
- * Implements proper Anchor-based staking transaction creation
- * following Solana standards and best practices.
+ * Implements simplified direct transaction creation to avoid PublicKey issues
  */
 import {
   Connection,
   PublicKey,
   Transaction,
+  TransactionInstruction,
   clusterApiUrl,
   SystemProgram,
-  sendAndConfirmTransaction
 } from '@solana/web3.js';
 import {
   TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
-  getAccount
+  getAccount,
 } from '@solana/spl-token';
-import * as anchor from '@coral-xyz/anchor';
-import { Program, AnchorProvider, BN } from '@coral-xyz/anchor';
-// Import BN from bn.js directly to ensure it's the correct version
-import BN_Direct from 'bn.js';
+// Import BN directly to avoid any reference issues
+import BN from 'bn.js';
 
 // Constants
-const PROGRAM_ID = new PublicKey('EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm');
-const TOKEN_MINT_ADDRESS = new PublicKey('59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk');
+const PROGRAM_ID = 'EnGhdovdYhHk4nsHEJr6gmV5cYfrx53ky19RD56eRRGm';
+const TOKEN_MINT_ADDRESS = '59TF7G5NqMdqjHvpsBPojuhvksHiHVUkaNkaiVvozDrk';
 const GLOBAL_STATE_SEED = "global_state";
 const USER_INFO_SEED = "user_info";
 const VAULT_SEED = "vault";
 const VAULT_AUTH_SEED = "vault_auth";
 
 /**
- * Create a staking transaction using Anchor
+ * Stake instruction identifier
+ * This matches the first 8 bytes of the sha256 hash of "global:stake"
+ */
+const STAKE_INSTRUCTION_ID = new Uint8Array([106, 49, 183, 94, 227, 18, 218, 113]);
+
+/**
+ * Create a staking transaction using direct methods to avoid Anchor-related issues
  * 
  * @param walletAddress User's wallet address
  * @param amount Amount to stake
- * @param wallet Connected wallet (with signTransaction and sendTransaction)
+ * @param wallet Connected wallet (with sendTransaction)
  * @param referrerAddress Optional referrer address
  * @returns Transaction result
  */
@@ -52,7 +54,7 @@ export async function createStakingTransaction(
   transaction?: Transaction;
 }> {
   try {
-    console.log("🚀 Creating staking transaction with Anchor v3");
+    console.log("🚀 Creating staking transaction with direct method (V3 simplified)");
     console.log(`👛 Wallet: ${walletAddress}`);
     console.log(`💰 Amount: ${amount}`);
     
@@ -66,51 +68,32 @@ export async function createStakingTransaction(
     
     console.log("Creating fresh connection to Solana devnet");
     const devnetUrl = clusterApiUrl('devnet'); 
-    const freshConnection = new Connection(devnetUrl, 'confirmed');
+    const connection = new Connection(devnetUrl, 'confirmed');
     const userPubkey = new PublicKey(walletAddress);
-    
-    console.log("Creating AnchorProvider with wallet");
-    // Create a fresh provider with our clean objects
-    const freshProvider = new AnchorProvider(
-      freshConnection,
-      wallet as any, // Type casting to overcome LSP issues
-      AnchorProvider.defaultOptions()
-    );
-    
-    // Set the provider as the global Anchor provider
-    anchor.setProvider(freshProvider);
-    
-    console.log("📡 Fetching IDL for program:", PROGRAM_ID.toString());
-    // Fetch IDL directly from the blockchain
-    const idl = await Program.fetchIdl(PROGRAM_ID, freshProvider);
-    if (!idl) {
-      return { error: "Failed to fetch program IDL" };
-    }
-    // Use the Program constructor with our fresh provider
-    console.log("Creating program with IDL and fresh provider");
-    const program = new Program(idl, PROGRAM_ID, freshProvider);
+    const programId = new PublicKey(PROGRAM_ID);
+    const tokenMint = new PublicKey(TOKEN_MINT_ADDRESS);
     
     // Find PDA addresses
     const [globalStatePda] = PublicKey.findProgramAddressSync(
       [Buffer.from(GLOBAL_STATE_SEED)],
-      program.programId
+      programId
     );
     
     const [userStakePda] = PublicKey.findProgramAddressSync(
       [Buffer.from(USER_INFO_SEED), userPubkey.toBuffer()],
-      program.programId
+      programId
     );
     
     const [vaultAuthPda] = PublicKey.findProgramAddressSync(
       [Buffer.from(VAULT_AUTH_SEED)],
-      program.programId
+      programId
     );
     
     // Get token accounts
     console.log("🪙 Fetching user token accounts");
-    const tokenAccounts = await freshConnection.getParsedTokenAccountsByOwner(
+    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
       userPubkey,
-      { mint: TOKEN_MINT_ADDRESS }
+      { mint: tokenMint }
     );
     
     // Check if we have token accounts
@@ -119,7 +102,7 @@ export async function createStakingTransaction(
       try {
         // Get ATA address
         const ata = await getAssociatedTokenAddress(
-          TOKEN_MINT_ADDRESS,
+          tokenMint,
           userPubkey
         );
         
@@ -128,17 +111,17 @@ export async function createStakingTransaction(
           userPubkey,  // payer
           ata,         // associated token account
           userPubkey,  // owner
-          TOKEN_MINT_ADDRESS // mint
+          tokenMint    // mint
         );
         
         // Send transaction to create ATA
         const tx = new Transaction().add(ix);
         tx.feePayer = userPubkey;
-        const { blockhash } = await freshConnection.getLatestBlockhash('confirmed');
+        const { blockhash } = await connection.getLatestBlockhash('confirmed');
         tx.recentBlockhash = blockhash;
         
-        const sig = await wallet.sendTransaction(tx, freshConnection);
-        await freshConnection.confirmTransaction(sig, 'confirmed');
+        const sig = await wallet.sendTransaction(tx);
+        await connection.confirmTransaction(sig, 'confirmed');
         console.log("✅ Created token account:", ata.toString());
       } catch (error) {
         console.error("Error creating token account:", error);
@@ -150,9 +133,9 @@ export async function createStakingTransaction(
     let userTokenAccount: PublicKey | null = null;
     
     // Fetch token accounts again after potential creation
-    const updatedTokenAccounts = await freshConnection.getParsedTokenAccountsByOwner(
+    const updatedTokenAccounts = await connection.getParsedTokenAccountsByOwner(
       userPubkey,
-      { mint: TOKEN_MINT_ADDRESS }
+      { mint: tokenMint }
     );
     
     for (const account of updatedTokenAccounts.value) {
@@ -170,7 +153,7 @@ export async function createStakingTransaction(
     // If no account with sufficient balance, use ATA anyway (will fail on-chain)
     if (!userTokenAccount) {
       const ata = await getAssociatedTokenAddress(
-        TOKEN_MINT_ADDRESS,
+        tokenMint,
         userPubkey
       );
       userTokenAccount = ata;
@@ -179,44 +162,62 @@ export async function createStakingTransaction(
     
     // Get vault token account
     const vaultTokenAccount = await getAssociatedTokenAddress(
-      TOKEN_MINT_ADDRESS,
+      tokenMint,
       vaultAuthPda,
       true // Allow off-curve for PDAs
     );
     
     // Verify vault token account exists
     try {
-      await getAccount(freshConnection, vaultTokenAccount);
+      await getAccount(connection, vaultTokenAccount);
       console.log("✅ Vault token account verified:", vaultTokenAccount.toString());
     } catch (error) {
       console.error("❌ Vault token account invalid:", error);
       return { error: "Vault token account not found or invalid" };
     }
     
-    console.log("🛠️ Building transaction with program.methods");
+    console.log("🛠️ Building direct transaction instruction");
+    
     // Convert amount to proper decimal format (9 decimals for our token)
-    // Use direct BN implementation to avoid _bn undefined issues
     const amountInDecimalStr = Math.floor(amount * 1e9).toString();
     console.log("Amount in decimals (string):", amountInDecimalStr);
-    const amountWithDecimals = new BN_Direct(amountInDecimalStr);
+    const amountWithDecimals = new BN(amountInDecimalStr);
     
-    // Create transaction with Anchor methods
-    const transaction = await program.methods
-      .stake(amountWithDecimals)
-      .accounts({
-        owner: userPubkey,
-        globalState: globalStatePda,
-        stakeAccount: userStakePda,
-        userTokenAccount: userTokenAccount || new PublicKey("11111111111111111111111111111111"), // Fallback if null
-        tokenVault: vaultTokenAccount,
-        tokenMint: TOKEN_MINT_ADDRESS,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .transaction();
+    // Create a buffer to hold the instruction data
+    // 8 bytes for instruction discriminator + 8 bytes for amount
+    const data = Buffer.alloc(16);
+    
+    // Write instruction discriminator (8 bytes)
+    STAKE_INSTRUCTION_ID.forEach((b, i) => {
+      data.writeUInt8(b, i);
+    });
+    
+    // Write amount as little-endian 64-bit integer (8 bytes)
+    const amountBuffer = amountWithDecimals.toArrayLike(Buffer, 'le', 8);
+    amountBuffer.copy(data, 8);
+    
+    // Create the transaction instruction
+    const instruction = new TransactionInstruction({
+      keys: [
+        { pubkey: userPubkey, isSigner: true, isWritable: true }, // owner
+        { pubkey: globalStatePda, isSigner: false, isWritable: true }, // globalState
+        { pubkey: userStakePda, isSigner: false, isWritable: true }, // stakeAccount
+        { pubkey: userTokenAccount, isSigner: false, isWritable: true }, // userTokenAccount
+        { pubkey: vaultTokenAccount, isSigner: false, isWritable: true }, // tokenVault
+        { pubkey: tokenMint, isSigner: false, isWritable: false }, // tokenMint
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // tokenProgram
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
+      ],
+      programId,
+      data,
+    });
+    
+    // Create transaction
+    const transaction = new Transaction();
+    transaction.add(instruction);
     
     // Add recent blockhash and fee payer
-    const { blockhash, lastValidBlockHeight } = await freshConnection.getLatestBlockhash('finalized');
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
     transaction.recentBlockhash = blockhash;
     transaction.lastValidBlockHeight = lastValidBlockHeight;
     transaction.feePayer = userPubkey;
@@ -226,7 +227,7 @@ export async function createStakingTransaction(
     // Try simulation first
     console.log("🔍 Simulating transaction...");
     try {
-      const simulation = await freshConnection.simulateTransaction(transaction);
+      const simulation = await connection.simulateTransaction(transaction);
       
       if (simulation.value.err) {
         console.error("❌ Simulation failed:", simulation.value.err);
@@ -242,14 +243,8 @@ export async function createStakingTransaction(
       // Continue anyway as real transactions sometimes succeed despite sim errors
     }
     
-    // Send transaction
-    console.log("🚀 Sending transaction...");
-    const signature = await wallet.sendTransaction(transaction, freshConnection);
-    console.log("✅ Transaction sent:", signature);
-    
-    // Return successful result
+    // Return the transaction for signing and submission
     return {
-      signature,
       transaction
     };
   } catch (error) {
@@ -260,19 +255,6 @@ export async function createStakingTransaction(
     
     if (error instanceof Error) {
       errorMessage = error.message;
-      
-      // Check for specific Anchor errors
-      if (error.message.includes("custom program error:")) {
-        const errorCodeMatch = error.message.match(/custom program error: (\d+)/i);
-        if (errorCodeMatch && errorCodeMatch[1]) {
-          const errorCode = parseInt(errorCodeMatch[1]);
-          
-          // Map known error codes
-          if (errorCode === 101) {
-            errorMessage = "Invalid token account. Please check your token accounts.";
-          }
-        }
-      }
     }
     
     return { error: errorMessage };
@@ -292,6 +274,8 @@ export async function executeStakingTransaction(
   error?: string;
 }> {
   try {
+    console.log("Executing staking transaction");
+    
     const result = await createStakingTransaction(
       walletAddress,
       amount,
@@ -300,10 +284,32 @@ export async function executeStakingTransaction(
     );
     
     if (result.error) {
+      console.error("Error in creating transaction:", result.error);
       return { error: result.error };
     }
     
-    return { signature: result.signature };
+    if (!result.transaction) {
+      console.error("No transaction was created");
+      return { error: "No transaction was created" };
+    }
+    
+    // Create a new connection for sending the transaction
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    
+    console.log("🚀 Sending the transaction...");
+    
+    try {
+      // Send the transaction to the blockchain
+      const signature = await wallet.sendTransaction(result.transaction, connection);
+      console.log("✅ Transaction sent with signature:", signature);
+      
+      return { signature };
+    } catch (sendError) {
+      console.error("Error sending transaction:", sendError);
+      return {
+        error: sendError instanceof Error ? sendError.message : String(sendError)
+      };
+    }
   } catch (error) {
     console.error("Error executing staking transaction:", error);
     return {

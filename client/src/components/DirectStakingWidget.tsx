@@ -106,10 +106,16 @@ const DirectStakingWidget: React.FC = () => {
       });
       
       // Create a wallet object to pass to stakeExistingTokens that's compatible with Anchor
+      // Create an ultra-simplified wallet adapter with only the minimal features needed
+      const pubKeyStr = publicKey.toString();  // Get string representation
+      const stablePubKey = new PublicKey(pubKeyStr);  // Create fresh PublicKey
+      
       const wallet = { 
-        sendTransaction, 
-        publicKey,
-        signTransaction
+        sendTransaction: async (tx: any) => {
+          console.log("Sending transaction with ultra-minimal wallet adapter");
+          return sendTransaction(tx);
+        }, 
+        publicKey: stablePubKey
       };
       
       toast({
@@ -200,7 +206,51 @@ const DirectStakingWidget: React.FC = () => {
       
       console.log("🔧 Calling stakeExistingTokens function with Anchor");
       
-      // Call the updated Anchor-based staking function
+      // Try our new direct V3 transaction method first
+      toast({
+        title: 'Using simplified transaction method',
+        description: 'Creating direct transaction to avoid PublicKey issues...'
+      });
+      
+      try {
+        console.log("🔄 Trying executeStakingTransaction V3 method");
+        
+        const directResult = await executeStakingTransaction(
+          publicKey.toString(),
+          amount,
+          wallet
+        );
+        
+        if (directResult.error) {
+          console.warn("⚠️ V3 transaction method had an error:", directResult.error);
+          // Don't throw here, we'll fall back to the original method
+        } else if (directResult.signature) {
+          console.log("✅ V3 transaction successful with signature:", directResult.signature);
+          
+          // Success! Show confirmation
+          toast({
+            title: 'Staking successful!',
+            description: `Successfully staked ${amount} HATM tokens using simplified method.`,
+          });
+          
+          // Clear form and refresh data
+          setStakeAmount('');
+          setIsStaking(false);
+          refreshAllData();
+          return;
+        }
+      } catch (v3Error) {
+        console.warn("⚠️ Error with V3 transaction method:", v3Error);
+        toast({
+          title: 'Simplified method failed',
+          description: 'Falling back to regular method...',
+        });
+        // Fall back to the original method
+      }
+      
+      console.log("🔄 Falling back to original stakeExistingTokens method");
+      
+      // If V3 method failed, fall back to the original Anchor-based staking function
       const stakeResult = await stakeExistingTokens(
         publicKey.toString(),
         amount,
