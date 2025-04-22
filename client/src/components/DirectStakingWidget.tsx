@@ -331,7 +331,7 @@ const DirectStakingWidget: React.FC = () => {
         // Ensure recent blockhash is set
         if (!decodedTransaction.recentBlockhash) {
           console.log('⚠️ Getting fresh blockhash for transaction');
-          const { blockhash } = await connection.getLatestBlockhash('finalized');
+          const { blockhash } = await solanaConnection.getLatestBlockhash('finalized');
           decodedTransaction.recentBlockhash = blockhash;
         }
         
@@ -341,7 +341,7 @@ const DirectStakingWidget: React.FC = () => {
         // Try simulating the transaction before sending
         try {
           console.log("🔬 Simulating transaction before sending");
-          const simulation = await connection.simulateTransaction(decodedTransaction);
+          const simulation = await solanaConnection.simulateTransaction(decodedTransaction);
           console.log("🔍 Simulation result:", simulation);
           
           if (simulation.value.err) {
@@ -376,7 +376,7 @@ const DirectStakingWidget: React.FC = () => {
         try {
           // APPROACH 1: Primary approach - use wallet adapter's sendTransaction
           console.log('Attempting primary transaction method: wallet.sendTransaction');
-          signature = await sendTransaction(decodedTransaction, connection, {
+          signature = await sendTransaction(decodedTransaction, solanaConnection, {
             skipPreflight: false, // Run preflight checks
             preflightCommitment: 'confirmed', // Use confirmed commitment level for preflight
             maxRetries: 5 // Try a few times if it fails
@@ -400,7 +400,7 @@ const DirectStakingWidget: React.FC = () => {
             try {
               // Get fresh blockhash
               const { blockhash, lastValidBlockHeight } = 
-                await connection.getLatestBlockhash('finalized');
+                await solanaConnection.getLatestBlockhash('finalized');
               decodedTransaction.recentBlockhash = blockhash;
               decodedTransaction.lastValidBlockHeight = lastValidBlockHeight;
               
@@ -408,7 +408,7 @@ const DirectStakingWidget: React.FC = () => {
               const signedTransaction = await signTransaction(decodedTransaction);
               
               // Send the signed transaction
-              signature = await connection.sendRawTransaction(
+              signature = await solanaConnection.sendRawTransaction(
                 signedTransaction.serialize(),
                 { 
                   skipPreflight: false,
@@ -463,7 +463,7 @@ const DirectStakingWidget: React.FC = () => {
         });
         
         // Wait for confirmation
-        const confirmationResult = await connection.confirmTransaction({
+        const confirmationResult = await solanaConnection.confirmTransaction({
           signature,
           blockhash: decodedTransaction.recentBlockhash!, 
           lastValidBlockHeight: decodedTransaction.lastValidBlockHeight!
