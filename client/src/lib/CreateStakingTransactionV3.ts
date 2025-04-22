@@ -91,7 +91,7 @@ export async function createStakingTransaction(
     
     // Get token accounts
     console.log("🪙 Fetching user token accounts");
-    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+    const tokenAccounts = await stakingConnection.getParsedTokenAccountsByOwner(
       userPubkey,
       { mint: tokenMint }
     );
@@ -117,11 +117,11 @@ export async function createStakingTransaction(
         // Send transaction to create ATA
         const tx = new Transaction().add(ix);
         tx.feePayer = userPubkey;
-        const { blockhash } = await connection.getLatestBlockhash('confirmed');
+        const { blockhash } = await stakingConnection.getLatestBlockhash('confirmed');
         tx.recentBlockhash = blockhash;
         
         const sig = await wallet.sendTransaction(tx);
-        await connection.confirmTransaction(sig, 'confirmed');
+        await stakingConnection.confirmTransaction(sig, 'confirmed');
         console.log("✅ Created token account:", ata.toString());
       } catch (error) {
         console.error("Error creating token account:", error);
@@ -133,7 +133,7 @@ export async function createStakingTransaction(
     let userTokenAccount: PublicKey | null = null;
     
     // Fetch token accounts again after potential creation
-    const updatedTokenAccounts = await connection.getParsedTokenAccountsByOwner(
+    const updatedTokenAccounts = await stakingConnection.getParsedTokenAccountsByOwner(
       userPubkey,
       { mint: tokenMint }
     );
@@ -169,7 +169,7 @@ export async function createStakingTransaction(
     
     // Verify vault token account exists
     try {
-      await getAccount(connection, vaultTokenAccount);
+      await getAccount(stakingConnection, vaultTokenAccount);
       console.log("✅ Vault token account verified:", vaultTokenAccount.toString());
     } catch (error) {
       console.error("❌ Vault token account invalid:", error);
@@ -217,7 +217,7 @@ export async function createStakingTransaction(
     transaction.add(instruction);
     
     // Add recent blockhash and fee payer
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+    const { blockhash, lastValidBlockHeight } = await stakingConnection.getLatestBlockhash('finalized');
     transaction.recentBlockhash = blockhash;
     transaction.lastValidBlockHeight = lastValidBlockHeight;
     transaction.feePayer = userPubkey;
@@ -227,7 +227,7 @@ export async function createStakingTransaction(
     // Try simulation first
     console.log("🔍 Simulating transaction...");
     try {
-      const simulation = await connection.simulateTransaction(transaction);
+      const simulation = await stakingConnection.simulateTransaction(transaction);
       
       if (simulation.value.err) {
         console.error("❌ Simulation failed:", simulation.value.err);
@@ -293,8 +293,8 @@ export async function executeStakingTransaction(
       return { error: "No transaction was created" };
     }
     
-    // Create a new connection for sending the transaction
-    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    // Create a fresh connection for sending the transaction
+    const txnConnection = new Connection(clusterApiUrl('devnet'), 'confirmed');
     
     console.log("🚀 Sending the transaction...");
     
